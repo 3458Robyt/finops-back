@@ -4,7 +4,7 @@
 
 Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps Inteligente**, desarrollada para **TAK Colombia**. El sistema centraliza la ingesta de facturación multicloud, orquesta el análisis predictivo mediante Agentes de Inteligencia Artificial (LLMs) y expone una API RESTful segura para el consumo de interfaces web y chatbots.
 
-## 🎯 Propósito del Sistema
+## Propósito del Sistema
 
 El backend actúa como el motor principal para transformar los procesos manuales y reactivos de gestión de costos en la nube hacia una cultura proactiva. Sus responsabilidades incluyen:
 - **Ingesta Estandarizada:** Recolección diaria de métricas desde proveedores cloud (AWS Cost Explorer) utilizando el Patrón Adaptador.
@@ -14,7 +14,7 @@ El backend actúa como el motor principal para transformar los procesos manuales
 
 
 
-## 🏗️ Arquitectura y Patrones (Clean Architecture)
+## Arquitectura y Patrones (Clean Architecture)
 
 El proyecto está estructurado bajo los principios **SOLID** y **Clean Architecture**, asegurando que la lógica de negocio central (Dominio) sea completamente independiente de frameworks externos y bases de datos.
 
@@ -28,7 +28,7 @@ src/
 └── presentation/     # Controladores Express/Nest, Middlewares, Rutas de la API
 \`\`\`
 
-## 🚀 Stack Tecnológico
+## Stack Tecnológico
 
 - **Entorno:** Node.js + TypeScript (Strict Mode)
 - **Base de Datos:** PostgreSQL con extensión TimescaleDB
@@ -36,7 +36,7 @@ src/
 - **Calidad de Código:** ESLint, Prettier, Husky (Pre-commit hooks)
 - **Testing:** Jest, Supertest (Unit & Integration tests)
 
-## 🛠️ Configuración y Despliegue
+## Configuración y Despliegue
 
 ### Requisitos Previos
 - Node.js >= 18.x
@@ -78,10 +78,10 @@ src/
 - \`npm run test\`: Ejecuta la suite de pruebas unitarias y de integración.
 - \`npm run lint\`: Analiza el código en busca de violaciones de estilo y deuda técnica.
 
-## 🔒 Manejo de Errores y Seguridad
+## Manejo de Errores y Seguridad
 
 Este sistema implementa un manejo de errores centralizado mediante *Custom Errors* (ej. `DomainError`, `InfrastructureError`). Cualquier fallo en la comunicación con APIs de terceros o en el motor de IA es capturado, logueado de forma estructurada y devuelto al cliente con el código HTTP correspondiente, sin exponer trazas de la pila (stack traces) en producción.
 
-## 🤝 Flujo de Trabajo (Water-Scrum-Fall)
+## Flujo de Trabajo (Water-Scrum-Fall)
 
 Este proyecto sigue un enfoque iterativo. Las contribuciones deben realizarse mediante *Feature Branches* (`feature/nombre-de-la-tarea`) y aprobar mediante Pull Requests que superen el pipeline de CI (linting y tests).
