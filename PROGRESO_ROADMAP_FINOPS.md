@@ -22,6 +22,27 @@ PostgreSQL).
 
 ## 2. Bitácora de avance
 
+### 2026-05-30 — Bloque 2: Métricas técnicas (separadas de FOCUS) ✅
+
+Expone el inventario de recursos (`cloud_resources`) y las muestras de métricas técnicas
+(`resource_metric_samples`) por API y UI, **estrictamente separado** del consumo facturado de FOCUS.
+Solo lectura, multi-tenant, additivo, sin migración (tablas preexistentes). El sistema **no** infiere
+CPU/memoria/IOPS desde FOCUS; estas métricas provienen de monitorización/agentes.
+- Backend (todo nuevo salvo wiring): puerto `IResourceMetricRepository` (`CloudResourceItem`,
+  `ResourceMetricSampleItem`); `mappers/technicalMetricsMappers.ts`; `PrismaResourceMetricRepository`
+  (`findMany` por `tenantId`, orden por recencia, `take: limit`); `TechnicalMetricsService` con
+  `clampLimit` [1,200]; `TechnicalMetricsController` (+ `parseLimit`/`respondWithError`);
+  `routes/technicalMetricsRoutes.ts` montado en `server.ts` bajo `/api/v1/technical-metrics`
+  (`GET /resources`, `GET /samples`); wiring en `index.ts` + `server.ts`.
+  - `TechnicalMetricsService.test.ts`: 4 casos (recursos por tenant, clamp de límite, muestras, vacío).
+  - Verificación: `tsc --noEmit` exit 0; **58/58 tests**.
+- Frontend: `api.ts` (tipos + `fetchTechnicalResources` / `fetchTechnicalMetricSamples`); vista
+  `views/MetricasTecnicas.tsx` (inventario + muestras, aviso explícito de separación FOCUS, estados
+  carga/vacío/error); navegación admin-only en `App.tsx`, `Sidebar.tsx`, `BottomNav.tsx`, `TopHeader.tsx`.
+  - Verificación: `npm run build` (`tsc -b && vite build`) exit 0 (691 módulos).
+- Nota honesta: en la BD demo estas tablas estarán probablemente **vacías** (su fuente real requiere
+  colector/credenciales); la UI muestra estados vacíos honestos hasta que existan datos.
+
 ### 2026-05-30 — Bloque 3/4: Evaluación de calidad del agente IA + golden scenarios ✅
 
 Marco determinista para medir la calidad del agente **sin llamar al modelo** ni depender de
