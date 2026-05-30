@@ -22,6 +22,23 @@ PostgreSQL).
 
 ## 2. Bitácora de avance
 
+### 2026-05-30 — Bloque 3/4: Evaluación de calidad del agente IA + golden scenarios ✅
+
+Marco determinista para medir la calidad del agente **sin llamar al modelo** ni depender de
+credenciales — base para endurecer prompts con medición en vez de a ciegas. Solo backend, puro, additivo.
+- `ai/evaluation/qualityRubric.ts`: funciones puras. `evaluateRecommendationDrafts` (controles:
+  count, accountScoping, severityValid, evidenceLevel, **focusHonesty** —COST_ONLY exige
+  requiresTechnicalValidation—, savingsRealism, spanishText) y `evaluateExecutionPlan` (requiredArrays,
+  scopeAccount, **noAutoExecution**). Reusa `isRecord` de `ai/jsonReadHelpers`.
+- `ai/evaluation/goldenScenarios.ts`: 4 escenarios sintéticos (bueno con consumo; FOCUS-only honesto;
+  cuenta inventada → rechazo del parser; ahorro irreal → reprobado por rúbrica). Datos marcados demo.
+- `ai/evaluation/goldenScenarioRunner.ts`: `runScenarioOffline` ejercita el pipeline real
+  (`parseRecommendationDrafts` → rúbrica) y clasifica `PARSED_AND_PASSED | PARSED_BUT_FAILED | PARSE_REJECTED`.
+- `ai/evaluation/goldenScenarios.test.ts`: recorre todos los escenarios + controles finos de la rúbrica.
+- Verificación: `tsc --noEmit` exit 0; **54/54 tests** (+9 vs. bloque anterior).
+- Orden ajustado: se priorizó este bloque (#3/#4) sobre #2 porque es autocontenido y no requiere
+  credenciales; #2 (métricas técnicas) queda como siguiente.
+
 ### 2026-05-30 — Bloque 1: Historial de Ingesta + Calidad de Datos (en curso)
 
 Objetivo del bloque: exponer por API (solo lectura, nivel tenant) el historial de jobs de ingesta y
