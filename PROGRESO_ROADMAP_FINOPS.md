@@ -22,6 +22,22 @@ PostgreSQL).
 
 ## 2. Bitácora de avance
 
+### 2026-05-30 — Bloque 5: Hardening + documentación ✅
+
+Documentación alineada con lo que el código **realmente** hace (sin afirmaciones aspiracionales) y
+postura de seguridad explícita. Solo docs/config; no toca lógica.
+- `.env.example`: añadidas variables que el código usa y faltaban (`NIM_API_KEY` como alternativa de
+  `NVIDIA_API_KEY`, `LEARNING_AUDIT_TIMEOUT_MS`, `ANOMALY_MIN_DELTA_USD`).
+- `README.md` corregido (errores factuales): stack real (Vitest no Jest; cliente `openai`→NVIDIA NIM
+  no LangChain/Gemini; Supabase/PostgreSQL no TimescaleDB), scripts reales (no existe `lint`/ESLint),
+  errores con `FinOpsBaseError`, e instalación/requisitos acordes a `docker-compose.yml`
+  (postgres:16-alpine).
+- Sección **Postura de seguridad**: lo que existe (JWT + aislamiento por tenant, Argon2, cifrado de
+  credenciales, CORS configurable, `.env` ignorado) y **pendientes honestos de hardening**
+  (rate limiting y `helmet` ausentes, logging estructurado, gestión de secretos/rotación).
+- Verificación: cambios solo de documentación; backend sin cambios de código (último estado verde:
+  `tsc` 0, 58/58 tests). Build de frontend no afectado.
+
 ### 2026-05-30 — Bloque 2: Métricas técnicas (separadas de FOCUS) ✅
 
 Expone el inventario de recursos (`cloud_resources`) y las muestras de métricas técnicas
@@ -60,7 +76,7 @@ credenciales — base para endurecer prompts con medición en vez de a ciegas. S
 - Orden ajustado: se priorizó este bloque (#3/#4) sobre #2 porque es autocontenido y no requiere
   credenciales; #2 (métricas técnicas) queda como siguiente.
 
-### 2026-05-30 — Bloque 1: Historial de Ingesta + Calidad de Datos (en curso)
+### 2026-05-30 — Bloque 1: Historial de Ingesta + Calidad de Datos ✅
 
 Objetivo del bloque: exponer por API (solo lectura, nivel tenant) el historial de jobs de ingesta y
 los controles de calidad de datos (tablas ya existentes en BD, sin migración), y añadir una vista
