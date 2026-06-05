@@ -171,3 +171,10 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - OCI probado con `listObjects` + `getObject` simulados; valida el mismo contrato para Object Storage.
 - No se encontraron cambios necesarios en el parser/adapters para esta rebanada; la ruta SDK FOCUS queda cubierta por tests, pero falta ejecutar con buckets reales de AWS/OCI.
 - Verificacion: `npm run typecheck`, `npm test -- --run` (24 archivos, 101 tests) y `npm run build`.
+
+### 2026-06-05 - Doctor de readiness de ingesta
+
+- Se agrego `npm run ingestion:doctor` para inspeccionar conexiones AWS/OCI activas, credenciales activas por proposito, metadata configurada, ultimos jobs y errores/resumen sin imprimir secretos.
+- Ejecucion contra Supabase actual: `ok=true`, OCI tiene credencial `OPERATIONAL`, 11 `ociMetricDefinitions` y ultimo job tecnico exitoso con 429 muestras.
+- Pendientes reportados por el doctor: falta metadata `ociFocusReportObjects`/`ociFocusReportLocations` para costos FOCUS en OCI; no existe conexion AWS activa.
+- Este comando queda como preflight operacional antes de probar cuentas reales o diagnosticar por que no se ingestan costos/metricas.

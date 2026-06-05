@@ -43,6 +43,22 @@ npm run ingestion:worker:preflight
 
 Debe devolver `DATABASE_URL=true` y `CREDENTIAL_ENCRYPTION_KEY=true`. No imprime valores.
 
+### Doctor de readiness
+
+```powershell
+npm run ingestion:doctor
+```
+
+Inspecciona Supabase sin exponer secretos:
+
+- conexiones AWS/OCI activas;
+- propositos de credenciales activas;
+- conteos de metadata de metricas y FOCUS;
+- ultimos jobs de ingesta y resumen de resultados;
+- issues `BLOCKER`, `WARNING` o `INFO`.
+
+Estado observado el 2026-06-05: OCI tiene credencial operativa y 11 definiciones de metricas; faltan objetos/prefijos FOCUS de OCI y no existe conexion AWS activa.
+
 ### Registrar credencial OCI desde perfil CLI
 
 ```powershell
