@@ -206,3 +206,9 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - El body recibe `cloudConnectionId`, `sourceType`, `targetStart` y `targetEnd`; reutiliza `CloudConnectionService.queueIngestion` y conserva validacion tenant.
 - La ruta historica `POST /api/v1/cloud-connections/:id/ingestion-jobs` sigue funcionando.
 - Se agrego test de wiring para confirmar que `/ingestion/jobs` apunta a `queueTenantIngestion`.
+
+### 2026-06-05 - UI para encolar jobs de ingesta
+
+- La vista `Ingesta` del frontend deja de ser solo lectura: ahora permite encolar jobs desde la UI usando `POST /api/v1/ingestion/jobs`.
+- El formulario recibe conexion, fuente (`TECHNICAL_METRIC`, `BILLING_EXPORT`, `INVENTORY`) y rango objetivo; tras encolar refresca historial/calidad.
+- Build frontend verificado con `npm run build`.
