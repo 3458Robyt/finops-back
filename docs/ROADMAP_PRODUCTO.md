@@ -133,3 +133,6 @@ Estado actualizado del roadmap general:
 - Hallazgo de seguridad: 
 pm install reporto 174 vulnerabilidades transitivas. No se ejecuto 
 pm audit fix --force para evitar cambios destructivos; queda como tarea controlada.
+
+- Avance 2026-06-05 adicional: AWS/OCI ya soportan discovery por prefijo (wsFocusExportLocations, ociFocusReportLocations) con limite maxObjects para evitar barridos gigantes. Se agrego 
+pm run ingestion:worker:once para benchmark manual de un job pendiente.
