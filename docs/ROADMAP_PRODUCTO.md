@@ -136,3 +136,5 @@ pm audit fix --force para evitar cambios destructivos; queda como tarea controla
 
 - Avance 2026-06-05 adicional: AWS/OCI ya soportan discovery por prefijo (wsFocusExportLocations, ociFocusReportLocations) con limite maxObjects para evitar barridos gigantes. Se agrego 
 pm run ingestion:worker:once para benchmark manual de un job pendiente.
+
+- Avance 2026-06-05 adicional 2: OCI TECHNICAL_METRIC ya fue probado contra Supabase con credencial OCI cifrada. Se agregaron scripts operativos `npm run oci:register-profile` y `npm run ingestion:create-job`. El benchmark historico sobre OCI Monitoring proceso 11 metricas y normalizo 429 muestras en 660 ms internos. El principal hallazgo fue de integracion SDK: la respuesta TypeScript expone `items`; leer `summarizedMetricsData` producia 0 muestras aunque OCI CLI si devolvia datos. Queda pendiente prueba AWS real y ejecucion con ventana diaria viva.

@@ -147,3 +147,11 @@ pm run ingestion:worker:once ejecuta un job pendiente y devuelve JSON con duraci
 pm run ingestion:worker:preflight valida DATABASE_URL y CREDENTIAL_ENCRYPTION_KEY sin exponer valores. Evidencia 2026-06-05: DATABASE_URL=true, CREDENTIAL_ENCRYPTION_KEY=false en .env actual.
 - Benchmark base sin jobs pendientes: con una clave temporal de proceso, 
 pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }. Falta benchmark real con credenciales cifradas y jobs OCI/AWS.
+
+### 2026-06-05 - Ingesta OCI SDK verificada con metricas reales
+
+- Se agrego `npm run oci:register-profile` para registrar un perfil OCI CLI como credencial operativa cifrada en `cloud_connection_credentials`, sin imprimir secretos.
+- Se agrego `npm run ingestion:create-job` para encolar jobs manuales de `BILLING_EXPORT`, `TECHNICAL_METRIC` o `INVENTORY`, con ventana relativa (`--hours`) o exacta (`--start`/`--end`).
+- Hallazgo tecnico: OCI CLI devolvia metricas, pero el SDK quedaba en 0 porque `SummarizeMetricsDataResponse` en TypeScript usa `items`, no `summarizedMetricsData`. Se corrigio `OciSdkIngestionProvider` y se agrego prueba unitaria para este shape.
+- Benchmark real en Supabase/OCI: job `TECHNICAL_METRIC` historico `2026-06-04T01:30:00Z` a `2026-06-04T20:30:00Z`, 11 llamadas API, 429 muestras normalizadas, duracion interna 660 ms, sin warnings.
+- Queda pendiente repetir benchmark con ventana viva/diaria cuando el recurso siga emitiendo metricas y hacer prueba equivalente AWS con rol `AssumeRole` real.
