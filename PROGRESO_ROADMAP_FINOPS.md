@@ -211,4 +211,5 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 
 - La vista `Ingesta` del frontend deja de ser solo lectura: ahora permite encolar jobs desde la UI usando `POST /api/v1/ingestion/jobs`.
 - El formulario recibe conexion, fuente (`TECHNICAL_METRIC`, `BILLING_EXPORT`, `INVENTORY`) y rango objetivo; tras encolar refresca historial/calidad.
+- La conexion ahora se selecciona desde `GET /api/v1/cloud-connections`; ya no exige escribir manualmente el `cloudConnectionId`.
 - Build frontend verificado con `npm run build`.
