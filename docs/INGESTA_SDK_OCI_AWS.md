@@ -23,8 +23,15 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
 - Credencial operativa: rol `AssumeRole` registrable cifrado con `npm run aws:register-role`.
 - Worker: `npm run ingestion:worker:once`.
 - Job manual: `npm run ingestion:create-job -- --provider aws`.
-- Prueba actual: unitaria, sin credenciales reales, valida mapeo de `GetMetricData` hacia `resource_metric_samples`.
+- Prueba actual: unitaria, sin credenciales reales, valida mapeo de `GetMetricData` hacia `resource_metric_samples` y lectura FOCUS desde S3 con discovery por prefijo.
 - Pendiente para benchmark real: crear una conexion AWS, registrar rol operativo, configurar `awsMetricDefinitions` y/o `awsFocusExportLocations`.
+
+### FOCUS SDK
+
+- AWS `BILLING_EXPORT`: cubierto por test de adapter con `ListObjectsV2Command` y `GetObjectCommand`.
+- OCI `BILLING_EXPORT`: cubierto por test de adapter con `listObjects` y `getObject`.
+- Estas pruebas verifican discovery, filtrado `.csv`/`.csv.gz`, lectura de contenido y normalizacion hacia filas FOCUS canonicas.
+- Pendiente: ejecutar contra buckets reales y medir objetos/minuto, filas/minuto, errores por permisos y comportamiento con particiones grandes.
 
 ## Comandos operativos
 

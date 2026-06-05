@@ -163,3 +163,11 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Se agrego prueba unitaria para `GetMetricData`: valida normalizacion de `MetricDataResults` hacia `resource_metric_samples`, con recurso, metrica, unidad y granularidad.
 - Decision de diseno confirmada con documentacion AWS: FOCUS/Data Exports cubre costos y uso facturado en S3; CloudWatch `GetMetricData` cubre metricas tecnicas y permite hasta 500 metricas por request; acceso MSP recomendado mediante `AssumeRole` con `ExternalId`.
 - Pendiente: obtener rol AWS real de cliente/lab, configurar `awsMetricDefinitions` y/o `awsFocusExportLocations`, ejecutar benchmark real equivalente al de OCI.
+
+### 2026-06-05 - Cobertura FOCUS por adapters SDK
+
+- Se agregaron pruebas de adapter para `BILLING_EXPORT` en AWS y OCI: discovery por prefijo, filtrado de objetos `.csv`/`.csv.gz`, lectura de objeto y normalizacion con `parseFocusCsvToLineItems`.
+- AWS probado con `ListObjectsV2Command` + `GetObjectCommand` simulados; valida `objectsDiscovered`, `objectsProcessed`, `rowsParsed` y fila FOCUS canonica.
+- OCI probado con `listObjects` + `getObject` simulados; valida el mismo contrato para Object Storage.
+- No se encontraron cambios necesarios en el parser/adapters para esta rebanada; la ruta SDK FOCUS queda cubierta por tests, pero falta ejecutar con buckets reales de AWS/OCI.
+- Verificacion: `npm run typecheck`, `npm test -- --run` (24 archivos, 101 tests) y `npm run build`.
