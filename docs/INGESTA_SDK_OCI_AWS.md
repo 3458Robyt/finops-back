@@ -139,6 +139,26 @@ Notas:
 - El comando no maneja secretos; solo metadata de ubicacion de reportes.
 - Despues de configurar, ejecutar `npm run ingestion:doctor` para verificar conteos de metadata.
 
+### Previsualizar fuentes FOCUS sin ingerir
+
+```powershell
+npm run ingestion:preview-focus -- --provider oci --limit 20
+```
+
+```powershell
+npm run ingestion:preview-focus -- --provider aws --connection-id <cloud_connection_id> --limit 20
+```
+
+Este comando:
+
+- desencripta credenciales solo en memoria;
+- lista objetos candidatos desde los prefijos configurados;
+- incluye objetos directos configurados;
+- filtra solo `.csv` y `.csv.gz`;
+- no descarga contenido y no escribe filas en BD.
+
+Estado observado el 2026-06-05 para OCI: `configuredObjects=0`, `configuredLocations=0`, `discoveredObjects=0`; falta configurar bucket/prefix u objeto FOCUS.
+
 ## Metadata esperada por proveedor
 
 ### OCI metricas tecnicas

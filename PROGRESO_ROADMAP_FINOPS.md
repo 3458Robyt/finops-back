@@ -185,3 +185,10 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Soporta `--mode location` para prefijos y `--mode object` para objetos directos; `--replace` reemplaza el arreglo seleccionado y por defecto conserva metadata existente.
 - OCI actualiza `ociFocusReportLocations` u `ociFocusReportObjects`; AWS actualiza `awsFocusExportLocations` o `awsFocusExportObjects`.
 - La logica de metadata esta separada en `focusSourceMetadata.ts` y tiene pruebas unitarias para append, replace y validacion de campos requeridos.
+
+### 2026-06-05 - Preview dry-run de fuentes FOCUS
+
+- Se agrego `npm run ingestion:preview-focus` para validar fuentes FOCUS antes de crear jobs `BILLING_EXPORT`.
+- El preview lista objetos directos y objetos descubiertos por prefijo, filtra `.csv`/`.csv.gz`, no descarga contenido y no escribe datos.
+- Incluye helper testeado `focusSourcePreview.ts` para leer metadata AWS/OCI y aplicar limites.
+- Ejecucion contra Supabase OCI actual: `configuredObjects=0`, `configuredLocations=0`, `discoveredObjects=0`; confirma que falta bucket/prefix u objeto FOCUS real.
