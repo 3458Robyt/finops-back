@@ -124,6 +124,7 @@ Estado actualizado del roadmap general:
 - Ya existe una primera rebanada de conectores SDK:
   - OCI: OciSdkIngestionProvider recolecta TECHNICAL_METRIC via OCI Monitoring usando metadata.ociMetricDefinitions.
   - AWS: AwsSdkIngestionProvider recolecta TECHNICAL_METRIC via STS AssumeRole + CloudWatch GetMetricData usando metadata.awsMetricDefinitions.
+- Avance 2026-06-05: ya existe parser FOCUS comun y lectura por objetos configurados para AWS S3 (wsFocusExportObjects) y OCI Object Storage (ociFocusReportObjects). Queda pendiente discovery automatico de particiones/exports y benchmark con cuentas reales.
 - Sigue pendiente la parte canonica de costos/consumo FOCUS productiva:
   - OCI Cost Reports/Object Storage hacia ocus_cost_line_items.
   - AWS Data Exports/S3 hacia ocus_cost_line_items.

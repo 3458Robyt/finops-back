@@ -36,6 +36,7 @@ Se inicio el objetivo de ingesta productiva por SDK para costos, consumo y metri
 - Hallazgo: 
 pm install reporto 174 vulnerabilidades transitivas (172 moderadas, 2 altas). No se aplico 
 pm audit fix --force porque puede romper dependencias; queda como tarea de seguridad.
+- Avance adicional: ocusCsvIngestion normaliza CSV/CSV.GZ FOCUS a ocus_cost_line_items con hash estable; AWS BILLING_EXPORT puede leer objetos declarados en metadata.awsFocusExportObjects via S3, y OCI BILLING_EXPORT puede leer objetos declarados en metadata.ociFocusReportObjects via Object Storage. Falta discovery automatico/listado de particiones y benchmark con datos reales.
 ### 2026-05-30 — Bloque 5: Hardening + documentación ✅
 
 Documentación alineada con lo que el código **realmente** hace (sin afirmaciones aspiracionales) y
