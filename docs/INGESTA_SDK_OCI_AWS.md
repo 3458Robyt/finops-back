@@ -100,6 +100,23 @@ Ventana exacta:
 npm run ingestion:create-job -- --provider oci --source-type TECHNICAL_METRIC --start 2026-06-04T01:30:00Z --end 2026-06-04T20:30:00Z --max-attempts 1
 ```
 
+Crear job por API:
+
+```http
+POST /api/v1/ingestion/jobs
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "cloudConnectionId": "<cloud_connection_id>",
+  "sourceType": "BILLING_EXPORT",
+  "targetStart": "2026-06-01T00:00:00.000Z",
+  "targetEnd": "2026-06-02T00:00:00.000Z"
+}
+```
+
+La ruta historica `POST /api/v1/cloud-connections/:id/ingestion-jobs` sigue disponible. El alias `/api/v1/ingestion/jobs` es mas comodo para la UI/modulo de ingesta.
+
 Ejecutar worker:
 
 ```powershell

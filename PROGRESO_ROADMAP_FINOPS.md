@@ -199,3 +199,10 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - El loop evita solapamientos: si una iteracion sigue activa, la siguiente se omite y registra warning.
 - `index.ts` usa el loop cuando `INGESTION_WORKER_ENABLED=true`; `.env.example` documenta `INGESTION_WORKER_ID` e `INGESTION_WORKER_INTERVAL_MS`.
 - Pruebas cubren ejecucion inmediata, scheduling, skip por solapamiento y recuperacion despues de error.
+
+### 2026-06-05 - API tenant-level para encolar jobs
+
+- Se agrego `POST /api/v1/ingestion/jobs` como alias tenant-level para crear jobs de ingesta desde el modulo de ingesta/UI.
+- El body recibe `cloudConnectionId`, `sourceType`, `targetStart` y `targetEnd`; reutiliza `CloudConnectionService.queueIngestion` y conserva validacion tenant.
+- La ruta historica `POST /api/v1/cloud-connections/:id/ingestion-jobs` sigue funcionando.
+- Se agrego test de wiring para confirmar que `/ingestion/jobs` apunta a `queueTenantIngestion`.
