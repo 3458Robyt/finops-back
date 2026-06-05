@@ -178,3 +178,10 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Ejecucion contra Supabase actual: `ok=true`, OCI tiene credencial `OPERATIONAL`, 11 `ociMetricDefinitions` y ultimo job tecnico exitoso con 429 muestras.
 - Pendientes reportados por el doctor: falta metadata `ociFocusReportObjects`/`ociFocusReportLocations` para costos FOCUS en OCI; no existe conexion AWS activa.
 - Este comando queda como preflight operacional antes de probar cuentas reales o diagnosticar por que no se ingestan costos/metricas.
+
+### 2026-06-05 - Configuracion operativa de fuentes FOCUS
+
+- Se agrego `npm run ingestion:configure-focus` para registrar metadata FOCUS de AWS/OCI sin editar Supabase manualmente.
+- Soporta `--mode location` para prefijos y `--mode object` para objetos directos; `--replace` reemplaza el arreglo seleccionado y por defecto conserva metadata existente.
+- OCI actualiza `ociFocusReportLocations` u `ociFocusReportObjects`; AWS actualiza `awsFocusExportLocations` o `awsFocusExportObjects`.
+- La logica de metadata esta separada en `focusSourceMetadata.ts` y tiene pruebas unitarias para append, replace y validacion de campos requeridos.

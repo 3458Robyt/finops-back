@@ -106,6 +106,39 @@ Ejecutar worker:
 npm run ingestion:worker:once
 ```
 
+### Configurar fuentes FOCUS sin editar Supabase a mano
+
+OCI por prefijo:
+
+```powershell
+npm run ingestion:configure-focus -- --provider oci --mode location --namespace-name <namespace> --bucket-name <bucket> --prefix <prefix/> --focus-version 1.0 --max-objects 100
+```
+
+OCI por objeto directo:
+
+```powershell
+npm run ingestion:configure-focus -- --provider oci --mode object --namespace-name <namespace> --bucket-name <bucket> --object-name <path/report.csv.gz> --focus-version 1.0
+```
+
+AWS por prefijo:
+
+```powershell
+npm run ingestion:configure-focus -- --provider aws --mode location --bucket <bucket> --prefix <prefix/> --region us-east-1 --focus-version 1.0 --max-objects 100
+```
+
+AWS por objeto directo:
+
+```powershell
+npm run ingestion:configure-focus -- --provider aws --mode object --bucket <bucket> --key <path/report.csv.gz> --region us-east-1 --focus-version 1.0
+```
+
+Notas:
+
+- Por defecto agrega la fuente nueva y conserva metadata previa.
+- Usar `--replace` cuando se quiera reemplazar el arreglo del tipo seleccionado.
+- El comando no maneja secretos; solo metadata de ubicacion de reportes.
+- Despues de configurar, ejecutar `npm run ingestion:doctor` para verificar conteos de metadata.
+
 ## Metadata esperada por proveedor
 
 ### OCI metricas tecnicas
