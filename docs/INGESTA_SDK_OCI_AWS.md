@@ -106,6 +106,16 @@ Ejecutar worker:
 npm run ingestion:worker:once
 ```
 
+Worker continuo dentro del backend:
+
+```env
+INGESTION_WORKER_ENABLED=true
+INGESTION_WORKER_ID=finops-worker-prod-1
+INGESTION_WORKER_INTERVAL_MS=30000
+```
+
+Al arrancar el backend, el worker ejecuta una pasada inmediata y luego repite por intervalo. Si una iteracion sigue activa cuando llega el siguiente intervalo, la siguiente se omite para evitar solapamiento de jobs largos.
+
 ### Configurar fuentes FOCUS sin editar Supabase a mano
 
 OCI por prefijo:

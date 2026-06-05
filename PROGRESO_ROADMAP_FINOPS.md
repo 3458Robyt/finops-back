@@ -192,3 +192,10 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - El preview lista objetos directos y objetos descubiertos por prefijo, filtra `.csv`/`.csv.gz`, no descarga contenido y no escribe datos.
 - Incluye helper testeado `focusSourcePreview.ts` para leer metadata AWS/OCI y aplicar limites.
 - Ejecucion contra Supabase OCI actual: `configuredObjects=0`, `configuredLocations=0`, `discoveredObjects=0`; confirma que falta bucket/prefix u objeto FOCUS real.
+
+### 2026-06-05 - Worker continuo sin solapamiento
+
+- Se agrego `startCloudIngestionWorkerLoop` para ejecutar una pasada inmediata al arrancar y luego por intervalo configurable.
+- El loop evita solapamientos: si una iteracion sigue activa, la siguiente se omite y registra warning.
+- `index.ts` usa el loop cuando `INGESTION_WORKER_ENABLED=true`; `.env.example` documenta `INGESTION_WORKER_ID` e `INGESTION_WORKER_INTERVAL_MS`.
+- Pruebas cubren ejecucion inmediata, scheduling, skip por solapamiento y recuperacion despues de error.
