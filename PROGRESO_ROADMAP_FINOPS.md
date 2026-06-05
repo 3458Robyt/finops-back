@@ -155,3 +155,11 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Hallazgo tecnico: OCI CLI devolvia metricas, pero el SDK quedaba en 0 porque `SummarizeMetricsDataResponse` en TypeScript usa `items`, no `summarizedMetricsData`. Se corrigio `OciSdkIngestionProvider` y se agrego prueba unitaria para este shape.
 - Benchmark real en Supabase/OCI: job `TECHNICAL_METRIC` historico `2026-06-04T01:30:00Z` a `2026-06-04T20:30:00Z`, 11 llamadas API, 429 muestras normalizadas, duracion interna 660 ms, sin warnings.
 - Queda pendiente repetir benchmark con ventana viva/diaria cuando el recurso siga emitiendo metricas y hacer prueba equivalente AWS con rol `AssumeRole` real.
+
+### 2026-06-05 - Base operativa AWS SDK
+
+- Se agrego `npm run aws:register-role` para guardar un rol AWS `AssumeRole` como credencial operativa cifrada, con soporte de `externalId`, `sessionName`, region y proposito (`OPERATIONAL`, `BILLING_EXPORT_READ`, `METRICS_READ`, `STORAGE_READ`).
+- Se hizo testeable `AwsSdkIngestionProvider` mediante factories internas de STS, CloudWatch y S3 sin cambiar la ruta productiva.
+- Se agrego prueba unitaria para `GetMetricData`: valida normalizacion de `MetricDataResults` hacia `resource_metric_samples`, con recurso, metrica, unidad y granularidad.
+- Decision de diseno confirmada con documentacion AWS: FOCUS/Data Exports cubre costos y uso facturado en S3; CloudWatch `GetMetricData` cubre metricas tecnicas y permite hasta 500 metricas por request; acceso MSP recomendado mediante `AssumeRole` con `ExternalId`.
+- Pendiente: obtener rol AWS real de cliente/lab, configurar `awsMetricDefinitions` y/o `awsFocusExportLocations`, ejecutar benchmark real equivalente al de OCI.

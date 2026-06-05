@@ -138,3 +138,5 @@ pm audit fix --force para evitar cambios destructivos; queda como tarea controla
 pm run ingestion:worker:once para benchmark manual de un job pendiente.
 
 - Avance 2026-06-05 adicional 2: OCI TECHNICAL_METRIC ya fue probado contra Supabase con credencial OCI cifrada. Se agregaron scripts operativos `npm run oci:register-profile` y `npm run ingestion:create-job`. El benchmark historico sobre OCI Monitoring proceso 11 metricas y normalizo 429 muestras en 660 ms internos. El principal hallazgo fue de integracion SDK: la respuesta TypeScript expone `items`; leer `summarizedMetricsData` producia 0 muestras aunque OCI CLI si devolvia datos. Queda pendiente prueba AWS real y ejecucion con ventana diaria viva.
+
+- Avance 2026-06-05 adicional 3: se agrego base operativa AWS con `npm run aws:register-role` para credencial cifrada basada en `AssumeRole` + `ExternalId`, y prueba unitaria del mapeo CloudWatch `GetMetricData` hacia muestras tecnicas. Falta credencial/rol real para benchmark AWS productivo; la estrategia se mantiene separada: AWS Data Exports FOCUS para costo/uso facturado y CloudWatch para CPU/red/disco/memoria cuando haya agente.
