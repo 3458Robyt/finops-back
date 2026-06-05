@@ -142,3 +142,8 @@ ingesta/calidad de datos operativa de extremo a extremo (API → UI), multi-tena
 
 - Runner manual agregado: 
 pm run ingestion:worker:once ejecuta un job pendiente y devuelve JSON con duracion/resumen para pruebas de rendimiento controladas.
+
+- Preflight agregado: 
+pm run ingestion:worker:preflight valida DATABASE_URL y CREDENTIAL_ENCRYPTION_KEY sin exponer valores. Evidencia 2026-06-05: DATABASE_URL=true, CREDENTIAL_ENCRYPTION_KEY=false en .env actual.
+- Benchmark base sin jobs pendientes: con una clave temporal de proceso, 
+pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }. Falta benchmark real con credenciales cifradas y jobs OCI/AWS.
