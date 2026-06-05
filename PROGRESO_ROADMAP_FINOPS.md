@@ -22,6 +22,20 @@ PostgreSQL).
 
 ## 2. Bitácora de avance
 
+### 2026-06-05 - SDK OCI/AWS: commit seguro + base de worker productivo en curso
+
+Se inicio el objetivo de ingesta productiva por SDK para costos, consumo y metricas tecnicas.
+- Commit inicial seguro backend: 127c4f3 (chore: harden backend baseline before SDK ingestion).
+- Commit hardening backend: 34f510c (chore: harden ingestion prerequisites).
+- Commit hardening frontend: 8c8767 (chore: remove demo password from login form).
+- Seguridad previa: .env.*, *.pem, *.key, .oci/, .claude/, descargas y artefactos quedan ignorados; seed/importador ya no usan password demo por defecto ni imprimen contrasenas demo.
+- Base worker: nueva migracion 202606050001_ingestion_job_observability agrega started_at, completed_at y esult_summary a ingestion_jobs; el worker reclama jobs con FOR UPDATE SKIP LOCKED, desencripta credenciales operativas y persiste resultados normalizados.
+- Conectores SDK iniciales: OCI usa OCI Monitoring para TECHNICAL_METRIC desde metadata.ociMetricDefinitions; AWS usa STS AssumeRole + CloudWatch GetMetricData desde metadata.awsMetricDefinitions.
+- FOCUS queda definido como fuente canonica pendiente de parser productivo: OCI Cost Reports/Object Storage y AWS Data Exports/S3.
+- Retroalimentacion de la meta: para esta rebanada no se inventan datos si faltan credenciales o metadata; el job registra warning/cobertura parcial. Memoria en AWS/OCI sigue requiriendo agente cuando el proveedor no la entrega por defecto.
+- Hallazgo: 
+pm install reporto 174 vulnerabilidades transitivas (172 moderadas, 2 altas). No se aplico 
+pm audit fix --force porque puede romper dependencias; queda como tarea de seguridad.
 ### 2026-05-30 — Bloque 5: Hardening + documentación ✅
 
 Documentación alineada con lo que el código **realmente** hace (sin afirmaciones aspiracionales) y

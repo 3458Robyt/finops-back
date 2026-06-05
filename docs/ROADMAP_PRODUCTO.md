@@ -113,3 +113,22 @@ Se considera terminada cuando, además del núcleo actual: la ingesta es product
 al menos un proveedor real (Fase 2); existen métricas técnicas reales que enriquecen las
 recomendaciones (Fase 4); el aislamiento multi-tenant está reforzado a nivel de BD (Fase 1); y el
 sistema tiene hardening de producción (Fase 0/1). Todo manteniendo las decisiones firmes de la §1.
+
+---
+
+## 5. Actualizacion 2026-06-05 - Ingesta SDK OCI/AWS
+
+Estado actualizado del roadmap general:
+
+- Ya existe una base de worker persistente sobre ingestion_jobs, activable con INGESTION_WORKER_ENABLED=true, con claim por FOR UPDATE SKIP LOCKED, reintentos, started_at, completed_at y esult_summary.
+- Ya existe una primera rebanada de conectores SDK:
+  - OCI: OciSdkIngestionProvider recolecta TECHNICAL_METRIC via OCI Monitoring usando metadata.ociMetricDefinitions.
+  - AWS: AwsSdkIngestionProvider recolecta TECHNICAL_METRIC via STS AssumeRole + CloudWatch GetMetricData usando metadata.awsMetricDefinitions.
+- Sigue pendiente la parte canonica de costos/consumo FOCUS productiva:
+  - OCI Cost Reports/Object Storage hacia ocus_cost_line_items.
+  - AWS Data Exports/S3 hacia ocus_cost_line_items.
+- Sigue pendiente benchmark SDK vs CLI con cuenta real: duracion total, llamadas API, muestras por segundo, errores y cobertura.
+- No se debe inferir CPU/memoria/IOPS desde FOCUS. Memoria en AWS/OCI solo se considera evidencia tecnica cuando exista agente/namespace que la entregue.
+- Hallazgo de seguridad: 
+pm install reporto 174 vulnerabilidades transitivas. No se ejecuto 
+pm audit fix --force para evitar cambios destructivos; queda como tarea controlada.
