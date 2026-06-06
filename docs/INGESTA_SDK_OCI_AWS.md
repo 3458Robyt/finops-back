@@ -233,6 +233,29 @@ Notas:
 - El comando no maneja secretos; solo metadata de ubicacion de reportes.
 - Despues de configurar, ejecutar `npm run ingestion:doctor` para verificar conteos de metadata.
 
+Tambien se puede configurar desde API/UI:
+
+```http
+POST /api/v1/ingestion/focus-sources
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "cloudConnectionId": "<cloud_connection_id>",
+  "mode": "location",
+  "replace": false,
+  "values": {
+    "namespace-name": "<namespace>",
+    "bucket-name": "<bucket>",
+    "prefix": "<prefix/>",
+    "focus-version": "1.0",
+    "max-objects": "100"
+  }
+}
+```
+
+Para AWS, `values` usa `bucket`, `prefix` o `key`, `region`, `focus-version` y `max-objects`. El endpoint no recibe secretos; solo actualiza metadata de ubicacion FOCUS en la conexion del tenant. La vista `Ingesta` incluye un formulario para esta operacion.
+
 ### Previsualizar fuentes FOCUS sin ingerir
 
 ```powershell

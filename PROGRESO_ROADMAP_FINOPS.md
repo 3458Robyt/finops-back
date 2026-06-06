@@ -44,6 +44,14 @@ PostgreSQL).
 - Doctor real contra Supabase tras el cambio: OCI activo con credencial `OPERATIONAL`, 11 metric definitions, jobs tecnicos exitosos recientes; advertencias vigentes: falta metadata FOCUS OCI y no hay conexion AWS activa.
 - Verificacion: backend `typecheck`, `test` (121 tests) y `build`; frontend `npm run build`.
 
+### 2026-06-05 - Configuracion FOCUS desde API/UI
+
+- Se agrego `POST /api/v1/ingestion/focus-sources` para registrar metadata FOCUS por tenant y conexion sin editar Supabase manualmente.
+- El endpoint determina el proveedor desde la conexion activa y solo acepta valores string de ubicacion (`bucket`, `prefix`, `key`, `namespace-name`, etc.); no recibe ni persiste secretos.
+- La vista `Ingesta` ahora incluye un formulario para configurar prefijos u objetos FOCUS de AWS/OCI, con opcion de reemplazar la lista actual.
+- Retroalimentacion de la meta: esto elimina friccion operativa para cerrar el pendiente de FOCUS real. Sigue faltando que el usuario/cliente provea bucket/prefix/objeto real para ejecutar `BILLING_EXPORT`.
+- Verificacion: backend `typecheck`, `test` (127 tests) y `build`; frontend `npm run build`.
+
 ### 2026-06-05 - SDK OCI/AWS: commit seguro + base de worker productivo en curso
 
 Se inicio el objetivo de ingesta productiva por SDK para costos, consumo y metricas tecnicas.
