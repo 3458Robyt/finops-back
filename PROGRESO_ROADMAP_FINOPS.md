@@ -32,6 +32,7 @@ PostgreSQL).
 - Se agregaron reglas de deduplicacion: omite fuentes con jobs `PENDING`/`RUNNING` y fuentes con cobertura reciente dentro del cooldown configurado.
 - Pruebas agregadas: scheduling por metadata, FOCUS, jobs pendientes, cobertura reciente, falta de metadata, credenciales inactivas y loop sin solapamiento.
 - Dry-run contra Supabase actual: 1 conexion OCI evaluada; planifica `TECHNICAL_METRIC`; omite `BILLING_EXPORT` porque faltan `ociFocusReportObjects`/`ociFocusReportLocations`; no hay conexion AWS activa.
+- Ejecucion controlada con `--apply`: scheduler creo job OCI `cmq1lxm3z0000yc523dz5qx0c`; el worker lo proceso con 11 llamadas OCI, 11 muestras tecnicas normalizadas, 0 warnings y 848 ms internos. Dry-run posterior omitio metricas por cobertura reciente, validando cooldown/deduplicacion.
 - Retroalimentacion de la meta: la base scheduler + worker ya puede operar sin intervencion manual. AWS real y FOCUS real siguen pendientes por falta de cuenta/bucket/prefix; antes de activar `--apply` continuo en produccion conviene definir frecuencia por cliente y monitorear volumen de jobs creados.
 
 ### 2026-06-05 - SDK OCI/AWS: commit seguro + base de worker productivo en curso

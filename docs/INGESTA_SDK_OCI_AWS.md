@@ -158,6 +158,8 @@ El scheduler:
 
 Evidencia 2026-06-05 contra Supabase actual: el dry-run propuso un job `TECHNICAL_METRIC` para la conexion OCI `cmot214g10003y052v1uy2wcv` y omitio `BILLING_EXPORT` por ausencia de metadata FOCUS. No creo jobs porque se ejecuto sin `--apply`.
 
+Evidencia controlada con `--apply`: se creo el job OCI `cmq1lxm3z0000yc523dz5qx0c` para `TECHNICAL_METRIC` y el worker lo proceso correctamente: 11 llamadas OCI, 11 muestras tecnicas normalizadas, 0 warnings, duracion interna 848 ms. Un dry-run posterior omitio `TECHNICAL_METRIC` por cobertura reciente hasta `2026-06-06T00:20:56.034Z`, validando la deduplicacion por cooldown.
+
 Worker continuo dentro del backend:
 
 ```env
