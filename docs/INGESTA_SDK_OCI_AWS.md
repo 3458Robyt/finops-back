@@ -59,6 +59,15 @@ Inspecciona Supabase sin exponer secretos:
 
 Estado observado el 2026-06-05: OCI tiene credencial operativa y 11 definiciones de metricas; faltan objetos/prefijos FOCUS de OCI y no existe conexion AWS activa.
 
+El mismo diagnostico esta disponible para la aplicacion, acotado al tenant autenticado:
+
+```http
+GET /api/v1/ingestion/readiness
+Authorization: Bearer <jwt>
+```
+
+Devuelve `ok`, conexiones AWS/OCI activas del tenant, propositos de credenciales, conteos de metadata, jobs recientes e issues `INFO`/`WARNING`/`BLOCKER`. La vista `Ingesta` lo muestra como bloque de preparacion productiva.
+
 ### Registrar credencial OCI desde perfil CLI
 
 ```powershell

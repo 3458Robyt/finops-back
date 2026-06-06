@@ -35,6 +35,13 @@ PostgreSQL).
 - Ejecucion controlada con `--apply`: scheduler creo job OCI `cmq1lxm3z0000yc523dz5qx0c`; el worker lo proceso con 11 llamadas OCI, 11 muestras tecnicas normalizadas, 0 warnings y 848 ms internos. Dry-run posterior omitio metricas por cobertura reciente, validando cooldown/deduplicacion.
 - Retroalimentacion de la meta: la base scheduler + worker ya puede operar sin intervencion manual. AWS real y FOCUS real siguen pendientes por falta de cuenta/bucket/prefix; antes de activar `--apply` continuo en produccion conviene definir frecuencia por cliente y monitorear volumen de jobs creados.
 
+### 2026-06-05 - Readiness de ingesta visible en API/UI
+
+- Se agrego `GET /api/v1/ingestion/readiness`, acotado al tenant autenticado, para exponer el diagnostico operativo que antes solo existia como CLI.
+- El endpoint devuelve conexiones AWS/OCI activas, propositos de credenciales, conteos de metadata, jobs recientes e issues `INFO`/`WARNING`/`BLOCKER`, sin exponer payloads cifrados ni secretos.
+- La vista `Ingesta` del frontend ahora muestra un bloque de "Preparacion de ingesta productiva" con estado general, hallazgos y metadata por conexion.
+- Verificacion: backend `typecheck`, `test` (121 tests) y `build`; frontend `npm run build`.
+
 ### 2026-06-05 - SDK OCI/AWS: commit seguro + base de worker productivo en curso
 
 Se inicio el objetivo de ingesta productiva por SDK para costos, consumo y metricas tecnicas.
