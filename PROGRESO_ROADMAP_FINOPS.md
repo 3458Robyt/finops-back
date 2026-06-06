@@ -26,11 +26,13 @@ PostgreSQL).
 
 - Se agrego `npm run ingestion:schedule` para programar jobs recurrentes de ingesta sin depender de la UI ni de scripts manuales.
 - El comando corre en modo dry-run por defecto; solo escribe en `ingestion_jobs` cuando se usa `--apply`.
+- Se agrego scheduler persistente dentro del backend con `INGESTION_SCHEDULER_ENABLED=true`; encola trabajos automaticamente y el worker existente los procesa.
+- Variables nuevas: `INGESTION_SCHEDULER_INTERVAL_MS`, ventanas/cooldowns por metricas y billing, `INGESTION_SCHEDULER_MAX_ATTEMPTS`, y filtros opcionales por proveedor/conexion.
 - La logica crea jobs `TECHNICAL_METRIC` y `BILLING_EXPORT` solo si la conexion activa tiene credencial lectora/operativa y metadata suficiente. Si falta metadata FOCUS, no inventa jobs de costos.
 - Se agregaron reglas de deduplicacion: omite fuentes con jobs `PENDING`/`RUNNING` y fuentes con cobertura reciente dentro del cooldown configurado.
-- Pruebas agregadas: scheduling por metadata, FOCUS, jobs pendientes, cobertura reciente, falta de metadata y credenciales inactivas.
+- Pruebas agregadas: scheduling por metadata, FOCUS, jobs pendientes, cobertura reciente, falta de metadata, credenciales inactivas y loop sin solapamiento.
 - Dry-run contra Supabase actual: 1 conexion OCI evaluada; planifica `TECHNICAL_METRIC`; omite `BILLING_EXPORT` porque faltan `ociFocusReportObjects`/`ociFocusReportLocations`; no hay conexion AWS activa.
-- Retroalimentacion de la meta: el siguiente paso productivo debe ser ejecutar `npm run ingestion:schedule -- --apply` junto con el worker continuo en un intervalo controlado, pero solo despues de decidir la frecuencia operativa. AWS real y FOCUS real siguen pendientes por falta de cuenta/bucket/prefix.
+- Retroalimentacion de la meta: la base scheduler + worker ya puede operar sin intervencion manual. AWS real y FOCUS real siguen pendientes por falta de cuenta/bucket/prefix; antes de activar `--apply` continuo en produccion conviene definir frecuencia por cliente y monitorear volumen de jobs creados.
 
 ### 2026-06-05 - SDK OCI/AWS: commit seguro + base de worker productivo en curso
 

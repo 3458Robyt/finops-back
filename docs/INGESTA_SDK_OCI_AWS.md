@@ -168,6 +168,25 @@ INGESTION_WORKER_INTERVAL_MS=30000
 
 Al arrancar el backend, el worker ejecuta una pasada inmediata y luego repite por intervalo. Si una iteracion sigue activa cuando llega el siguiente intervalo, la siguiente se omite para evitar solapamiento de jobs largos.
 
+Scheduler continuo dentro del backend:
+
+```env
+INGESTION_SCHEDULER_ENABLED=true
+INGESTION_SCHEDULER_INTERVAL_MS=300000
+INGESTION_SCHEDULER_METRIC_WINDOW_MINUTES=30
+INGESTION_SCHEDULER_METRIC_COOLDOWN_MINUTES=25
+INGESTION_SCHEDULER_BILLING_WINDOW_HOURS=24
+INGESTION_SCHEDULER_BILLING_COOLDOWN_HOURS=6
+INGESTION_SCHEDULER_MAX_ATTEMPTS=1
+```
+
+Operacion recomendada para MVP productivo:
+
+- activar `INGESTION_SCHEDULER_ENABLED=true` para encolar trabajos;
+- activar `INGESTION_WORKER_ENABLED=true` para procesarlos;
+- mantener el intervalo del scheduler mas largo que el cooldown efectivo de cada fuente;
+- usar `INGESTION_SCHEDULER_PROVIDER` o `INGESTION_SCHEDULER_CONNECTION_ID` solo para pruebas controladas o despliegues parciales.
+
 ### Configurar fuentes FOCUS sin editar Supabase a mano
 
 OCI por prefijo:
