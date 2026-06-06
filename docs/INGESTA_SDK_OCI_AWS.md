@@ -123,6 +123,41 @@ Ejecutar worker:
 npm run ingestion:worker:once
 ```
 
+### Programar jobs recurrentes sin duplicados
+
+Dry-run seguro, sin escribir en BD:
+
+```powershell
+npm run ingestion:schedule
+```
+
+Crear jobs pendientes:
+
+```powershell
+npm run ingestion:schedule -- --apply
+```
+
+Opciones utiles:
+
+```powershell
+npm run ingestion:schedule -- --provider oci --metric-window-minutes 30 --metric-cooldown-minutes 25
+```
+
+```powershell
+npm run ingestion:schedule -- --connection-id <cloud_connection_id> --billing-window-hours 24 --billing-cooldown-hours 6 --apply
+```
+
+El scheduler:
+
+- evalua solo conexiones activas AWS/OCI;
+- crea `TECHNICAL_METRIC` solo si existe metadata de metricas (`ociMetricDefinitions` o `awsMetricDefinitions`) y credencial activa `OPERATIONAL`/`METRICS_READ`;
+- crea `BILLING_EXPORT` solo si existe metadata FOCUS (`*Focus*Objects` o `*Focus*Locations`) y credencial activa de lectura operativa/storage/billing;
+- omite fuentes con jobs `PENDING` o `RUNNING`;
+- omite fuentes con cobertura reciente segun cooldown;
+- no llama APIs cloud y no inventa datos cuando falta metadata.
+
+Evidencia 2026-06-05 contra Supabase actual: el dry-run propuso un job `TECHNICAL_METRIC` para la conexion OCI `cmot214g10003y052v1uy2wcv` y omitio `BILLING_EXPORT` por ausencia de metadata FOCUS. No creo jobs porque se ejecuto sin `--apply`.
+
 Worker continuo dentro del backend:
 
 ```env
