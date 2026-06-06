@@ -40,6 +40,8 @@ PostgreSQL).
 - Se agrego `GET /api/v1/ingestion/readiness`, acotado al tenant autenticado, para exponer el diagnostico operativo que antes solo existia como CLI.
 - El endpoint devuelve conexiones AWS/OCI activas, propositos de credenciales, conteos de metadata, jobs recientes e issues `INFO`/`WARNING`/`BLOCKER`, sin exponer payloads cifrados ni secretos.
 - La vista `Ingesta` del frontend ahora muestra un bloque de "Preparacion de ingesta productiva" con estado general, hallazgos y metadata por conexion.
+- Se centralizo la evaluacion de readiness en `ingestionReadiness.ts`; CLI `npm run ingestion:doctor`, API y UI quedan alineados y reducen riesgo de divergencia operativa.
+- Doctor real contra Supabase tras el cambio: OCI activo con credencial `OPERATIONAL`, 11 metric definitions, jobs tecnicos exitosos recientes; advertencias vigentes: falta metadata FOCUS OCI y no hay conexion AWS activa.
 - Verificacion: backend `typecheck`, `test` (121 tests) y `build`; frontend `npm run build`.
 
 ### 2026-06-05 - SDK OCI/AWS: commit seguro + base de worker productivo en curso

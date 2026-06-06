@@ -68,6 +68,8 @@ Authorization: Bearer <jwt>
 
 Devuelve `ok`, conexiones AWS/OCI activas del tenant, propositos de credenciales, conteos de metadata, jobs recientes e issues `INFO`/`WARNING`/`BLOCKER`. La vista `Ingesta` lo muestra como bloque de preparacion productiva.
 
+Nota de implementacion: el CLI y el endpoint usan la misma evaluacion (`ingestionReadiness.ts`) para evitar que los mensajes de preparacion diverjan entre operacion tecnica y aplicacion.
+
 ### Registrar credencial OCI desde perfil CLI
 
 ```powershell
