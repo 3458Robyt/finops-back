@@ -243,3 +243,14 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - El formulario recibe conexion, fuente (`TECHNICAL_METRIC`, `BILLING_EXPORT`, `INVENTORY`) y rango objetivo; tras encolar refresca historial/calidad.
 - La conexion ahora se selecciona desde `GET /api/v1/cloud-connections`; ya no exige escribir manualmente el `cloudConnectionId`.
 - Build frontend verificado con `npm run build`.
+
+### 2026-06-07 - OCI FOCUS real desbloqueado y validado
+
+- Se creo desde OCI CLI una policy para que el grupo operativo `FinOpsReaders` pueda leer objetos de reportes de uso en el tenancy administrado por Oracle.
+- Con el perfil `FINOPS_READER` se valido acceso real a Object Storage: namespace disponible, bucket Oracle-managed de la tenancy y 490 objetos bajo `FOCUS Reports`.
+- Se configuro la fuente FOCUS principal en Supabase usando `npm run ingestion:configure-focus` con modo `location`, `prefix=FOCUS Reports/`, `focusVersion=1.0` y limite operativo `maxObjects=20`.
+- `npm run ingestion:preview-focus -- --provider oci --limit 10` descubrio objetos FOCUS reales sin descargar ni escribir datos.
+- Hallazgo corregido: el SDK TypeScript de OCI devuelve el cuerpo de `getObject` en `response.value` como `ReadableStream` web para este caso real, no en `getObjectBody`. El adapter ahora soporta ambos shapes, ademas de `Uint8Array`, `arrayBuffer`, streams Node, async iterables y strings.
+- Hallazgo corregido: guardar 20 objetos FOCUS reales con upserts dentro de una transaccion interactiva de Prisma agotaba el timeout. La persistencia de filas idempotentes ahora se ejecuta fuera de la transaccion larga y se deja transaccional solo el cierre del job, watermark y quality check.
+- Evidencia real contra Supabase/OCI: job `cmq41j2yh00008s52a712arsv` finalizo `SUCCESS`, proceso 20 objetos, 533 filas FOCUS, 21 llamadas API, 0 warnings.
+- `npm run ingestion:doctor` queda en `ok=true` para OCI; el unico warning global vigente es que aun no existe conexion AWS activa.

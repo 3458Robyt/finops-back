@@ -276,6 +276,14 @@ Este comando:
 
 Estado observado el 2026-06-05 para OCI: `configuredObjects=0`, `configuredLocations=0`, `discoveredObjects=0`; falta configurar bucket/prefix u objeto FOCUS.
 
+Estado actualizado el 2026-06-07 para OCI: el grupo operativo ya tiene permiso de lectura sobre los reportes de uso administrados por Oracle. La conexion OCI principal tiene una fuente `ociFocusReportLocations` configurada contra `FOCUS Reports/`, el preview descubrio objetos `.csv.gz` reales y el worker proceso un job `BILLING_EXPORT` completo: 20 objetos, 533 filas FOCUS, 21 llamadas API y 0 warnings.
+
+Hallazgos productivos de la prueba real:
+
+- El SDK de OCI puede devolver `getObject` como `response.value` con `ReadableStream` web. El adapter soporta ese shape ademas de `getObjectBody`.
+- Los upserts FOCUS reales no deben vivir dentro de una transaccion interactiva larga de Prisma. Las filas son idempotentes por hash natural, por lo que se persisten fuera de la transaccion larga y solo se cierra transaccionalmente el job, watermark y quality check.
+- El limite `maxObjects` debe mantenerse bajo en MVP y subirlo con benchmark controlado, porque el costo principal observado esta en persistencia fila-a-fila contra Supabase, no en discovery.
+
 ## Metadata esperada por proveedor
 
 ### OCI metricas tecnicas
