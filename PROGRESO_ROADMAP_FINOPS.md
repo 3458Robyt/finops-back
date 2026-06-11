@@ -254,3 +254,12 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Hallazgo corregido: guardar 20 objetos FOCUS reales con upserts dentro de una transaccion interactiva de Prisma agotaba el timeout. La persistencia de filas idempotentes ahora se ejecuta fuera de la transaccion larga y se deja transaccional solo el cierre del job, watermark y quality check.
 - Evidencia real contra Supabase/OCI: job `cmq41j2yh00008s52a712arsv` finalizo `SUCCESS`, proceso 20 objetos, 533 filas FOCUS, 21 llamadas API, 0 warnings.
 - `npm run ingestion:doctor` queda en `ok=true` para OCI; el unico warning global vigente es que aun no existe conexion AWS activa.
+
+### 2026-06-11 - FOCUS real conectado a la capa analitica
+
+- Se agrego proyeccion idempotente desde `focus_cost_line_items` hacia `cost_metrics` durante el cierre de jobs `BILLING_EXPORT`.
+- La proyeccion crea o reutiliza `cloud_accounts` a partir de `SubAccountId`, `BillingAccountId` o la cuenta raiz de la conexion, preservando costo, consumo FOCUS, moneda, servicio, recurso, region y metadatos de procedencia.
+- El resumen de readiness ahora expone `durationMs`, `costMetrics` y `costMetricsInserted`, para que la UI/CLI muestren si los datos FOCUS llegaron tambien a la capa analitica usada por dashboard, contexto IA y recomendaciones.
+- Validacion real contra Supabase/OCI: job `cmq91sgea0000fc52feo0c6rh` finalizo `SUCCESS`, proceso 20 objetos, 533 filas FOCUS, proyecto 533 `cost_metrics`, inserto 432 nuevas, 21 llamadas API, 0 warnings.
+- Conteos directos posteriores: `focus_cost_line_items` OCI = 9160 y `cost_metrics` OCI = 9228.
+- Hallazgo de rendimiento: el ciclo completo del worker para 20 objetos/533 filas tomo 58.3 s. Antes de subir `maxObjects` de forma agresiva conviene optimizar persistencia por lotes/upsert masivo o staging SQL.

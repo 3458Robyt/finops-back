@@ -17,6 +17,17 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
   - duracion interna reportada: 660 ms;
   - warnings: ninguno.
 - Hallazgo corregido: en el SDK TypeScript de OCI, `SummarizeMetricsDataResponse` expone `items`; leer `summarizedMetricsData` producia 0 muestras aunque OCI CLI si devolvia datos.
+- Benchmark FOCUS real ejecutado contra Supabase/OCI el 2026-06-11:
+  - fuente: `BILLING_EXPORT`;
+  - objetos FOCUS procesados: 20;
+  - filas `focus_cost_line_items`: 533;
+  - filas proyectadas a `cost_metrics`: 533;
+  - filas nuevas insertadas en `cost_metrics`: 432;
+  - llamadas SDK: 21;
+  - duracion total del worker: 58.3 s;
+  - warnings: ninguno.
+- Hallazgo de diseno corregido: los FOCUS reales ya no quedan solo como tabla cruda; se proyectan tambien a `cost_metrics`, que alimenta dashboard, analitica, contexto IA y recomendaciones.
+- Hallazgo de rendimiento: con Supabase remoto, la persistencia sigue siendo el costo principal del job. Mantener `maxObjects` bajo hasta implementar persistencia por lotes/staging SQL.
 
 ### AWS
 
@@ -31,7 +42,9 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
 - AWS `BILLING_EXPORT`: cubierto por test de adapter con `ListObjectsV2Command` y `GetObjectCommand`.
 - OCI `BILLING_EXPORT`: cubierto por test de adapter con `listObjects` y `getObject`.
 - Estas pruebas verifican discovery, filtrado `.csv`/`.csv.gz`, lectura de contenido y normalizacion hacia filas FOCUS canonicas.
-- Pendiente: ejecutar contra buckets reales y medir objetos/minuto, filas/minuto, errores por permisos y comportamiento con particiones grandes.
+- OCI real: verificado contra el bucket Oracle-managed de Cost Reports FOCUS. El worker descarga, parsea, persiste `focus_cost_line_items`, proyecta `cost_metrics`, actualiza watermark y registra quality check.
+- AWS real: pendiente crear conexion AWS, registrar rol `AssumeRole`, configurar `awsFocusExportLocations` y ejecutar benchmark equivalente.
+- Pendiente transversal: medir objetos/minuto y filas/minuto con volumen mayor, despues de optimizar persistencia.
 
 ## Comandos operativos
 
