@@ -21,6 +21,12 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-10 - Cierre auditado y despliegue controlado
+- Se publicaron y fusionaron PRs de estabilización en backend y frontend, con CI verde: backend (typecheck, 165 pruebas unitarias, evaluación IA offline, build e integración PostgreSQL/API) y frontend (lint, build y smoke E2E).
+- El artefacto productivo del backend ahora incluye el cliente Prisma generado en `dist/generated/prisma`; `npm start` ya puede resolver sus imports después de `npm run build`.
+- Se aplicó en Supabase mediante `npx prisma migrate deploy` la migración `202607100001_durable_learning_queue`; se verificaron las columnas de lease/reintento y el índice de cola/memoria idempotente.
+- La CI de integración genera Prisma en su job aislado, desactiva scheduler/workers y espera explícitamente la salud HTTP antes de ejecutar el contrato API.
+
 ### 2026-07-10 - Fencing estricto de ingesta
 - Cada job reclamado lleva su intento como token de fencing. Renovar, completar o fallar exige coincidir en `id`, `lockedBy`, `attempts` y estado `RUNNING`.
 - Un worker que perdió el lease descarta el resultado del proveedor y no puede sobrescribir la ejecución reclamada por otro worker.
