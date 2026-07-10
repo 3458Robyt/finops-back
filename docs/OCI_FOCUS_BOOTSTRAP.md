@@ -238,7 +238,7 @@ npx tsx .\scripts\import-oci-focus.ts --root-external-id "ocid1.tenancy.oc1..TEN
 El importador:
 
 - crea o actualiza el tenant `oci-personal-demo`;
-- crea el usuario admin `david.oci.demo@local.test`;
+- usa el admin maestro `andres.rivera@takcolombia.co` por defecto, salvo que se pase `--user-email`;
 - registra `CloudAccount`, `CloudConnection` y `CloudExportConfig` de OCI;
 - registra cada archivo en `ingestion_objects`;
 - parsea CSV/CSV.GZ FOCUS hacia `focus_cost_line_items`;

@@ -375,7 +375,6 @@ async function main(): Promise<void> {
       counters,
       end: targetEnd,
       files: files.length,
-      password: options.password,
       start: targetStart,
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
@@ -424,6 +423,7 @@ function parseArgs(args: readonly string[]): ImportOptions {
   }
 
   const rootExternalId = options.get('root-external-id') ?? positional[0] ?? defaultRootExternalId;
+  const password = options.get('password') ?? process.env['OCI_PERSONAL_DEMO_PASSWORD'];
 
   if (rootExternalId.trim() === '') {
     throw new Error(
@@ -431,17 +431,21 @@ function parseArgs(args: readonly string[]): ImportOptions {
     );
   }
 
+  if (password === undefined || password.trim() === '') {
+    throw new Error('Missing --password or OCI_PERSONAL_DEMO_PASSWORD for the import user');
+  }
+
   return {
     connectionName: options.get('connection-name') ?? 'OCI Personal - FOCUS Reports',
     defaultRegion: options.get('default-region') ?? 'sa-bogota-1',
     focusVersion: options.get('focus-version') ?? '1.0',
-    password: options.get('password') ?? process.env['OCI_PERSONAL_DEMO_PASSWORD'] ?? 'ChangeMe123!',
+    password,
     reportsDir: options.get('reports-dir') ?? positional[1] ?? defaultReportsDir,
     rootExternalId,
     tenantName: options.get('tenant-name') ?? 'OCI Personal Demo',
     tenantSlug: options.get('tenant-slug') ?? 'oci-personal-demo',
-    userEmail: options.get('user-email') ?? 'david.oci.demo@local.test',
-    userName: options.get('user-name') ?? 'David OCI Demo',
+    userEmail: options.get('user-email') ?? 'andres.rivera@takcolombia.co',
+    userName: options.get('user-name') ?? 'Andres Rivera',
   };
 }
 
@@ -759,7 +763,6 @@ function printSummary(input: {
   readonly counters: ImportCounters;
   readonly end: Date;
   readonly files: number;
-  readonly password: string;
   readonly start: Date;
   readonly tenantId: string;
   readonly tenantSlug: string;
@@ -769,7 +772,7 @@ function printSummary(input: {
   console.log(`  Tenant:           ${input.tenantSlug} (${input.tenantId})`);
   console.log(`  Cloud account:    ${input.cloudAccountId}`);
   console.log(`  Cloud connection: ${input.cloudConnectionId}`);
-  console.log(`  Login:            ${input.userEmail} / ${input.password}`);
+  console.log(`  Login email:      ${input.userEmail}`);
   console.log(`  Files found:      ${input.files}`);
   console.log(`  Files read:       ${input.counters.filesRead}`);
   console.log(`  Files failed:     ${input.counters.filesFailed}`);
