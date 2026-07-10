@@ -8,7 +8,7 @@ Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps
 
 El backend actúa como el motor principal para transformar los procesos manuales y reactivos de gestión de costos en la nube hacia una cultura proactiva. Sus responsabilidades incluyen:
 - **Ingesta Estandarizada:** Recolección diaria de métricas desde proveedores cloud (AWS Cost Explorer) utilizando el Patrón Adaptador.
-- **Análisis Inteligente:** Procesamiento de datos mediante IA generativa para la detección de anomalías y sugerencias de *rightsizing*.
+- **Análisis Inteligente:** Procesamiento de datos mediante IA generativa para detectar oportunidades y sugerir acciones de *rightsizing*.
 - **Persistencia:** Almacenamiento de métricas financieras y de contexto en PostgreSQL (Supabase en producción; PostgreSQL local vía Docker para desarrollo).
 - **Seguridad y Trazabilidad:** Gestión de roles (JWT), encriptación de credenciales cloud y registro de auditoría de optimizaciones.
 
@@ -32,7 +32,7 @@ src/
 
 - **Entorno:** Node.js + TypeScript (Strict Mode, ESM)
 - **Base de Datos:** PostgreSQL (Supabase) vía Prisma ORM (`@prisma/adapter-pg`)
-- **IA:** Cliente compatible con OpenAI (paquete `openai`) apuntando a NVIDIA NIM; modelo generador + auditor independiente
+- **IA:** Cliente compatible con OpenAI (paquete `openai`) apuntando a un endpoint configurable; modelo generador + auditor independiente
 - **Seguridad:** JWT (`jsonwebtoken`), hashing de contraseñas con Argon2, cifrado de credenciales cloud (AES, `CredentialCipher`)
 - **Validación:** Zod
 - **Testing:** Vitest
@@ -63,7 +63,9 @@ src/
    DATABASE_URL=postgresql://finops:finops@localhost:5432/finops
    JWT_SECRET=al_menos_32_caracteres_aleatorios
    CREDENTIAL_ENCRYPTION_KEY=base64_de_32_bytes
-   NVIDIA_API_KEY=tu_api_key_de_nvidia_nim
+AI_API_KEY=tu_api_key_openai_compatible
+AI_BASE_URL=https://api.example.com/v1
+AI_MODEL=gpt-5.4-mini
    CORS_ORIGIN=http://localhost:5173
    \`\`\`
    El archivo `.env.example` documenta el conjunto completo (AWS, OCI, Telegram, ajustes de IA y analítica). El `.env` está en `.gitignore` y nunca debe commitearse.
@@ -82,8 +84,11 @@ src/
 - \`npm run typecheck\`: Verificación de tipos sin emitir (`tsc --noEmit`); ejecuta `prisma generate` antes.
 - \`npm run prisma:migrate\` / \`npm run db:seed\`: Migraciones y datos de ejemplo.
 - \`npm run import:oci-focus\`: Importa el dataset FOCUS de OCI.
+- \`npm run test:integration:docker\`: Ejecuta las pruebas de integración contra PostgreSQL de prueba en Docker (requiere Docker instalado).
+- \`npm run test:api:smoke\`: Smoke test de la API contra el backend configurado.
+- \`npm run test:ai:offline\`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
 
-> Nota: este repositorio aún no tiene ESLint/Prettier configurados; no existe un script `lint`.
+La verificación local mínima es `npm run typecheck && npm test`; el workflow de CI repite además el build y las pruebas de integración aisladas.
 
 ## Manejo de Errores y Seguridad
 
@@ -94,12 +99,15 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 - **Contraseñas:** hashing con Argon2.
 - **Credenciales cloud:** cifradas en reposo (`CredentialCipher`, clave en `CREDENTIAL_ENCRYPTION_KEY`); las credenciales admin temporales de aprovisionamiento **no se persisten**.
 - **CORS:** origen configurable vía `CORS_ORIGIN` (por defecto `http://localhost:5173`).
+- **Cabeceras y abuso:** Helmet y rate limiting global/específico para autenticación, IA y Telegram están configurados en el servidor.
+- **Observabilidad:** logging estructurado por request con `x-request-id`; los errores de proveedor no deben exponer secretos.
 - **Secretos:** `.env` está en `.gitignore`; usar `.env.example` como plantilla. No commitear claves.
 
 ### Pendientes de hardening antes de producción
-- **Rate limiting** y cabeceras de seguridad (p. ej. `helmet`): **no** están configurados aún; se recomienda añadirlos antes de exponer la API públicamente.
-- **Logging estructurado** centralizado (hoy se usa `console`).
-- Rotación de claves JWT/cifrado y gestión de secretos vía un gestor (no `.env` plano) en despliegue real.
+- RLS o controles equivalentes en Supabase, verificados con pruebas de aislamiento por tenant.
+- Rotación de claves JWT/cifrado y gestión de secretos vía un gestor externo; `.env` es solo para desarrollo.
+- Observabilidad centralizada con retención, alertas y métricas de latencia.
+- Pruebas de integración contra una base de datos efímera controlada; no usar `DATABASE_URL` productiva.
 
 ## Flujo de Trabajo (Water-Scrum-Fall)
 

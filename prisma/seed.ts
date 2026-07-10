@@ -42,7 +42,7 @@ async function main(): Promise<void> {
     where: { email: 'andres.rivera@takcolombia.co' },
     update: {
       passwordHash,
-      role: UserRole.ADMIN,
+      role: UserRole.MASTER_ADMIN,
       tenantId: tenant.id,
       status: 'ACTIVE',
     },
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
       email: 'andres.rivera@takcolombia.co',
       name: 'Andres Rivera',
       passwordHash,
-      role: UserRole.ADMIN,
+      role: UserRole.MASTER_ADMIN,
     },
   });
 

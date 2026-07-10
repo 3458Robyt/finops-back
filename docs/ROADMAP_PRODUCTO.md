@@ -7,7 +7,7 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-05-30.
+> Última revisión: 2026-06-22.
 
 ---
 
@@ -22,21 +22,21 @@
 - **Datos:** Prisma sobre Supabase/PostgreSQL; migración de fundación MSP aplicada; `provider_catalog`
   con `aws` y `oci`.
 - **Analítica:** costos, forecast, tendencias, consumo, costo unitario e insights de eficiencia.
-- **IA:** generación de recomendaciones (NVIDIA NIM) con **auditor IA independiente**; planes de
+- **IA:** generación de recomendaciones mediante API OpenAI-compatible con **auditor IA independiente**; planes de
   ejecución auditados; aprobación/rechazo con aprendizaje asíncrono; Context Engine, memoria,
-  reglas TAK, grafo de conocimiento y trazas de contexto.
+reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad practica.
 - **Evaluación de calidad IA:** rúbrica determinista + golden scenarios (sin llamar al modelo).
-- **Canales:** notificaciones in-app; Telegram MVP.
+- **Canales:** notificaciones in-app; Telegram MVP; base outbound con correo SMTP y scheduler opcional.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de
   recomendación, chat, historial, agente IA, ingesta/calidad, métricas técnicas, perfil, login).
 
-### Base estructural lista, pero NO productiva (el gran hueco)
-- **Ingesta:** existen tablas (`ingestion_jobs`, `ingestion_objects`, `ingestion_watermarks`),
-  el contrato `ICloudProviderPlugin`, endpoints y `provisionWithTemporaryAdmin` — pero **no hay
-  conectores reales**: falta el plugin AWS/OCI, el worker que procese jobs, la lectura de S3/OCI y
-  el parser FOCUS productivo hacia `focus_cost_line_items`.
-- **Métricas técnicas:** tablas listas (`cloud_resources`, `resource_metric_samples`) pero **sin
-  colector** → vacías fuera de datos demo.
+### Base estructural lista, con validaciones productivas aún pendientes
+- **Ingesta:** existen workers persistentes, scheduler, lectura S3/OCI, parser FOCUS streaming y
+  persistencia idempotente hacia `focus_cost_line_items`/`cost_metrics`. AWS y OCI tienen adaptadores
+  SDK; falta validar con cuentas reales, volumen y credenciales de producción.
+- **Métricas técnicas:** OCI Monitoring y AWS CloudWatch ya alimentan `resource_metric_samples`; el
+  inventario OCI Compute/AWS EC2 puede poblar `cloud_resources`. Falta validar cobertura real,
+  frecuencia operativa y cruces completos por recurso.
 - **Provisioning:** `provisionWithTemporaryAdmin` devuelve un stub `PENDING_PROVIDER_AUTOMATION`
   (recibe la credencial admin solo en memoria y no la persiste, por diseño).
 
@@ -66,7 +66,8 @@ Las fases se ordenan por dependencia y por si requieren credenciales cloud reale
 son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 
 ### Fase 0 — Cierre de lo actual (sin credenciales) · CORTO
-- **Hardening real:** `helmet` + rate limiting en Express (hoy solo documentado como pendiente).
+- **Hardening base:** `helmet`, rate limiting, CORS configurable y logging estructurado ya están
+  implementados; queda validar despliegue y observabilidad centralizada.
 - **Seed/demo sintético** para `ingestion_jobs`, `data_quality_checks`, `cloud_resources`,
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
 - **Verificación en vivo** del stack local (docker-compose PostgreSQL + backend + frontend).
@@ -74,7 +75,8 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 - Marcar `REFACTOR_PLAN.md` como cerrado (resuelve la discrepancia de estado).
 
 ### Fase 1 — Robustez y confianza (sin credenciales) · CORTO/MEDIO
-- Tests de integración contra BD real (hoy la cobertura es unitaria con fakes).
+- Tests de integración contra BD real aislada (Docker Compose preparado; pendiente instalar Docker o
+  ejecutar en CI) y, cuando Supabase esté activa, verificación en una rama dedicada.
 - RLS a nivel de base de datos (el esquema ya es "RLS-ready"; envolver las consultas Prisma en
   contexto por request).
 - Permisos multi-cliente reales con `tenant_access_assignments` (técnicos FinOps multi-tenant).
@@ -120,7 +122,8 @@ sistema tiene hardening de producción (Fase 0/1). Todo manteniendo las decision
 
 Estado actualizado del roadmap general:
 
-- Ya existe una base de worker persistente sobre ingestion_jobs, activable con INGESTION_WORKER_ENABLED=true, con claim por FOR UPDATE SKIP LOCKED, reintentos, started_at, completed_at y esult_summary.
+- Ya existe una base de worker persistente sobre ingestion_jobs, activable con INGESTION_WORKER_ENABLED=true, con claim por FOR UPDATE SKIP LOCKED, reintentos, started_at, completed_at y 
+esult_summary.
 - Ya existe una primera rebanada de conectores SDK:
   - OCI: OciSdkIngestionProvider recolecta TECHNICAL_METRIC via OCI Monitoring usando metadata.ociMetricDefinitions.
   - AWS: AwsSdkIngestionProvider recolecta TECHNICAL_METRIC via STS AssumeRole + CloudWatch GetMetricData usando metadata.awsMetricDefinitions.
@@ -148,3 +151,16 @@ pm run ingestion:worker:once para benchmark manual de un job pendiente.
 - Avance 2026-06-05 adicional 5: el readiness de ingesta ya no depende solo del CLI. Existe `GET /api/v1/ingestion/readiness` y la vista `Ingesta` muestra preparacion productiva por tenant: conexiones, credenciales, metadata, jobs recientes e issues. Esto mejora la gobernanza operativa para saber exactamente que falta antes de activar ingesta automatica por cliente.
 
 - Avance 2026-06-11: OCI FOCUS real ya esta conectado de punta a punta hasta la capa analitica. El worker `BILLING_EXPORT` descarga reportes FOCUS desde Object Storage, guarda `focus_cost_line_items`, proyecta idempotentemente a `cost_metrics`, actualiza watermark/readiness y conserva quality check. Evidencia: job `cmq91sgea0000fc52feo0c6rh`, 20 objetos, 533 filas FOCUS, 533 metricas analiticas proyectadas, 432 nuevas insertadas, 0 warnings. Pendiente critico: AWS real sigue bloqueado por falta de rol/conexion y la persistencia FOCUS requiere optimizacion por lotes antes de subir volumen.
+
+- Avance 2026-06-11 adicional: la Fase 4 ya tiene capa visual/analitica para metricas tecnicas. La seccion `Metricas de uso` muestra KPIs, series temporales, filtros por recurso/grupo/metrica/rango/granularidad, oportunidades tecnicas y costo asociado solo con match exacto por recurso. Sigue pendiente mejorar ingesta viva y normalizar inventario para poblar `cloud_resources` de forma consistente.
+
+## 6. Actualizacion 2026-06-17 - Reconciliacion del estado real
+
+Estos puntos sustituyen las afirmaciones antiguas del documento que decian que no existian conectores reales o que las metricas tecnicas estaban vacias:
+
+- La ingesta productiva ya tiene base real para OCI FOCUS y OCI Monitoring; AWS tiene base de proveedor SDK y queda pendiente prueba con rol/cuenta real.
+- `cloud_resources` ya no depende solo de datos manuales: los jobs de ingesta crean recursos desde inventario declarativo y, si falta inventario completo, desde las metricas tecnicas recolectadas.
+- `resource_metric_samples.cloudResourceId` se enlaza durante la persistencia y se reconcilia para muestras previas de la misma conexion/recurso, habilitando cruces costo-metrica-recomendacion mas confiables.
+- Las recomendaciones `COST_USAGE_AND_TECHNICAL` ahora tienen guardrails: requieren referencias tecnicas, recurso enlazado, cobertura/muestras suficientes y frescura. Si no, deben quedar como validacion tecnica pendiente.
+- El hardening ya no parte de cero: existen `helmet`, CORS configurable multi-origen, rate limits globales/especificos y logging estructurado por request. Quedan pendientes RLS/staged DB policies, gestion externa de secretos y tests de integracion contra BD real.
+- Pendiente critico vigente: validar inventario SDK Compute/EC2 con cuentas reales y benchmark, AWS productivo, RLS gradual, observabilidad centralizada y cierre de documentos historicos que aun usen terminos anteriores.

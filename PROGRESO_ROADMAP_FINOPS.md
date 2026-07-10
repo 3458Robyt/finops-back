@@ -10,9 +10,9 @@ Plataforma FinOps con IA generativa para optimización de costos cloud. Backend 
 Supabase/PostgreSQL, multi-tenant/MSP. Frontend: Vite + React + TS + Tailwind (`finops-app`).
 
 Capacidades operativas hoy: autenticación JWT y roles; ingesta OCI FOCUS local; analítica de costos,
-forecast, consumo, costo unitario e insights; recomendaciones IA (NVIDIA/NIM) con auditor IA
+forecast, consumo, costo unitario e insights; recomendaciones IA mediante API OpenAI-compatible con auditor IA
 independiente; planes de ejecución auditados; aprobación/rechazo con aprendizaje asíncrono; Context
-Engine, memoria, reglas TAK, grafo y trazas IA; notificaciones in-app y Telegram MVP.
+Engine, memoria, reglas TAK y trazas IA; notificaciones in-app, Telegram MVP y base de correo SMTP.
 
 Decisiones vigentes: todo el texto de usuario en español; en UI se dice "oportunidades", no
 "anomalías"; n8n descartado; WhatsApp es evolución futura (Telegram MVP); sin remediación automática
@@ -21,6 +21,93 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-10 - Durabilidad de aprendizaje, recuperación de ingesta y métricas fiables
+- Aprendizaje: `agent_learning_events` incorpora lease, intentos y próximo reintento; un worker persistente reclama eventos atómicamente y evita que una decisión humana quede bloqueada por una llamada IA.
+- Las memorias del agente son idempotentes por evento fuente y alcance (`LOCAL`/`GLOBAL`), preservando la trazabilidad histórica de duplicados previos en la migración.
+- Ingesta: jobs `RUNNING` con lease vencido pueden recuperarse y el worker renueva el lease mientras consulta proveedores cloud.
+- IA: la rúbrica determinística ahora se ejecuta después del auditor LLM; ninguna recomendación se persiste si falla evidencia, alcance, ahorro o seguridad operacional.
+- Métricas: las series agregadas conservan el recurso original y la UI dibuja una serie independiente por recurso cuando se consulta el inventario completo; también cancela la paginación obsoleta al cambiar filtros.
+- Pruebas/CI: se agregó integración PostgreSQL para series técnicas, se corrigió el smoke API de métricas y CI inicia la API con fixtures para validar el contrato HTTP.
+- Verificación local: backend `npm run typecheck` y `npm test` (42 archivos, 165 tests); frontend lint, build y smoke E2E. La integración Docker queda pendiente porque Docker no está instalado localmente.
+
+### 2026-07-09 - Remediación de auditoría: métricas, streaming, pruebas y CI
+- Métricas técnicas: el backend valida fechas, rango y bucket; la cobertura usa agregaciones SQL en PostgreSQL; la serie agregada elimina ventanas completas y aplica el cursor antes de agrupar.
+- La UI dejó de descargar todas las páginas automáticamente: renderiza la primera página, permite cargar puntos exactos bajo demanda, cancela consultas obsoletas y usa uPlot sin ordenar/copiar series completas en cada render.
+- FOCUS: OCI y AWS ahora exponen batches asíncronos para no cargar reportes completos en memoria; el repositorio persiste cada batch idempotentemente y contabiliza filas/proyección en el resumen y quality check.
+- Pruebas: suite backend 40 archivos/160 tests, typecheck, frontend lint/build y smoke E2E sin API/BD. Se agregó Docker Compose para integración destructiva aislada, aunque la ejecución local queda bloqueada porque Docker no está instalado.
+- CI: workflows separados para backend/frontend; frontend valida dependencias, lint, build y smoke E2E; backend valida typecheck, tests, escenarios IA offline, build e integración Docker.
+- Dependencias frontend actualizadas sin cambios mayores destructivos; `npm audit --omit=dev --audit-level=high` queda sin vulnerabilidades. Backend conserva advertencias transitivas del SDK OCI y Prisma que requieren actualización mayor o sustitución controlada.
+
+### 2026-06-29 - Limpieza ponytail de riesgos de sobreingenieria
+- Se retiraron dependencias frontend sin uso comprobado: clsx, tailwind-merge, lucide-react y puppeteer. Recharts se conservo porque sigue usado.
+- Se agregaron ignores para graphify-out y .graphify-* y se borraron artefactos generados locales.
+- Se elimino docs/erd-input/schema.prisma por estar stale y conservar tablas de grafo ya retiradas.
+- Login dejo de precargar cuentas demo y Sidebar/Profile muestran nombre/email del usuario autenticado.
+- Verificacion: frontend npm run build; backend npm run build.
+### 2026-06-26 - Agente IA sin grafo y canales externos unificados
+- Se audito la utilidad real del grafo del agente: las relaciones no aportaban suficiente evidencia accionable, el contexto IA no lo estaba usando para ahorrar tokens y la UI resultaba lenta/confusa.
+- Se elimino el grafo como modulo funcional: backend sin ruta knowledge-graph, sin servicio/repositorios de grafo y migracion Supabase para retirar agent_knowledge_nodes, agent_knowledge_edges y ai_context_traces.knowledge_node_ids.
+- El modulo Agente IA del frontend quedo reorganizado en Gobierno, Evidencia y Canales, retirando la visualizacion de grafo y conservando trazas, reglas, instrucciones y auditoria.
+- Se agrego canal outbound unificado con outbound_message_deliveries, Telegram y correo SMTP por variables de entorno.
+- Se agregaron endpoints para estado de canales, entregas recientes, prueba manual, recordatorios de ahorro pendiente y resumen de recomendaciones.
+- Se agrego scheduler opcional por entorno para recordatorios, sin depender de n8n.
+- Migracion aplicada en Supabase con npx prisma migrate deploy.
+- Verificacion: backend npm run build; frontend npm run build.
+
+### 2026-06-25 - Rediseno del modulo Agente IA
+
+- Se reestructuro la vista `Agente IA` como cockpit operativo en tres bloques: Gobierno, Evidencia y aprendizaje, y Canales y operacion.
+- El frontend ahora recibe el rol API real: `MASTER_ADMIN`, `OPERATOR_ADMIN` y `ADMIN` pueden configurar; roles tecnicos pueden auditar en modo lectura.
+- El backend permite a `FINOPS_TECHNICIAN` leer reglas tenant del agente sin habilitar escritura administrativa.
+- La pantalla muestra metricas de perfil, reglas, trazas, tokens estimados, grafo de evidencia y canales Telegram con estados diferenciados.
+- Verificacion: frontend `npm run build`; backend `npm run build`.
+
+### 2026-06-24 - Motor deterministico de reglas tecnicas FinOps
+
+- Se agrego un motor puro de reglas tecnicas para compute/VM antes de llamar a IA, evaluando CPU, memoria, red, disco/IOPS, cobertura y frescura de datos.
+- `resource_metric_samples` ahora puede resumirse desde PostgreSQL con `avg`, `min`, `max`, `p50`, `p95`, `p99`, `sampleCount`, `coverageDays`, `firstSampledAt` y `latestSampledAt`.
+- La evidencia tecnica enviada al agente incluye `deterministicRules` con `ruleMatches`, `blockers`, `evidenceStrength`, percentiles y referencias tecnicas.
+- La compuerta de recomendaciones consume esos bloqueos: CPU/memoria saturadas o evidencia insuficiente obligan `VALIDATION_ONLY`; CPU+memoria bajas y cobertura suficiente permiten `GENERATABLE`.
+- La rubrica offline y el auditor IA ahora tratan `deterministicRules.blockers` como autoridad tecnica: recomendaciones con bloqueos no pueden presentarse como reduccion ejecutable.
+- Se agregaron escenarios dorados para CPU alta que bloquea rightsizing y CPU baja sin memoria que solo permite validacion tecnica.
+- Verificacion: backend `npm run typecheck`; backend `npm test -- --run` (39 archivos, 157 tests); backend `npm run build`.
+
+### 2026-06-24 - Refinamiento del agente generador y auditor IA
+
+- Se agrego una compuerta deterministica de evidencia para recomendaciones IA: el modelo recibe candidatos permitidos (`GENERATABLE`, `VALIDATION_ONLY`, `BLOCKED_NO_EVIDENCE`) antes de generar recomendaciones.
+- El prompt del generador ahora exige `candidateId`, `sourceFacts`, `assumptions`, `confidence`, limites de ahorro y diferenciacion clara entre recomendacion ejecutable y validacion tecnica previa.
+- El auditor IA ahora puede devolver `recommendationIndexes` y `repairInstructions`, permitiendo una ronda de reparacion mas especifica.
+- `AI_AUDIT_REJECTED` dejo de ser un 502 opaco: el backend responde 422 con `diagnosticId` y reporte de auditoria para diagnostico.
+- El frontend conserva y muestra el diagnostico del auditor en el chat IA, sin sugerir que se guardaron recomendaciones rechazadas.
+- Verificacion: backend `npm run typecheck`; backend `npm test -- --run` (38 archivos, 152 tests); frontend `npm run build`.
+
+### 2026-06-22 - Cierre multi-tenant, IA OpenAI-compatible e inventario SDK
+
+- Configuracion IA migrada a variables genericas `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`, `AI_AUDITOR_MODEL`, `AI_TIMEOUT_MS` y `AI_MAX_RETRIES`; las variables NVIDIA/NIM quedan como fallback temporal.
+- Modelo IA por defecto actualizado a `gpt-5.4-mini`; `.env` local apunta al endpoint OpenAI-compatible nuevo sin versionar secretos.
+- Seed corregido: `andres.rivera@takcolombia.co` queda como `MASTER_ADMIN` en futuras instalaciones.
+- Inventario cloud normalizado reforzado: `INVENTORY` de AWS consulta EC2 `DescribeInstances` y `INVENTORY` de OCI consulta Compute `listInstances`, manteniendo fallback por metadata/definiciones de metricas.
+- Agente IA reforzado con evidencia tecnica real: se inyecta al prompt un bloque compacto desde `resource_metric_samples`, `cloud_resources` y contexto de costo por recurso.
+- Verificacion focalizada: gateway IA, evidencia tecnica, inventario AWS y OCI.
+
+### 2026-06-18 - Cuentas admin multi-tenant y selector real de tenant
+
+- Se implemento la base de autenticacion multi-tenant para administradores: nuevo rol `MASTER_ADMIN`, listado de tenants accesibles y cambio de tenant mediante emision de un nuevo JWT tenant-scoped.
+- `tenant_access_assignments` queda como fuente de verdad para admins/tecnicos asignados; `MASTER_ADMIN` puede ver todos los tenants activos.
+- El frontend reemplaza el selector local `prod/dev` por un selector de tenants reales en el menu superior derecho.
+- `Dashboard` y `Console` dejan de filtrar por entorno local `prod/dev`; el aislamiento se delega al `tenantId` activo del JWT.
+- Se agrego script `npm run users:consolidate-admin-tenants` para consolidar usuarios admin duplicados, con dry-run por defecto y `--apply` explicito.
+
+### 2026-06-17 - Inventario normalizado, evidencia IA y hardening base
+
+- Se reforzo la ingesta tecnica para poblar `cloud_resources` de forma consistente: los jobs ahora fusionan inventario explicito con recursos derivados de `resource_metric_samples` cuando el proveedor aun no entrega inventario completo.
+- Las muestras nuevas de `resource_metric_samples` se enlazan a `cloudResourceId` al persistirse y se reconcilian muestras previas sin enlace para la misma conexion/recurso.
+- Los summaries y checks de calidad de ingesta ahora reportan `metricDerivedResources` y `metricSamplesLinkedToResource`, lo que permite medir cobertura real del cruce inventario-metricas.
+- AWS/OCI `INVENTORY` ya no devuelven un stub vacio: leen metadata declarativa (`awsInventoryResources`/`ociInventoryResources`) y, si falta, infieren inventario base desde definiciones de metricas.
+- La rubrica IA y los prompts ahora exigen evidencia tecnica fuerte para recomendaciones `COST_USAGE_AND_TECHNICAL`: referencias, recurso enlazado, muestras/cobertura suficiente y muestra reciente. Acciones tecnicas sin evidencia fuerte deben marcar validacion pendiente.
+- Se agregaron golden scenarios para rightsizing con evidencia tecnica fuerte, sin referencias y con evidencia antigua.
+- Hardening backend: validacion de configuracion runtime en produccion, CORS multi-origen, rate limit global `/api/v1`, rate limit especifico para IA y logging estructurado por request con `x-request-id`.
+- Verificacion: backend `npm run typecheck`.
 
 ### 2026-06-05 - Scheduler seguro de jobs de ingesta
 
@@ -263,3 +350,55 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Validacion real contra Supabase/OCI: job `cmq91sgea0000fc52feo0c6rh` finalizo `SUCCESS`, proceso 20 objetos, 533 filas FOCUS, proyecto 533 `cost_metrics`, inserto 432 nuevas, 21 llamadas API, 0 warnings.
 - Conteos directos posteriores: `focus_cost_line_items` OCI = 9160 y `cost_metrics` OCI = 9228.
 - Hallazgo de rendimiento: el ciclo completo del worker para 20 objetos/533 filas tomo 58.3 s. Antes de subir `maxObjects` de forma agresiva conviene optimizar persistencia por lotes/upsert masivo o staging SQL.
+
+### 2026-06-11 - RediseÃ±o analitico de metricas de uso
+
+- Se reemplazo la vista de `Metricas Tecnicas` para que deje de ser una tabla de muestras crudas y pase a mostrar KPIs, filtros, grafica temporal, oportunidades tecnicas, recursos con costo asociado y tabla secundaria de auditoria.
+- Backend: se agregaron `GET /api/v1/technical-metrics/overview` y `GET /api/v1/technical-metrics/series`.
+- `overview` deriva recursos desde `resource_metric_samples` aunque `cloud_resources` este vacio, cataloga metricas por grupo (CPU, memoria, red, disco, sistema), calcula KPIs y genera oportunidades tecnicas como baja CPU, memoria alta, metricas desactualizadas o falta de inventario normalizado.
+- `series` entrega puntos agregados por bucket (`auto`, `raw`, `30m`, `hour`, `day`) con promedio, minimo, maximo, ultimo valor y conteo de muestras.
+- Se agrego cruce honesto con costos: solo muestra costo asociado cuando existe match exacto entre `cost_metrics.resource_id` y `resource_metric_samples.external_resource_id`; si no existe, la UI lo declara como "Sin match exacto".
+- Se agrego indice Prisma para acelerar consultas por `tenantId`, `externalResourceId`, `metricName` y `sampledAt`.
+- Frontend: la vista usa Recharts, filtros por recurso/grupo/metrica/rango/granularidad y toma el ultimo dato disponible como referencia de rango, no la fecha actual. Esto permite visualizar la cuenta OCI demo aunque las metricas reales disponibles esten entre 2026-06-04 y 2026-06-06.
+- Verificacion: backend `npm test -- --run src/application/services/TechnicalMetricsService.test.ts`, backend `npm test -- --run` (32 archivos, 133 tests), backend `npm run typecheck`, backend `npm run build`, frontend `npm run build`.
+- Bugfix posterior: los rangos relativos (`24h`, `7d`, `30d`) ahora se calculan contra la fecha actual y la grafica rellena buckets sin muestras para que el cambio de rango sea visible. En modo `auto`, la peticion usa buckets horarios para `24h` y diarios para `7d`/`30d`. Verificacion: frontend `npm run build`.
+
+### 2026-06-11 - Backfill historico y cobertura de metricas tecnicas
+
+- Se agrego `POST /api/v1/ingestion/backfill` para encolar backfill historico de `TECHNICAL_METRIC` por conexion cloud, con `lookbackDays` limitado a 1-90 dias y `windowHours` limitado a 1-24 horas.
+- El backfill consulta jobs existentes `PENDING`, `RUNNING` o `SUCCESS` y omite ventanas completamente cubiertas para evitar duplicados; los jobs creados usan `maxAttempts=1` para no saturar el worker con ventanas historicas.
+- Se agrego `GET /api/v1/technical-metrics/coverage`, que devuelve muestras totales, recursos, metricas, dias esperados, dias con datos y cobertura por metrica/rango.
+- La UI de `Ingesta` ahora tiene una accion "Backfill historico de metricas tecnicas" para traer hasta 90 dias hacia atras al agregar o corregir una cuenta.
+- La UI de `Metricas Tecnicas` ahora muestra "Cobertura de datos", diferencia muestras crudas vs puntos agregados de la grafica y usa cache simple de series para reducir lag al alternar metricas ya consultadas.
+- El resumen de jobs tecnicos de OCI ahora registra rango solicitado, granularidad y datapoints retornados dentro de `coverage`.
+- Verificacion: backend `npm test -- --run CloudConnectionService` (12 tests), backend `npm test -- --run` (32 archivos, 136 tests), backend `npm run typecheck`, backend `npm run build`, frontend `npm run build`.
+
+### 2026-06-12 - Optimizacion de rendimiento de metricas tecnicas con uPlot
+
+- Se reemplazo la grafica principal SVG/Recharts de `Metricas Tecnicas` por `uPlot`/Canvas para evitar miles de nodos DOM al usar granularidades finas.
+- `GET /api/v1/technical-metrics/series` ahora devuelve `series` mas `meta` con `hasMore`, `nextCursor`, `returnedPoints`, `totalSamples`, `queryMs`, `bucket` y `pageSize`.
+- La serie se calcula desde PostgreSQL con SQL agregado por `raw`, `30m`, `hour` y `day`; se preservan `avg`, `min`, `max`, `latest` y timestamps de picos para no ocultar picos tecnicos.
+- El frontend carga series por paginas, cancela requests anteriores con `AbortController`, usa cache LRU limitada y permite drilldown raw seleccionando una ventana sobre la grafica.
+- Se agrego indice por `tenantId, sampledAt` en `resource_metric_samples` para acelerar rangos temporales generales.
+- Verificacion: consulta real contra Supabase para `raw`, `30m`, `hour`, `day`; backend `npm run typecheck`; backend `npm run build`; backend `npm test -- --run` (32 archivos, 137 tests); frontend `npm run build`.
+
+### 2026-06-17 - Supabase migrado y refuerzo de performance critica
+
+- Se aplico en Supabase la migracion no destructiva `resource_metric_sample_time_index`, creando `resource_metric_samples_tenant_id_sampled_at_idx`.
+- Evidencia Supabase: consulta general por `tenant_id + sampled_at` bajo de ~252 ms a ~5 ms en `EXPLAIN ANALYZE`.
+- `technical-metrics/series` ahora usa cursor opaco compuesto (`bucketStart + externalResourceId + metricName`) para paginar sin saltarse puntos cuando varios grupos comparten bucket.
+- La ruta `raw` de metricas tecnicas se separo de la agregada: devuelve muestras exactas con SQL directo, sin ventanas ni agregacion. Evidencia Supabase: ~2 ms para 1001 puntos raw representativos.
+- Los buckets agregados conservan calculo en PostgreSQL y reemplazan `array_agg` ordenado por rankings de ventana para evitar construir arrays por grupo.
+- La ingesta FOCUS cambio de `upsert` fila por fila a `createMany(skipDuplicates)` por lotes de 1000 filas; se conserva idempotencia por la clave unica `(cloud_connection_id, charge_period_start, line_item_hash)`.
+- El readiness/result summary ahora expone `focusRowsInserted` para distinguir filas parseadas de filas nuevas realmente persistidas.
+- Hallazgo no ejecutado en esta fase: Supabase advisors reportan RLS deshabilitado en tablas publicas e indices FK no cubiertos. Se deja como bloque de hardening separado para no mezclar seguridad amplia con performance critica.
+
+### 2026-06-24 - Modulo master admin MSP multi-tenant
+
+- Se agrego backend `GET/POST/PATCH /api/v1/master-admin/tenants`, `GET/POST /users`, `GET /assignments`, `PUT/DELETE /tenants/:tenantId/users/:userId`.
+- El modulo exige rol real `MASTER_ADMIN` consultado en BD; no depende solo del tenant activo del JWT.
+- El admin maestro puede ver todos los tenants, crear tenants, suspender/reactivar tenants, crear usuarios tecnicos/admin operador y asignar o revocar tenants por usuario.
+- Los usuarios staff creados quedan asociados al tenant home del master admin, no al tenant activo seleccionado en la UI.
+- Frontend: nueva vista `Administracion MSP`, visible solo para `MASTER_ADMIN`, con KPIs, tablas, formularios de tenant/usuario y gestion de accesos.
+- El selector superior conserva el comportamiento operativo: solo tenants activos accesibles; al crear/reactivar/suspender tenant se refresca la lista disponible.
+- Verificacion: backend `npm test -- MasterAdminService.test.ts --run`, backend `npm run build`, frontend `npm run build`.
