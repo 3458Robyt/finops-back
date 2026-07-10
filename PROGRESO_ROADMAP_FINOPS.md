@@ -21,6 +21,10 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-10 - Fencing estricto de ingesta
+- Cada job reclamado lleva su intento como token de fencing. Renovar, completar o fallar exige coincidir en `id`, `lockedBy`, `attempts` y estado `RUNNING`.
+- Un worker que perdió el lease descarta el resultado del proveedor y no puede sobrescribir la ejecución reclamada por otro worker.
+
 ### 2026-07-10 - Durabilidad de aprendizaje, recuperación de ingesta y métricas fiables
 - Aprendizaje: `agent_learning_events` incorpora lease, intentos y próximo reintento; un worker persistente reclama eventos atómicamente y evita que una decisión humana quede bloqueada por una llamada IA.
 - Las memorias del agente son idempotentes por evento fuente y alcance (`LOCAL`/`GLOBAL`), preservando la trazabilidad histórica de duplicados previos en la migración.
