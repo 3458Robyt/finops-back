@@ -440,3 +440,12 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Se separaron permisos: administrador, administrador operador y técnico FinOps generan planes y registran ejecución; esos roles y `CLIENT_APPROVER` pueden aprobar o rechazar planes auditados.
 - El E2E de CI amplía el flujo a plan aprobado de fixture → decisión → aprendizaje pendiente → ejecución manual → timeline, sin llamadas a un LLM ni proveedor cloud real.
 - Verificación local: `npm run typecheck`, `npm test` (42 archivos, 174 pruebas), `npm run test:ai:offline`, `npm run build`, frontend `npm run lint`, `npm run build` y compilación de Playwright con `--list`.
+
+### 2026-07-11 - Evidencia técnica canónica y aprendizaje por recurso
+
+- `TechnicalRecommendationEvidenceService` dejó de cargar muestras crudas para armar prompts: reutiliza los agregados SQL por recurso/métrica (mínimo, máximo, promedio, p50/p95/p99, cobertura y frescura) y crea `RecommendationEvidenceSnapshot` versionado y hasheado.
+- El snapshot guarda costo FOCUS, contexto de consumo, calidad del vínculo costo-métrica, referencias técnicas y resultado de las reglas determinísticas. Se usa sin reparsear texto en readiness, prompt, auditoría y rúbrica; se persiste junto a la recomendación auditada.
+- La rúbrica ahora rechaza una recomendación técnica si sus referencias, recurso o reglas no coinciden exactamente con el snapshot. Las oportunidades con evidencia insuficiente o bloqueos siguen siendo solo de validación técnica.
+- Los análisis aislados por `externalResourceId` conservan sus hechos limitados al recurso, pero recuperan memoria auditada de aprobaciones/rechazos para que el agente pueda mejorar con decisiones humanas.
+- El detalle de recomendación muestra período, métricas, reglas, bloqueos, huella del snapshot, resultado de auditoría e influencia del aprendizaje sin exponer prompts ni secretos.
+- Se ampliaron los golden scenarios offline con CPU/memoria/red/disco, cobertura escasa, evidencia obsoleta, contradicciones técnicas y referencias de métricas inventadas. `test:ai:live` conserva ejecución explícita y ahora reporta snapshot/auditoría, latencia y estimación de tokens.
