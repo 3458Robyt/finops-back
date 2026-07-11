@@ -7,7 +7,7 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-06-22.
+> Última revisión: 2026-07-11.
 
 ---
 
@@ -70,7 +70,7 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
   implementados; queda validar despliegue y observabilidad centralizada.
 - **Seed/demo sintético** para `ingestion_jobs`, `data_quality_checks`, `cloud_resources`,
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
-- **Verificación en vivo** del stack local (docker-compose PostgreSQL + backend + frontend).
+- **Verificación en vivo** del stack local cuando Docker esté disponible; CI ya valida PostgreSQL/API de forma aislada.
 - **Endurecimiento de prompts medido** contra la rúbrica y los golden scenarios ya construidos.
 - Marcar `REFACTOR_PLAN.md` como cerrado (resuelve la discrepancia de estado).
 
