@@ -172,3 +172,10 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - La aprobación no equivale a ejecución: el ahorro observado solo se registra mediante `recommendation_manual_executions` con estado, usuario, fecha, notas y evidencia.
 - La operación automática continua continúa fuera del alcance de desarrollo: el worker de aprendizaje puede procesar eventos cuando el backend está encendido, pero no se activa ingesta diaria ni remediación cloud automática.
 - Pendiente para el cierre productivo: validar el E2E completo en CI tras fusionar, inventario SDK OCI/AWS con cuentas reales y los ítems de seguridad/operación ya registrados en deuda técnica.
+
+## 8. Actualizacion 2026-07-11 - Evidencia técnica canónica del agente
+
+- La IA ya no depende de texto técnico reparseado: `RecommendationEvidenceSnapshot` concentra, versiona y hashea los hechos de costo/consumo, métricas agregadas, cobertura, frescura, vínculo y reglas por recurso.
+- El mismo artefacto se entrega a la compuerta de readiness, prompt del generador, auditor IA, rúbrica determinística, evidencia persistida y detalle visual. Una referencia o métrica inventada, cobertura insuficiente, dato obsoleto o regla bloqueante impide una acción técnica ejecutable.
+- El aprendizaje aprobado/rechazado también se incorpora en análisis aislados por recurso, pero solo como contexto auditado; los hechos siguen limitados al snapshot del recurso exacto.
+- La evaluación offline cubre CPU, memoria, red, disco, evidencia escasa, datos obsoletos, señales contradictorias, costo sin métrica y referencias inventadas. El canary real permanece opcional y medirá auditoría, tokens y latencia con fixtures.

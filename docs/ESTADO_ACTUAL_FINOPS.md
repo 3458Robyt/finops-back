@@ -19,6 +19,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El agente genera recomendaciones y planes en espanol usando una API OpenAI-compatible configurable.
 - El auditor IA valida coherencia, realismo, idioma, no invencion de recursos y prohibicion de ejecucion automatica.
 - Las recomendaciones con evidencia `COST_USAGE_AND_TECHNICAL` ahora requieren evidencia tecnica fuerte: referencias, recurso enlazado, cobertura/muestras suficientes y muestra reciente.
+- La evidencia técnica se construye como un snapshot canónico hasheado: costo/consumo FOCUS, métricas agregadas en PostgreSQL, percentiles, cobertura, frescura, vínculo costo-recurso, reglas determinísticas y referencias exactas. El mismo snapshot llega al prompt, auditor, compuerta determinística, persistencia y detalle de la recomendación.
+- Las recomendaciones aisladas por recurso también consumen aprendizaje auditado relevante del tenant, sin ampliar los hechos técnicos fuera del recurso solicitado.
 - Si la evidencia tecnica es debil, la recomendacion debe marcar validacion tecnica pendiente.
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
 - El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
@@ -59,7 +61,7 @@ Pendiente:
 
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
-- Fortalecer agregacion de evidencia tecnica en el contexto del agente, no solo en guardrails.
+- Ejecutar el canary opcional de IA real con fixtures controlados antes de depender de un proveedor en entornos compartidos.
 - RLS gradual en Supabase.
 - Limpieza de documentos antiguos que aun describen estados superados.
 

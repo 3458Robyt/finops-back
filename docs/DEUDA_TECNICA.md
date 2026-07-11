@@ -10,6 +10,7 @@
 | DEP-001 | Media | Dependencias | Registrado | Alertas moderadas transitivas de OCI SDK y Prisma | Actualización o reducción controlada sin regresiones | Hardening productivo |
 | DOC-001 | Baja | Documentación | En curso | Documentos antiguos contienen estados superados | Estado actual y roadmap sin contradicciones | Esta etapa |
 | QA-001 | Baja | Entorno de desarrollo | Registrado | Docker no está disponible localmente para ejecutar integración PostgreSQL y E2E completos | Ejecutar `npm run test:integration:docker` y Playwright contra fixtures; CI debe quedar verde | Antes de fusionar |
+| AI-001 | Baja | Validación de proveedor | Registrado | El canary de IA real es opcional y no debe ejecutarse contra datos productivos sin fixtures controlados | Ejecutar `AI_LIVE_TESTS=true npm run test:ai:live` con fixtures aislados y revisar latencia, tokens, auditoría y snapshot | Antes de activar IA real compartida |
 
 ## Regla de mantenimiento
 

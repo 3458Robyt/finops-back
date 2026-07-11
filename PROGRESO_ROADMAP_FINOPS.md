@@ -440,3 +440,16 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Se separaron permisos: administrador, administrador operador y técnico FinOps generan planes y registran ejecución; esos roles y `CLIENT_APPROVER` pueden aprobar o rechazar planes auditados.
 - El E2E de CI amplía el flujo a plan aprobado de fixture → decisión → aprendizaje pendiente → ejecución manual → timeline, sin llamadas a un LLM ni proveedor cloud real.
 - Verificación local: `npm run typecheck`, `npm test` (42 archivos, 174 pruebas), `npm run test:ai:offline`, `npm run build`, frontend `npm run lint`, `npm run build` y compilación de Playwright con `--list`.
+
+### 2026-07-11 - Evidencia técnica canónica y aprendizaje por recurso
+
+- `TechnicalRecommendationEvidenceService` dejó de cargar muestras crudas para armar prompts: reutiliza los agregados SQL por recurso/métrica (mínimo, máximo, promedio, p50/p95/p99, cobertura y frescura) y crea `RecommendationEvidenceSnapshot` versionado y hasheado.
+- El snapshot guarda costo FOCUS, contexto de consumo, calidad del vínculo costo-métrica, referencias técnicas y resultado de las reglas determinísticas. Se usa sin reparsear texto en readiness, prompt, auditoría y rúbrica; se persiste junto a la recomendación auditada.
+- La rúbrica ahora rechaza una recomendación técnica si sus referencias, recurso o reglas no coinciden exactamente con el snapshot. Las oportunidades con evidencia insuficiente o bloqueos siguen siendo solo de validación técnica.
+- La misma compuerta valida que cantidad de muestras, cobertura, fecha de la última muestra y ahorro propuesto coincidan con el recurso y máximo permitido por las reglas del snapshot.
+- Las cifras porcentuales que la IA escriba en el título o descripción de una recomendación técnica también se comparan contra los valores agregados del snapshot; una cifra inventada rechaza el artefacto antes de persistirlo.
+- La agregación SQL ahora calcula también cuántas muestras y qué proporción de cada métrica supera el umbral técnico; una exposición sostenida de 20% o más bloquea rightsizing aunque los percentiles no alcancen por sí solos el límite.
+- Los análisis aislados por `externalResourceId` conservan sus hechos limitados al recurso, pero recuperan memoria auditada de aprobaciones/rechazos para que el agente pueda mejorar con decisiones humanas.
+- La evaluación compara el mismo análisis aislado con y sin memorias: el contexto aprendido cambia los criterios del prompt y queda registrado, sin cambiar el recurso factual ni ampliar el tenant.
+- El detalle de recomendación muestra período, métricas, reglas, bloqueos, huella del snapshot, resultado de auditoría e influencia del aprendizaje sin exponer prompts ni secretos.
+- Se ampliaron los golden scenarios offline con CPU/memoria/red/disco, cobertura escasa, evidencia obsoleta, contradicciones técnicas y referencias de métricas inventadas. `test:ai:live` conserva ejecución explícita y ahora reporta snapshot/auditoría, latencia y estimación de tokens.
