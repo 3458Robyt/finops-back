@@ -15,3 +15,7 @@
 - Cada bug o faltante encontrado se registra aquí antes de posponerlo.
 - Un ítem solo pasa a `Cerrado` con evidencia de prueba, CI o verificación manual documentada.
 - Los ítems aceptados en desarrollo no deben presentarse como incidentes mientras la aplicación se ejecute manualmente.
+
+## Cierre de inteligencia por recurso — 2026-07-11
+
+La etapa no deja deuda funcional adicional: el aislamiento, la evidencia y el flujo E2E se validan en CI. Los ítems de esta tabla permanecen abiertos porque corresponden a producción, datos reales o documentación histórica, no a la rebanada funcional cerrada.
