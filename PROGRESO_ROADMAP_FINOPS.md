@@ -25,6 +25,7 @@ PostgreSQL).
 - El detalle 360 ahora consulta oportunidades persistidas por `externalResourceId` exacto dentro del tenant; recomendaciones FOCUS sin enlace a recurso no se presentan como relacionadas.
 - Un análisis IA por recurso restringe tanto el snapshot de costo como las métricas técnicas antes de llegar al LLM. Para impedir mezclar datos históricos de otros recursos, omite el Context Engine y aprendizaje recuperado en esta modalidad aislada.
 - La rúbrica determinística exige `evidence.externalResourceId` exacto en análisis aislados, aun si el auditor IA aprobara una salida distinta.
+- El resumen del recurso expone el resultado de las reglas técnicas (`fuerte`, `moderada` o `limitada`, readiness y bloqueos), y el detalle explica en español cuándo la IA solo puede pedir validación previa.
 - Se ampliaron escenarios dorados y pruebas offline para recurso aislado correcto, recurso ajeno, ausencia de evidencia de costo, evidencia técnica filtrada y salida IA fuera de alcance.
 
 ### 2026-07-11 - Inventario cloud y detalle de evidencia por recurso
