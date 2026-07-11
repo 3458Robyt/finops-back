@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-07-09
+Fecha: 2026-07-11
 
 ## Resumen
 
@@ -48,8 +48,8 @@ Pendiente:
   memoria; la persistencia mantiene inserción idempotente por hash.
 - Backend: typecheck y suite completa (40 archivos, 160 tests) aprobados.
 - Frontend: lint, build y smoke E2E sin dependencia de API/BD aprobados.
-- Integración Docker preparada, pero no ejecutable localmente mientras Docker no esté instalado; Supabase
-  debe verificarse cuando el proyecto vuelva a estar activo.
+- CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
+  desarrollo; Supabase se valida mediante migraciones Prisma antes de cambios de esquema.
 
 ## Pendientes principales
 
@@ -58,3 +58,9 @@ Pendiente:
 - Fortalecer agregacion de evidencia tecnica en el contexto del agente, no solo en guardrails.
 - RLS gradual en Supabase.
 - Limpieza de documentos antiguos que aun describen estados superados.
+
+## Operación durante desarrollo
+
+- Backend, frontend y workers se ejecutan manualmente cuando se desarrolla o prueba una funcionalidad.
+- La falta de ingesta diaria mientras la aplicación está apagada es una decisión temporal de desarrollo,
+  no un incidente operativo. El trabajo permanente queda registrado en `docs/DEUDA_TECNICA.md`.

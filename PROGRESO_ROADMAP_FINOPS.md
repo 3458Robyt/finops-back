@@ -21,6 +21,13 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-11 - Inventario cloud y detalle de evidencia por recurso
+- Se agregó el registro único `docs/DEUDA_TECNICA.md` para diferenciar faltantes de producción de decisiones aceptadas durante desarrollo manual.
+- El backend expone detalle y resumen por recurso bajo `technical-metrics/resources/:externalResourceId`, siempre filtrado por tenant, reutilizando métricas, cobertura y costo asociado ya existentes.
+- El frontend incorpora `Inventario Cloud` y detalle 360 para consultar identidad, cobertura, métricas y costo por recurso sin inferir evidencia técnica desde FOCUS.
+- La generación IA admite `externalResourceId`: reduce el snapshot factual al recurso solicitado y rechaza la solicitud si no existe evidencia de costo para ese recurso.
+- El smoke API y E2E cubren inventario y resumen de recurso como parte del flujo existente.
+
 ### 2026-07-10 - Cierre auditado y despliegue controlado
 - Se publicaron y fusionaron PRs de estabilización en backend y frontend, con CI verde: backend (typecheck, 165 pruebas unitarias, evaluación IA offline, build e integración PostgreSQL/API) y frontend (lint, build y smoke E2E).
 - El artefacto productivo del backend ahora incluye el cliente Prisma generado en `dist/generated/prisma`; `npm start` ya puede resolver sus imports después de `npm run build`.
