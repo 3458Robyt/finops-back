@@ -55,7 +55,6 @@ Pendiente:
 
 ## Pendientes principales
 
-- Ejecutar la validación E2E completa con el backend/fixtures levantados tras cada cambio de flujo visual; el smoke de frontend no sustituye ese recorrido.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Fortalecer agregacion de evidencia tecnica en el contexto del agente, no solo en guardrails.
@@ -67,3 +66,8 @@ Pendiente:
 - Backend, frontend y workers se ejecutan manualmente cuando se desarrolla o prueba una funcionalidad.
 - La falta de ingesta diaria mientras la aplicación está apagada es una decisión temporal de desarrollo,
   no un incidente operativo. El trabajo permanente queda registrado en `docs/DEUDA_TECNICA.md`.
+
+## Validación de inteligencia por recurso
+
+- La CI ejecuta el flujo Playwright completo contra fixtures de PostgreSQL y la API local del job de integración.
+- El flujo cubre login, cambio de tenant, inventario, detalle 360, evidencia, oportunidades relacionadas y métricas técnicas sin depender de proveedores cloud ni de un LLM real.

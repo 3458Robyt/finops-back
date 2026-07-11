@@ -21,6 +21,11 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-11 - Cierre verificable de inteligencia por recurso
+- La CI de integración crea fixtures PostgreSQL, inicia la API y ejecuta el flujo Playwright de frontend: login, selector de tenant, inventario, detalle 360, oportunidades relacionadas y métricas técnicas.
+- El recorrido E2E no llama OCI, AWS ni un LLM real; usa exclusivamente la API de fixtures y valida el contrato reproducible entre ambos repositorios.
+- La etapa queda cerrada con aislamiento por tenant/recurso, evidencia y auditoría determinísticas, escenarios dorados, smoke API, E2E y CI verdes.
+
 ### 2026-07-11 - Aislamiento IA y oportunidades relacionadas por recurso
 - El detalle 360 ahora consulta oportunidades persistidas por `externalResourceId` exacto dentro del tenant; recomendaciones FOCUS sin enlace a recurso no se presentan como relacionadas.
 - Un análisis IA por recurso restringe tanto el snapshot de costo como las métricas técnicas antes de llegar al LLM. Para impedir mezclar datos históricos de otros recursos, omite el Context Engine y aprendizaje recuperado en esta modalidad aislada.
