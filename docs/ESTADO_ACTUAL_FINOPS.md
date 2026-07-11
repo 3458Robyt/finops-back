@@ -21,6 +21,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Las recomendaciones con evidencia `COST_USAGE_AND_TECHNICAL` ahora requieren evidencia tecnica fuerte: referencias, recurso enlazado, cobertura/muestras suficientes y muestra reciente.
 - Si la evidencia tecnica es debil, la recomendacion debe marcar validacion tecnica pendiente.
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
+- El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
 
 ## Seguridad y produccion
 
@@ -46,13 +47,14 @@ Pendiente:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: typecheck y suite completa (40 archivos, 160 tests) aprobados.
+- Backend: typecheck, suite completa (42 archivos, 173 tests), evaluación IA offline y build aprobados.
 - Frontend: lint, build y smoke E2E sin dependencia de API/BD aprobados.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
   desarrollo; Supabase se valida mediante migraciones Prisma antes de cambios de esquema.
 
 ## Pendientes principales
 
+- Ejecutar la validación E2E completa con el backend/fixtures levantados tras cada cambio de flujo visual; el smoke de frontend no sustituye ese recorrido.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Fortalecer agregacion de evidencia tecnica en el contexto del agente, no solo en guardrails.
