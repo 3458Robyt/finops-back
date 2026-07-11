@@ -22,6 +22,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Si la evidencia tecnica es debil, la recomendacion debe marcar validacion tecnica pendiente.
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
 - El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
+- El detalle 360 comunica el nivel de evidencia y los bloqueos de las reglas técnicas; una evidencia limitada solo habilita recomendaciones de validación técnica.
 
 ## Seguridad y produccion
 
