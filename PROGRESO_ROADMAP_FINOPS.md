@@ -21,6 +21,12 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-11 - Aislamiento IA y oportunidades relacionadas por recurso
+- El detalle 360 ahora consulta oportunidades persistidas por `externalResourceId` exacto dentro del tenant; recomendaciones FOCUS sin enlace a recurso no se presentan como relacionadas.
+- Un análisis IA por recurso restringe tanto el snapshot de costo como las métricas técnicas antes de llegar al LLM. Para impedir mezclar datos históricos de otros recursos, omite el Context Engine y aprendizaje recuperado en esta modalidad aislada.
+- La rúbrica determinística exige `evidence.externalResourceId` exacto en análisis aislados, aun si el auditor IA aprobara una salida distinta.
+- Se ampliaron escenarios dorados y pruebas offline para recurso aislado correcto, recurso ajeno, ausencia de evidencia de costo, evidencia técnica filtrada y salida IA fuera de alcance.
+
 ### 2026-07-11 - Inventario cloud y detalle de evidencia por recurso
 - Se agregó el registro único `docs/DEUDA_TECNICA.md` para diferenciar faltantes de producción de decisiones aceptadas durante desarrollo manual.
 - El backend expone detalle y resumen por recurso bajo `technical-metrics/resources/:externalResourceId`, siempre filtrado por tenant, reutilizando métricas, cobertura y costo asociado ya existentes.

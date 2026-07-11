@@ -26,6 +26,7 @@
   ejecución auditados; aprobación/rechazo con aprendizaje asíncrono; Context Engine, memoria,
 reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad practica.
 - **Evaluación de calidad IA:** rúbrica determinista + golden scenarios (sin llamar al modelo).
+- **Inteligencia por recurso:** inventario cloud, detalle 360, oportunidades relacionadas y análisis IA aislado por `externalResourceId`.
 - **Canales:** notificaciones in-app; Telegram MVP; base outbound con correo SMTP y scheduler opcional.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de
   recomendación, chat, historial, agente IA, ingesta/calidad, métricas técnicas, perfil, login).
