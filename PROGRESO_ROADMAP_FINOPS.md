@@ -431,3 +431,12 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Frontend: nueva vista `Administracion MSP`, visible solo para `MASTER_ADMIN`, con KPIs, tablas, formularios de tenant/usuario y gestion de accesos.
 - El selector superior conserva el comportamiento operativo: solo tenants activos accesibles; al crear/reactivar/suspender tenant se refresca la lista disponible.
 - Verificacion: backend `npm test -- MasterAdminService.test.ts --run`, backend `npm run build`, frontend `npm run build`.
+
+### 2026-07-11 - Ciclo operacional de recomendaciones
+
+- Las oportunidades generadas por IA ahora incluyen una huella estable de tenant, cuenta, recurso/candidato, tipo y período factual; la base evita duplicados y reutiliza la oportunidad existente ante una generación equivalente.
+- La migración `202607110001_add_recommendation_deduplication` se aplicó en Supabase: `recommendations.deduplication_key` y clave única por tenant.
+- Un plan de ejecución rechazado por auditoría ya no se persiste ni se reutiliza. El detalle recupera únicamente el último plan aprobado.
+- Se separaron permisos: administrador, administrador operador y técnico FinOps generan planes y registran ejecución; esos roles y `CLIENT_APPROVER` pueden aprobar o rechazar planes auditados.
+- El E2E de CI amplía el flujo a plan aprobado de fixture → decisión → aprendizaje pendiente → ejecución manual → timeline, sin llamadas a un LLM ni proveedor cloud real.
+- Verificación local: `npm run typecheck`, `npm test` (42 archivos, 174 pruebas), `npm run test:ai:offline`, `npm run build`, frontend `npm run lint`, `npm run build` y compilación de Playwright con `--list`.

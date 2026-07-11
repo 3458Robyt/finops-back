@@ -165,3 +165,10 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - Las recomendaciones `COST_USAGE_AND_TECHNICAL` ahora tienen guardrails: requieren referencias tecnicas, recurso enlazado, cobertura/muestras suficientes y frescura. Si no, deben quedar como validacion tecnica pendiente.
 - El hardening ya no parte de cero: existen `helmet`, CORS configurable multi-origen, rate limits globales/especificos y logging estructurado por request. Quedan pendientes RLS/staged DB policies, gestion externa de secretos y tests de integracion contra BD real.
 - Pendiente critico vigente: validar inventario SDK Compute/EC2 con cuentas reales y benchmark, AWS productivo, RLS gradual, observabilidad centralizada y cierre de documentos historicos que aun usen terminos anteriores.
+
+## 7. Actualizacion 2026-07-11 - Ciclo operacional de recomendaciones
+
+- El núcleo de recomendaciones ya cubre preview/persistencia auditada, deduplicación por período factual, plan manual auditado, decisión humana estructurada, aprendizaje durable, ejecución manual, KPIs, recordatorios calculados y timeline.
+- La aprobación no equivale a ejecución: el ahorro observado solo se registra mediante `recommendation_manual_executions` con estado, usuario, fecha, notas y evidencia.
+- La operación automática continua continúa fuera del alcance de desarrollo: el worker de aprendizaje puede procesar eventos cuando el backend está encendido, pero no se activa ingesta diaria ni remediación cloud automática.
+- Pendiente para el cierre productivo: validar el E2E completo en CI tras fusionar, inventario SDK OCI/AWS con cuentas reales y los ítems de seguridad/operación ya registrados en deuda técnica.

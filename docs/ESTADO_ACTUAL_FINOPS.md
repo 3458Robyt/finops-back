@@ -23,6 +23,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
 - El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
 - El detalle 360 comunica el nivel de evidencia y los bloqueos de las reglas técnicas; una evidencia limitada solo habilita recomendaciones de validación técnica.
+- Las oportunidades persistidas tienen deduplicación por tenant, cuenta, recurso/candidato, tipo y período factual. Un plan rechazado por el auditor no se guarda ni se muestra como plan reutilizable.
+- El ciclo humano diferencia aprobación de ejecución: técnico FinOps/administradores registran ejecución manual y el aprobador del cliente puede decidir sobre un plan auditado. La decisión crea un evento durable de aprendizaje sin bloquear la respuesta HTTP.
 
 ## Seguridad y produccion
 
@@ -70,4 +72,4 @@ Pendiente:
 ## Validación de inteligencia por recurso
 
 - La CI ejecuta el flujo Playwright completo contra fixtures de PostgreSQL y la API local del job de integración.
-- El flujo cubre login, cambio de tenant, inventario, detalle 360, evidencia, oportunidades relacionadas y métricas técnicas sin depender de proveedores cloud ni de un LLM real.
+- El flujo cubre login, cambio de tenant, inventario, detalle 360, evidencia, oportunidades relacionadas, plan auditado de fixture, decisión, timeline y ejecución manual sin depender de proveedores cloud ni de un LLM real.
