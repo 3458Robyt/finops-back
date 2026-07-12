@@ -7,11 +7,13 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-07-11.
+> Última revisión: 2026-07-12.
 
 ---
 
 ## 1. Estado actual (qué está hecho de verdad)
+
+Incluye presupuestos mensuales persistentes por tenant, cuenta o servicio, evaluación manual de umbrales y alertas idempotentes. La ejecución periódica permanece fuera del alcance de desarrollo (OPS-002).
 
 ### Núcleo funcional y verificado
 - **Arquitectura:** Clean Architecture (domain / application / infrastructure / presentation), ESM,

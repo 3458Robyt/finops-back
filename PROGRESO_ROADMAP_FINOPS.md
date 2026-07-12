@@ -1,5 +1,12 @@
 # Progreso — FinOps Inteligente (Backend)
 
+## 2026-07-12 — Presupuestos y forecast gobernado
+
+- Presupuesto mensual persistente por tenant, cuenta cloud o servicio, con moneda, umbrales y auditoría de creador.
+- `cost_metrics` y `cost_forecasts` se consultan sin mezclar monedas; la ausencia de forecast se comunica como no disponible.
+- La evaluación manual crea alertas idempotentes, notificaciones in-app y registros outbound pendientes; su ejecución continua queda registrada en OPS-002.
+- Supabase recibió `budget_governance` después de validar el SQL mediante una transacción revertida.
+
 > Bitácora viva del proyecto. Se actualiza **a medida que se avanza**, no solo al final.
 > Estructura: (1) Estado actual · (2) Bitácora de avance (cronológica inversa) · (3) Próximos bloques.
 
