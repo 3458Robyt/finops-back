@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-07-11
+Fecha: 2026-07-12
 
 ## Resumen
 
@@ -27,6 +27,13 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El detalle 360 comunica el nivel de evidencia y los bloqueos de las reglas técnicas; una evidencia limitada solo habilita recomendaciones de validación técnica.
 - Las oportunidades persistidas tienen deduplicación por tenant, cuenta, recurso/candidato, tipo y período factual. Un plan rechazado por el auditor no se guarda ni se muestra como plan reutilizable.
 - El ciclo humano diferencia aprobación de ejecución: técnico FinOps/administradores registran ejecución manual y el aprobador del cliente puede decidir sobre un plan auditado. La decisión crea un evento durable de aprendizaje sin bloquear la respuesta HTTP.
+
+## Presupuestos FinOps
+
+- Existe un módulo de presupuestos mensuales persistentes por tenant, cuenta cloud o servicio.
+- Cada presupuesto compara únicamente costos y forecasts de su misma moneda; si no hay forecast persistido se declara no disponible.
+- La evaluación manual de umbrales 80/90/100 crea eventos idempotentes, notificaciones in-app y registros outbound pendientes, sin exigir un scheduler durante desarrollo.
+- El dashboard ya no calcula un presupuesto inventado; muestra únicamente el presupuesto tenant real cuando existe.
 
 ## Seguridad y produccion
 
