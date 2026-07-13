@@ -460,3 +460,11 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - La evaluación compara el mismo análisis aislado con y sin memorias: el contexto aprendido cambia los criterios del prompt y queda registrado, sin cambiar el recurso factual ni ampliar el tenant.
 - El detalle de recomendación muestra período, métricas, reglas, bloqueos, huella del snapshot, resultado de auditoría e influencia del aprendizaje sin exponer prompts ni secretos.
 - Se ampliaron los golden scenarios offline con CPU/memoria/red/disco, cobertura escasa, evidencia obsoleta, contradicciones técnicas y referencias de métricas inventadas. `test:ai:live` conserva ejecución explícita y ahora reporta snapshot/auditoría, latencia y estimación de tokens.
+
+### 2026-07-12 - Asignación de costos y showback determinístico
+
+- Se creó `cost_allocation_rules` en Supabase con aislamiento por tenant, creador, prioridad, estado, vigencia, criterios FOCUS/tags y dimensiones de destino de negocio.
+- La asignación usa primera coincidencia por prioridad; cada línea queda una sola vez, separada por moneda, o explícitamente como `UNALLOCATED`.
+- Backend: CRUD/archivado auditado, preview sin persistencia con ejemplos, resumen/comparación mensual, detalle sin asignar, CSV y destino asignado en el detalle 360 del recurso.
+- Frontend: sección `Asignación de costos` con filtros, KPIs, distribución, reglas, preview, activación, archivado, exportación CSV y sugerencias en español; los presupuestos por cuenta o servicio enlazan la sección.
+- Verificación local: typecheck, 4 pruebas unitarias específicas y build frontend aprobados. La migración fue validada dentro de una transacción y aplicada en Supabase.
