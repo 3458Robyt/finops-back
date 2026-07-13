@@ -181,3 +181,9 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - El mismo artefacto se entrega a la compuerta de readiness, prompt del generador, auditor IA, rúbrica determinística, evidencia persistida y detalle visual. Una referencia o métrica inventada, cobertura insuficiente, dato obsoleto o regla bloqueante impide una acción técnica ejecutable.
 - El aprendizaje aprobado/rechazado también se incorpora en análisis aislados por recurso, pero solo como contexto auditado; los hechos siguen limitados al snapshot del recurso exacto.
 - La evaluación offline cubre CPU, memoria, red, disco, evidencia escasa, datos obsoletos, señales contradictorias, costo sin métrica y referencias inventadas. El canary real permanece opcional y medirá auditoría, tokens y latencia con fixtures.
+
+## 9. Actualizacion 2026-07-12 - Asignación de costos
+
+- El showback por centro de costo, unidad de negocio, proyecto, equipo y ambiente está implementado sobre `cost_metrics`, dimensiones FOCUS y tags existentes; no requiere credenciales cloud nuevas ni IA.
+- La prioridad hace la asignación determinística y auditable: la primera regla activa coincidente recibe el gasto y el resto queda visible como `Sin asignar`.
+- El siguiente incremento funcional, cuando el showback sea validado por técnicos, será decidir si se necesitan costos compartidos porcentuales; chargeback o facturación no pertenecen a esta etapa.

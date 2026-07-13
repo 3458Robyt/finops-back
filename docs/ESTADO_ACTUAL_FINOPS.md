@@ -66,6 +66,7 @@ Pendiente:
 
 ## Pendientes principales
 
+- Asignación de costos: reglas persistentes por tenant y showback determinístico ya están disponibles; la distribución porcentual de costos compartidos y el chargeback contable siguen fuera de alcance.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Ejecutar el canary opcional de IA real con fixtures controlados antes de depender de un proveedor en entornos compartidos.
