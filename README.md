@@ -7,7 +7,7 @@ Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps
 ## Propósito del Sistema
 
 El backend actúa como el motor principal para transformar los procesos manuales y reactivos de gestión de costos en la nube hacia una cultura proactiva. Sus responsabilidades incluyen:
-- **Ingesta Estandarizada:** Recolección diaria de métricas desde proveedores cloud (AWS Cost Explorer) utilizando el Patrón Adaptador.
+- **Ingesta estandarizada:** Jobs persistentes para inventario, costos FOCUS/API directa y métricas técnicas de OCI/AWS.
 - **Análisis Inteligente:** Procesamiento de datos mediante IA generativa para detectar oportunidades y sugerir acciones de *rightsizing*.
 - **Persistencia:** Almacenamiento de métricas financieras y de contexto en PostgreSQL (Supabase en producción; PostgreSQL local vía Docker para desarrollo).
 - **Seguridad y Trazabilidad:** Gestión de roles (JWT), encriptación de credenciales cloud y registro de auditoría de optimizaciones.
@@ -22,10 +22,10 @@ El proyecto está estructurado bajo los principios **SOLID** y **Clean Architect
 
 \`\`\`text
 src/
-├── domain/           # Entidades core, Interfaces (ICloudProvider), Tipos estrictos
+├── domain/           # Modelos y contratos de dominio
 ├── application/      # Casos de uso, Orquestación de Ingesta, Servicios de IA
-├── infrastructure/   # Adaptadores (AWS, GCP), Repositorios (Postgres), Configuración
-└── presentation/     # Controladores Express/Nest, Middlewares, Rutas de la API
+├── infrastructure/   # Adaptadores OCI/AWS, repositorios PostgreSQL y cifrado
+└── presentation/     # Controladores Express, middlewares y rutas REST
 \`\`\`
 
 ## Stack Tecnológico
@@ -86,7 +86,13 @@ AI_MODEL=gpt-5.4-mini
 - \`npm run import:oci-focus\`: Importa el dataset FOCUS de OCI.
 - \`npm run test:integration:docker\`: Ejecuta las pruebas de integración contra PostgreSQL de prueba en Docker (requiere Docker instalado).
 - \`npm run test:api:smoke\`: Smoke test de la API contra el backend configurado.
+- \`npm run test:api:onboarding\`: Verifica API, roles, aislamiento y exposición de secretos del onboarding.
+- \`npm run test:canary:oci-onboarding\`: Canary OCI real read-only cuando existe configuración local.
 - \`npm run test:ai:offline\`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
+
+El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La guía de permisos,
+credenciales, estados, endpoints y troubleshooting está en
+[`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
 La verificación local mínima es `npm run typecheck && npm test`; el workflow de CI repite además el build y las pruebas de integración aisladas.
 
@@ -97,7 +103,7 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 ### Postura de seguridad actual
 - **Autenticación:** JWT (`jsonwebtoken`) validado por middleware en todas las rutas salvo `/api/v1/auth/login` y el webhook de Telegram (que usa un secreto propio). Las consultas filtran por `tenantId` para aislamiento multi-tenant.
 - **Contraseñas:** hashing con Argon2.
-- **Credenciales cloud:** cifradas en reposo (`CredentialCipher`, clave en `CREDENTIAL_ENCRYPTION_KEY`); las credenciales admin temporales de aprovisionamiento **no se persisten**.
+- **Credenciales cloud:** accesos operativos read-only cifrados en reposo (`CredentialCipher`, clave en `CREDENTIAL_ENCRYPTION_KEY`); el flujo no recibe ni persiste administradores temporales.
 - **CORS:** origen configurable vía `CORS_ORIGIN` (por defecto `http://localhost:5173`).
 - **Cabeceras y abuso:** Helmet y rate limiting global/específico para autenticación, IA y Telegram están configurados en el servidor.
 - **Observabilidad:** logging estructurado por request con `x-request-id`; los errores de proveedor no deben exponer secretos.

@@ -1,5 +1,9 @@
 # Ingesta SDK OCI/AWS
 
+> Guía técnica de workers y scripts. Para el onboarding normal desde la aplicación, permisos,
+> endpoints y estado verificado actual consulta `docs/ONBOARDING_CLOUD.md`. Los scripts descritos
+> aquí son soporte operativo, no un requisito del usuario final.
+
 Este documento resume la configuracion operativa actual para ingesta productiva de costos, consumo facturado y metricas tecnicas. La regla de diseno se mantiene: FOCUS/Data Exports alimenta costos y uso facturado; Monitoring/CloudWatch alimenta CPU, red, disco y memoria cuando el proveedor o agente la entregue.
 
 ## Estado verificado

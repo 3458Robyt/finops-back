@@ -1,5 +1,27 @@
 # Progreso — FinOps Inteligente (Backend)
 
+## 2026-07-16 — Onboarding operativo cloud por tenant
+
+- Se integró en Ingesta un flujo reanudable OCI/AWS para crear conexión, cifrar/revocar
+  credenciales read-only, validar capacidades, editar configuración no sensible, configurar costos/FOCUS/métricas y
+  activar jobs iniciales sin depender de scripts.
+- La activación exige validación utilizable, responde en background, evita jobs activos duplicados y
+  permite reintentar ventanas fallidas o cancelar pendientes por fuente.
+- Readiness y detalle de onboarding explican en español el problema, capacidad, datos afectados y
+  próxima acción. La UI enlaza Dashboard, Inventario y Métricas técnicas.
+- El preview FOCUS es read-only y tolera errores por ubicación. La fuente OCI de prueba `asd/asd`
+  fue retirada; la ubicación real descubre 20 objetos sin errores.
+- Seguridad: 13 mutaciones son denegadas a `VIEWER`, las lecturas cross-tenant ocultan recursos,
+  el alta ya no acepta metadata arbitraria, los resúmenes proyectan solo configuración operativa
+  permitida y Supabase revoca acceso PostgREST directo a tablas operativas del onboarding.
+- Canary OCI real: identidad, inventario, métricas y storage disponibles; Usage API denegada por
+  policy; estado `PARTIAL`. AWS está cubierto con fixtures, pendiente de rol/cuenta real.
+- Verificación local: 46 archivos/203 pruebas backend, typecheck/build, frontend lint/build, smoke API
+  y canary OCI aprobados. Un smoke browser read-only con sesión efímera verificó los dos tenants,
+  Dashboard y onboarding OCI sin errores. La integración PostgreSQL (2 archivos/3 pruebas) y el E2E
+  Playwright completo pasaron contra un schema Supabase efímero, eliminado después de la prueba.
+  La matriz está en `docs/ONBOARDING_CLOUD_ACCEPTANCE.md`.
+
 ## 2026-07-12 — Presupuestos y forecast gobernado
 
 - Presupuesto mensual persistente por tenant, cuenta cloud o servicio, con moneda, umbrales y auditoría de creador.
@@ -28,6 +50,13 @@ para inferir CPU/memoria/IOPS/throughput; Supabase es la BD principal (arquitect
 PostgreSQL).
 
 ## 2. Bitácora de avance
+### 2026-07-13 - Estabilización de gobernanza y claridad operacional
+- Se corrigió la causa de los errores genéricos de presupuestos y asignación: el cliente Prisma local podía quedar desactualizado respecto al esquema. `npm run dev` ahora genera Prisma antes de iniciar el backend y las respuestas inesperadas incluyen un identificador de diagnóstico sin exponer detalles internos.
+- Dashboard, presupuesto, asignación e inventario cargan sus bloques de forma independiente: un fallo de presupuesto o asignación ya no deja en blanco el resto de la pantalla ni el detalle técnico del recurso.
+- Se agregó `GET /costs/options` para ofrecer períodos realmente disponibles y filtros por cuenta, servicio y moneda. Presupuestos y asignación explican cuando el período elegido no posee costos e invitan a usar el último período disponible.
+- Los formularios de gobernanza ahora guían el flujo: alcance y umbrales en presupuestos; criterio, destino, previsualización y campos avanzados en asignación. Las reglas nuevas continúan como borradores hasta su activación explícita.
+- Se eliminó el parpadeo de indicadores en Métricas técnicas: al refrescar se conservan los valores previos y solo se muestra un estado discreto de actualización.
+
 ### 2026-07-11 - Cierre verificable de inteligencia por recurso
 - La CI de integración crea fixtures PostgreSQL, inicia la API y ejecuta el flujo Playwright de frontend: login, selector de tenant, inventario, detalle 360, oportunidades relacionadas y métricas técnicas.
 - El recorrido E2E no llama OCI, AWS ni un LLM real; usa exclusivamente la API de fixtures y valida el contrato reproducible entre ambos repositorios.
@@ -468,3 +497,20 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Backend: CRUD/archivado auditado, preview sin persistencia con ejemplos, resumen/comparación mensual, detalle sin asignar, CSV y destino asignado en el detalle 360 del recurso.
 - Frontend: sección `Asignación de costos` con filtros, KPIs, distribución, reglas, preview, activación, archivado, exportación CSV y sugerencias en español; los presupuestos por cuenta o servicio enlazan la sección.
 - Verificación local: typecheck, 4 pruebas unitarias específicas y build frontend aprobados. La migración fue validada dentro de una transacción y aplicada en Supabase.
+
+### 2026-07-14 - Consolidación de ingesta y procedencia de costos
+
+- La facturación recurrente usa ahora el worker persistente: `AUTO` consume FOCUS cuando la conexión tiene un export configurado y, si no, usa AWS Cost Explorer u OCI Usage API. Los modos explícitos `FOCUS` y `PROVIDER_API` evitan ambigüedad.
+- Cada `cost_metric` registra la conexión cloud y su procedencia (`FOCUS`, `PROVIDER_API`, `LEGACY` o `UNKNOWN`). Al proyectar un rango se reemplaza únicamente la fuente alternativa de esa conexión, sin mezclar resultados FOCUS y API directa.
+- Se añadió `PUT /api/v1/cloud-connections/:id/billing-source` y un control en la vista Ingesta para configurar el origen de forma visible.
+- Se retiró la ruta legacy sin consumidores (`DataIngestionService`, proveedores antiguos AWS/OCI, contrato de plugin y barrels no usados). Las capacidades de Cost Explorer y Usage API se migraron antes al worker actual.
+- Supabase: se verificó que tres migraciones anteriores ya existían en el esquema pero no en `_prisma_migrations`; se marcaron como aplicadas y se desplegó `202607140001_cost_billing_source`.
+- Verificación: backend `npm run typecheck`, frontend `npm run build` y `prisma migrate deploy` aprobados.
+
+### 2026-07-14 - Simplificación de dependencias y ejecución periódica
+
+- Recharts fue retirado: el histórico de costos del Dashboard usa uPlot y los sparklines de KPI técnico usan SVG nativo.
+- Se eliminaron wrappers frontend de analítica que no tenían consumidores.
+- Los workers de ingesta, aprendizaje, scheduler y mensajes reutilizan un único loop no solapable; conserva ejecución inmediata, detención y manejo de errores.
+- Se centralizó la traducción de errores FinOps repetida en cuatro controladores, sin alterar sus contratos HTTP.
+- Se removieron aliases TypeScript y generación de declaraciones no utilizados. `dotenv` se conserva por sus entrypoints activos.

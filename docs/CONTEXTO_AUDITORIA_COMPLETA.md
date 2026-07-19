@@ -1,5 +1,9 @@
 # Contexto para auditoría completa — FinOps Inteligente
 
+> **Snapshot histórico del 2026-07-09.** No describe el estado vigente posterior al retiro de
+> Recharts y a la integración del onboarding cloud. Consulta `ROADMAP_PRODUCTO.md`,
+> `PROGRESO_ROADMAP_FINOPS.md` y `ONBOARDING_CLOUD.md`.
+
 Fecha de corte: 2026-07-09
 Workspace: C:\Users\DAVID\OneDrive\Documentos\Antigravity
 

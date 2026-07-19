@@ -1,4 +1,8 @@
-# Contexto De Ingesta De Datos FinOps
+# Contexto histórico de ingesta de datos FinOps
+
+> **Documento histórico, reemplazado el 2026-07-16.** Conserva decisiones y evidencia de la
+> primera implementación. El flujo operativo vigente está en `docs/ONBOARDING_CLOUD.md` y ya no
+> incluye `provisionWithTemporaryAdmin` ni `PENDING_PROVIDER_AUTOMATION`.
 
 Este documento resume lo trabajado en este fork sobre la ingesta real de datos cloud. Sirve para pasar contexto al chat principal sin depender del historial completo de esta conversacion.
 

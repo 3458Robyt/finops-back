@@ -7,7 +7,7 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-07-12.
+> Última revisión: 2026-07-16.
 
 ---
 
@@ -40,15 +40,17 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
 - **Métricas técnicas:** OCI Monitoring y AWS CloudWatch ya alimentan `resource_metric_samples`; el
   inventario OCI Compute/AWS EC2 puede poblar `cloud_resources`. Falta validar cobertura real,
   frecuencia operativa y cruces completos por recurso.
-- **Provisioning:** `provisionWithTemporaryAdmin` devuelve un stub `PENDING_PROVIDER_AUTOMATION`
-  (recibe la credencial admin solo en memoria y no la persiste, por diseño).
+- **Onboarding cloud:** flujo reanudable integrado en Ingesta para OCI/AWS, con credenciales
+  operativas cifradas, validación por capacidad, FOCUS/API directa, métricas, activación y jobs.
+  El stub `provisionWithTemporaryAdmin` fue retirado; FinOps no aprovisiona IAM ni recibe admins
+  temporales.
 
 ### Decisiones firmes (no reabrir sin motivo)
 Texto de usuario en español; en UI se dice "oportunidades", no "anomalías"; **sin remediación
 automática cloud**; ejecución manual, gobernada y auditable; FOCUS aporta costo y consumo facturado,
 **nunca** CPU/memoria/IOPS/throughput; Supabase en desarrollo / PostgreSQL portable; sin
-n8n/MCP/Inngest (workers propios con jobs persistidos); las credenciales admin temporales **nunca**
-se persisten como operativas.
+n8n/MCP/Inngest (workers propios con jobs persistidos); el onboarding no solicita administradores
+temporales ni modifica IAM del cliente.
 
 ---
 
@@ -58,7 +60,8 @@ se persisten como operativas.
 |---|---|---|
 | `REFACTOR_PLAN.md` | Plan de refactor a <200 líneas efectivas (T-01…T-12) | **Completado**. El documento aún se lee como "en progreso": conviene marcarlo cerrado. |
 | `PROGRESO_ROADMAP_FINOPS.md` | Bitácora de avance (cronológica inversa) | Vigente. Refleja los bloques entregados. |
-| `docs/CONTEXTO_INGESTA_DATOS.md` | Contexto de ingesta + "Siguiente Fase Recomendada" (10 pasos AWS) | Semilla del roadmap futuro; cubre solo ingesta AWS. Integrado aquí como Fase 2. |
+| `docs/CONTEXTO_INGESTA_DATOS.md` | Contexto histórico de la primera arquitectura de ingesta | **Histórico**; `ONBOARDING_CLOUD.md` describe el flujo vigente. |
+| `docs/ONBOARDING_CLOUD.md` | Operación, seguridad, API, readiness y troubleshooting OCI/AWS | **Autoritativo y vigente**. |
 | **Este documento** | Roadmap de producto por fases | Nuevo. Llena el vacío: ningún doc previo trazaba el camino producto-completo. |
 
 ---
@@ -85,18 +88,15 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 - Permisos multi-cliente reales con `tenant_access_assignments` (técnicos FinOps multi-tenant).
 - Logging estructurado y gestión/rotación de secretos (fuera de `.env` plano).
 
-### Fase 2 — Conector AWS productivo (requiere credenciales) · MEDIO
-Sigue los 10 pasos de `docs/CONTEXTO_INGESTA_DATOS.md`:
-1. `AwsCloudProviderPlugin`. 2. Recibir admin temporal solo en memoria. 3. Crear/verificar rol
-operativo mínimo. 4. Configurar/verificar Data Export FOCUS hacia el storage del operador. 5. Guardar
-solo la credencial operativa mínima cifrada. 6. Revocar/eliminar el admin temporal. 7. Worker que
-procese jobs `BILLING_EXPORT` con `FOR UPDATE SKIP LOCKED` + reintentos. 8. Lectura de objetos
-S3-compatibles. 9. Parser FOCUS productivo → `focus_cost_line_items`. 10. Data-quality checks +
-watermarks. **Hito clave: el sistema deja de depender de cargas manuales.**
+### Fase 2 — Validación AWS productiva (requiere credenciales) · MEDIO
+El adaptador SDK, STS `AssumeRole`, EC2, CloudWatch, Cost Explorer, FOCUS/S3, worker y onboarding
+están implementados y cubiertos con fixtures. Falta una cuenta/rol AWS real para ejecutar el canary,
+medir volumen y cerrar permisos mínimos con evidencia productiva. No se usarán admins temporales.
 
-### Fase 3 — Conector OCI productivo (requiere credenciales) · MEDIO
-Mismo patrón sobre OCI Cost Reports. El bootstrap (`oci-focus-bootstrap.ps1`) y el importador local
-(`import-oci-focus.ts`) ya existen como base.
+### Fase 3 — Consolidación OCI productiva (requiere credenciales) · MEDIO
+OCI real está validado para identidad, Compute, Monitoring y Object Storage/FOCUS. Usage API está
+denegada por policy, pero AUTO puede operar con FOCUS. Falta optimizar importación del SDK, validar
+mayor volumen y decidir si se habilitará Usage API para redundancia de costos.
 
 ### Fase 4 — Métricas técnicas reales (requiere credenciales) · MEDIO/LARGO
 Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_resources` /
@@ -187,3 +187,17 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - El showback por centro de costo, unidad de negocio, proyecto, equipo y ambiente está implementado sobre `cost_metrics`, dimensiones FOCUS y tags existentes; no requiere credenciales cloud nuevas ni IA.
 - La prioridad hace la asignación determinística y auditable: la primera regla activa coincidente recibe el gasto y el resto queda visible como `Sin asignar`.
 - El siguiente incremento funcional, cuando el showback sea validado por técnicos, será decidir si se necesitan costos compartidos porcentuales; chargeback o facturación no pertenecen a esta etapa.
+
+## 10. Actualización 2026-07-16 - Onboarding cloud integrado
+
+- Ingesta incorpora un onboarding reanudable por tenant para OCI y AWS: conexión, credencial
+  cifrada, validación por capacidad, fuente de costos, FOCUS, métricas, activación y recuperación de
+  jobs. La guía vigente es `docs/ONBOARDING_CLOUD.md`.
+- Se retiró el provisioning temporal incompleto. La plataforma solo registra accesos operativos
+  read-only y no modifica IAM del cliente.
+- La activación es idempotente, responde `202` y delega el trabajo a jobs persistentes. Se pueden
+  reintentar fuentes fallidas y cancelar ventanas pendientes sin borrar histórico.
+- OCI real quedó `PARTIAL`: identidad, inventario, métricas y FOCUS disponibles; Usage API denegada
+  por policy. AWS conserva cobertura con fixtures y requiere una cuenta real para canary productivo.
+- Supabase tiene unicidad parcial para jobs activos y acceso PostgREST directo revocado en las
+  tablas operativas de onboarding. La RLS global del producto sigue registrada como deuda aparte.
