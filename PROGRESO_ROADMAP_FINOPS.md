@@ -1,5 +1,28 @@
 # Progreso — FinOps Inteligente (Backend)
 
+## 2026-07-23 — Pipeline gobernado de análisis FinOps post-ingesta
+
+- Se agregó una corrida durable por tenant o recurso con estados, etapas, snapshot canónico, hash de
+  evidencia, conteos, modelos, tokens estimados, latencia, diagnóstico y enlaces a recomendaciones.
+- La cola responde `202`, evita corridas activas equivalentes y el worker reclama trabajo con
+  `FOR UPDATE SKIP LOCKED`, reintentos acotados y recuperación de leases vencidos. El scheduler
+  post-ingesta existe, pero permanece desactivado por defecto.
+- El preanálisis calcula tendencias de costo y consumo sin mezclar unidades. La compuerta de
+  evidencia evita llamadas al LLM cuando no hay fundamentos y generador/auditor reciben el mismo
+  snapshot; solo se publican artefactos aprobados y deduplicados.
+- Los candidatos fuera del lote de seis de mayor impacto quedan registrados como aplazados, con
+  motivo explícito, en vez de desaparecer silenciosamente o consumir tokens en esa corrida.
+- `Agente IA > Análisis` muestra readiness, progreso, descartes, historial y recomendaciones. Los
+  roles de lectura pueden consultar sin iniciar, cancelar ni reintentar corridas.
+- Verificación: 217 pruebas backend, 16 escenarios IA offline, integración PostgreSQL aislada,
+  frontend lint/build, 2 E2E dedicados y el E2E integral. Un smoke contra la API compilada encoló
+  una corrida real en PostgreSQL con `202` en 48 ms y luego la canceló. La migración
+  `recommendation_analysis_runs` fue aplicada en Supabase y las tablas nuevas no conceden acceso
+  directo a `anon`/`authenticated`; el historial Prisma también quedó reconciliado y
+  `prisma migrate status` reporta las 22 migraciones al día.
+- Alcance validado con fixtures y PostgreSQL aislado. No se ejecutó canary LLM real ni se afirma
+  validación del pipeline con AWS real; OCI/AWS conservan el estado documentado del onboarding.
+
 ## 2026-07-16 — Onboarding operativo cloud por tenant
 
 - Se integró en Ingesta un flujo reanudable OCI/AWS para crear conexión, cifrar/revocar

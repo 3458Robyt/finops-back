@@ -27,3 +27,11 @@
 ## Cierre de inteligencia por recurso — 2026-07-11
 
 La etapa no deja deuda funcional adicional: el aislamiento, la evidencia y el flujo E2E se validan en CI. Los ítems de esta tabla permanecen abiertos porque corresponden a producción, datos reales o documentación histórica, no a la rebanada funcional cerrada.
+
+## Pipeline gobernado post-ingesta — 2026-07-23
+
+La fase no agrega deuda funcional conocida: cola, recuperación, permisos, aislamiento, evidencia,
+auditoría, persistencia y UI quedaron cubiertos por pruebas locales reproducibles. Continúan
+vigentes `AI-001` para un canary controlado del proveedor real, `AWS-001` por ausencia de cuenta AWS
+y `SEC-001` para el programa global de RLS. Las tablas nuevas del pipeline no tienen grants directos
+para `anon` ni `authenticated`; no se amplió esta fase a resolver RLS para todo el esquema.

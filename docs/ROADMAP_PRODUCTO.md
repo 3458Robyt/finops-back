@@ -201,3 +201,19 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
   por policy. AWS conserva cobertura con fixtures y requiere una cuenta real para canary productivo.
 - Supabase tiene unicidad parcial para jobs activos y acceso PostgREST directo revocado en las
   tablas operativas de onboarding. La RLS global del producto sigue registrada como deuda aparte.
+
+## 11. Actualización 2026-07-23 - Análisis gobernado post-ingesta
+
+- El paso entre ingesta y recomendaciones ya es una operación durable: una corrida tenant-scoped
+  registra selección de datos, análisis determinístico, compuerta de evidencia, generación,
+  auditoría, persistencia y notificación.
+- La misma evidencia canónica alimenta al generador, auditor, deduplicación y trazabilidad. Una
+  corrida sin evidencia suficiente termina de forma explicable y no consume tokens de IA.
+- El worker es reanudable e idempotente; el disparador automático post-ingesta está implementado
+  con cooldown, pero desactivado durante desarrollo. La UI permite operación manual y consulta
+  read-only.
+- Estado de validación: unitarias, golden scenarios offline, PostgreSQL aislado y E2E con fixtures
+  aprobados; esquema aplicado en Supabase. El canary de proveedor IA real continúa opcional
+  (`AI-001`) y AWS real continúa bloqueado externamente (`AWS-001`).
+- Próximo incremento de producto recomendado: medir ahorro observado después de la ejecución manual,
+  sin confundir ahorro estimado, proyectado y confirmado.
