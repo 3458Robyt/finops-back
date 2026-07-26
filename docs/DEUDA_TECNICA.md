@@ -16,6 +16,7 @@
 | AWS-001 | Alta | Validación cloud | Bloqueado externo | No hay cuenta/rol AWS real disponible; STS, EC2, CloudWatch, Cost Explorer y S3 solo están validados con fixtures | Ejecutar canary read-only con rol de mínimo privilegio y benchmark documentado | Antes de onboarding AWS productivo |
 | OCI-001 | Media | Permisos cloud | Registrado | OCI Usage API devuelve `DENIED`; identidad, Compute, Monitoring y FOCUS sí funcionan | Conceder policy read-only de Usage API o aceptar FOCUS como única fuente de costos | Antes de requerir redundancia de costos OCI |
 | PERF-001 | Media | Rendimiento | Registrado | Importar `oci-sdk` añade aproximadamente 35–42 s al arranque de procesos one-shot aunque las llamadas reales tarden 3–5 s | Carga diferida o worker persistente con benchmark antes/después | Antes de escalar workers efímeros |
+| VAL-001 | Media | Rendimiento/validación | Registrado | El Centro de Realización de Valor tiene agregaciones SQL, pero falta medirlas con 10.000 recomendaciones y 20.000 mediciones en PostgreSQL aislado | Capturar `EXPLAIN (ANALYZE, BUFFERS)` y benchmark de resumen, página y exportación; ajustar índices solo con evidencia | Antes de activar conciliación automática compartida |
 | QA-002 | Media | Validación UI | Bloqueado externo | No se conoce la contraseña del admin maestro para ejecutar el smoke autenticado completo en navegador | Proveer una cuenta de prueba autorizada o rotar la contraseña con aprobación explícita | Antes de aceptación manual del onboarding |
 
 ## Regla de mantenimiento

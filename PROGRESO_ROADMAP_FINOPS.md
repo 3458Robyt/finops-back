@@ -1,5 +1,13 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-07-26 — Centro de realización de valor FinOps (rama `feat/value-realization-center`)
+- Se agregó el centro sobre `recommendation_savings_measurements` como única fuente de verdad: resumen por moneda, conteos del ciclo, tendencia mensual, filtros, cursor estable y exportación CSV limitada.
+- Se implementó `POST /api/v1/value-realization/reconcile` con lotes acotados, hash idempotente, separación de aumentos de costo, tolerancia a fallos por candidato y notificaciones in-app en español.
+- La conciliación posterior a ingesta es opcional (`SAVINGS_RECONCILIATION_ENABLED=false` por defecto). Email/Telegram se reutilizan de `OutboundMessageService` y solo se activan con `VALUE_REALIZATION_OUTBOUND_ENABLED=true`.
+- Frontend: nueva vista `Valor realizado` con KPIs, embudo, uPlot, portafolio filtrable, carga paginada, actualización manual, exportación autenticada y navegación al detalle.
+- Verificación realizada: backend typecheck y prueba unitaria de conciliación; frontend lint y build. Pendiente: integración PostgreSQL aislada, benchmark de consultas y smoke E2E autenticado.
+
+
 ## 2026-07-23 — Pipeline gobernado de análisis FinOps post-ingesta
 
 - Se agregó una corrida durable por tenant o recurso con estados, etapas, snapshot canónico, hash de
