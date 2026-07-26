@@ -537,3 +537,27 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Los workers de ingesta, aprendizaje, scheduler y mensajes reutilizan un único loop no solapable; conserva ejecución inmediata, detención y manejo de errores.
 - Se centralizó la traducción de errores FinOps repetida en cuatro controladores, sin alterar sus contratos HTTP.
 - Se removieron aliases TypeScript y generación de declaraciones no utilizados. `dotenv` se conserva por sus entrypoints activos.
+
+### 2026-07-25 - Medición verificable del ahorro post-ejecución
+
+- Se implementó `recommendation_savings_measurements` para separar el ahorro
+  reportado manualmente, el ahorro observado/calculado, la proyección mensual,
+  los aumentos de costo y el ahorro verificado.
+- El cálculo es determinístico y tenant-scoped: usa ventanas UTC comparables,
+  costo efectivo cuando es consistente, costo facturado como fallback, alcance
+  explícito por recurso/servicio/cuenta, fuente/moneda/conexión única y hash de
+  evidencia idempotente. No usa LLM ni convierte automáticamente históricos.
+- La eficiencia por unidad registra cantidad, unidad y costo unitario; un cambio
+  de volumen superior al 20% bloquea la afirmación de eficiencia.
+- Las recomendaciones ligadas a recursos requieren evidencia técnica posterior
+  suficiente de CPU y memoria; las señales de saturación bloquean la verificación.
+- La UI permite calcular/recalcular, revisar evidencia, verificar o rechazar y
+  conserva el historial en el timeline. El KPI confirmado y el ROI solo suman
+  mediciones `VERIFIED`; el valor manual no se mezcla.
+- Migraciones `202607250001_verified_savings_measurements` y
+  `202607250002_savings_unit_normalization` aplicadas en Supabase y en el
+  esquema aislado `finops_e2e_verified_savings`; no se insertaron fixtures en
+  producción.
+- Verificación: 53 archivos y 224 pruebas unitarias, 16 pruebas IA offline, 4
+  suites/5 pruebas de integración PostgreSQL, typecheck/build backend y
+  lint/build frontend aprobados.

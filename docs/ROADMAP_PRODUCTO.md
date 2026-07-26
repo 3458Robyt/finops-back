@@ -217,3 +217,17 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
   (`AI-001`) y AWS real continúa bloqueado externamente (`AWS-001`).
 - Próximo incremento de producto recomendado: medir ahorro observado después de la ejecución manual,
   sin confundir ahorro estimado, proyectado y confirmado.
+
+## 12. Actualización 2026-07-25 - Medición verificable post-ejecución
+
+- Se implementó `recommendation_savings_measurements` para separar ahorro reportado por el usuario,
+  ahorro observado/calculado, proyección mensual, aumentos de costo y ahorro verificado.
+- El cálculo usa ventanas UTC comparables, agregación SQL por tenant/cuenta/proveedor/alcance,
+  hash idempotente, historial inmutable para resultados verificados y verificación humana explícita.
+- La UI de detalle permite calcular/recalcular, revisar cobertura, fuente, base de costo, método,
+  unidades, evidencia técnica y verificar o rechazar el resultado.
+- La evidencia técnica posterior reutiliza las reglas de saturación existentes y exige CPU/memoria
+  con cobertura mínima para verificar recomendaciones ligadas a recursos; una señal crítica bloquea
+  la confirmación.
+- Migraciones aplicadas en Supabase: `202607250001_verified_savings_measurements` y
+  `202607250002_savings_unit_normalization`. No se insertaron fixtures productivos.
