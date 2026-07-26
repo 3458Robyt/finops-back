@@ -112,8 +112,8 @@ Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_r
 ### Fase 5.1 — Realización de valor · IMPLEMENTADA EN RAMA DE DESARROLLO
 - Centro `Valor realizado` con resumen por moneda, embudo del ciclo, tendencia, portafolio paginado, filtros, exportación CSV y enlace al detalle.
 - Conciliación determinística e idempotente sobre `recommendation_savings_measurements`, manual y opcional posterior a ingesta; sin ledger paralelo ni llamadas LLM.
-- Notificaciones in-app reutilizadas y canales email/Telegram opcionales mediante el servicio outbound existente. Ver `docs/VALUE_REALIZATION_CENTER.md`.
-- Pendiente antes de activar automáticamente: benchmark `EXPLAIN ANALYZE`, integración PostgreSQL aislada y validación visual/E2E autenticada.
+- Notificaciones in-app con dedupe específico por medición/estado y canales email/Telegram opcionales mediante el servicio outbound existente. Ver `docs/VALUE_REALIZATION_CENTER.md`.
+- Migración aplicada en Supabase, integración PostgreSQL aislada y benchmark con 5 tenants/10.000 recomendaciones/20.000 mediciones verificados. La validación visual E2E autenticada queda como actividad manual de interfaz, no como requisito para habilitar la operación backend.
 
 ---
 

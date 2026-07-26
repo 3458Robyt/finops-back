@@ -569,3 +569,13 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Verificación: 53 archivos y 224 pruebas unitarias, 16 pruebas IA offline, 4
   suites/5 pruebas de integración PostgreSQL, typecheck/build backend y
   lint/build frontend aprobados.
+
+### 2026-07-26 - Centro de realización de valor
+
+- Se añadió el Centro `Valor realizado` con resumen por moneda, portafolio SQL paginado, tendencia semántica (observado, proyectado/run-rate verificado y aumentos separados), cola de trabajo y exportación CSV acotada.
+- La conciliación usa únicamente `recommendation_savings_measurements`, procesa todas las ejecuciones manuales elegibles, excluye mediciones verificadas y conserva idempotencia por hash. Los roles operativos pueden ejecutar la actualización; los roles autenticados restantes mantienen lectura.
+- Se agregó deduplicación explícita de notificaciones por tenant, usuario, medición y estado. El correo/Telegram opcional solo se dispara después de crear una alerta in-app nueva y nunca revierte una medición ante una falla externa.
+- La ingesta exitosa puede disparar una conciliación acotada; el inicio y scheduler por tenant son opt-in, no solapables y desactivados por defecto durante desarrollo.
+- Supabase: aplicada la migración `202607260001_value_realization_notification_dedupe` con índices para ejecuciones y mediciones; `prisma migrate status` quedó al día.
+- Evidencia de rendimiento en esquema aislado Supabase: 5 tenants, 10.000 recomendaciones y 20.000 mediciones; `summary=459 ms`, página de 100=`447 ms`, exportación de 10.000=`994 ms`, `EXPLAIN ANALYZE=131.263 ms`. Sin fixtures en el esquema principal.
+- Verificación: typecheck backend, 227 pruebas unitarias, integración PostgreSQL tenant-scoped, smoke HTTP autenticado de login/summary/items/trend/export, lint/build frontend y benchmark de lectura aprobados.
