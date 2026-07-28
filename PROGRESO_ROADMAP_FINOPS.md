@@ -1,5 +1,15 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-07-28 — Beta integrada: contexto tenant, RLS runtime y workers seguros
+- Se verificó la integridad de las ramas aprobadas antes de continuar: backend `f5ed051` y frontend integrado `b0fc256`, con cambios locales únicamente del objetivo activo.
+- Se agregó `TenantAwarePool` con `AsyncLocalStorage`, rol PostgreSQL `finops_runtime` y configuración de contexto tenant/usuario/request en una sola sentencia SQL por consulta; las consultas sin contexto no agregan sobrecarga cuando no está activo el enforcement.
+- Los workers de ingesta, aprendizaje, análisis y schedulers reclaman con `workerId` y cambian al `tenantId` de la fila antes de procesar datos. Las políticas de cola permiten reclamar de forma controlada y las operaciones tenant siguen restringidas.
+- Las migraciones `202607280001_runtime_tenant_rls` a `202607280005_allow_cross_tenant_operator_user_refs` cubren los 36 modelos con `tenantId`; se corrigieron las omisiones iniciales de `cloud_connections` y `operator_storage_locations`, el vínculo tenant de exportaciones cloud y el caso legítimo de usuarios operadores con acceso multi-tenant.
+- Las cinco migraciones ya están aplicadas y resueltas en Supabase `public`. La base principal conserva RLS en sus tablas operativas, el rol `finops_runtime` existe y el trigger de consistencia tenant está presente en 36 tablas; `_prisma_migrations` es la única tabla pública sin RLS.
+- Verificación: typecheck backend OK; 227 pruebas unitarias OK; integración real de contexto/RLS OK en schema aislado y Supabase principal; E2E Playwright integral con `DB_RUNTIME_ENFORCE=true`: 4/4 pruebas, 53.0 s.
+- Pendiente para cerrar el hardening productivo: ejecutar `EXPLAIN (ANALYZE, BUFFERS)` con volumen representativo, revisar referencias tenant compuestas restantes y activar `DB_RUNTIME_ENFORCE=true` mediante una ventana/canary operativo. No se declara producción cerrada todavía.
+- Canary principal: `src/testing/tenantContext.integration.test.ts` pasó contra Supabase `public` con `DB_RUNTIME_ENFORCE=true`. El `EXPLAIN` de la consulta raw de métricas usó `resource_metric_samples_tenant_id_sampled_at_idx` y terminó en 52.029 ms para 660 filas; la agregación de 30 minutos terminó en 7.692 ms para 660 grupos. Estos valores son una línea base de la cuenta actual, no un SLA productivo.
+
 ### 2026-07-26 — Centro de realización de valor FinOps (rama `feat/value-realization-center`)
 - Se agregó el centro sobre `recommendation_savings_measurements` como única fuente de verdad: resumen por moneda, conteos del ciclo, tendencia mensual, filtros, cursor estable y exportación CSV limitada.
 - Se implementó `POST /api/v1/value-realization/reconcile` con lotes acotados, hash idempotente, separación de aumentos de costo, tolerancia a fallos por candidato y notificaciones in-app en español.

@@ -110,7 +110,8 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 - **Secretos:** `.env` está en `.gitignore`; usar `.env.example` como plantilla. No commitear claves.
 
 ### Pendientes de hardening antes de producción
-- RLS o controles equivalentes en Supabase, verificados con pruebas de aislamiento por tenant.
+- Activar `DB_RUNTIME_ENFORCE=true` mediante canary y completar pruebas de aislamiento por tenant
+  con la base principal; las migraciones RLS y el rol runtime ya están aplicados en Supabase.
 - Rotación de claves JWT/cifrado y gestión de secretos vía un gestor externo; `.env` es solo para desarrollo.
 - Observabilidad centralizada con retención, alertas y métricas de latencia.
 - Pruebas de integración contra una base de datos efímera controlada; no usar `DATABASE_URL` productiva.

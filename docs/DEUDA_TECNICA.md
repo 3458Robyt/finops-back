@@ -4,7 +4,7 @@
 
 | ID | Prioridad | Tipo | Estado | Hallazgo | Criterio de cierre | Momento objetivo |
 |---|---|---|---|---|---|---|
-| SEC-001 | Alta | Producción | Registrado | Tablas públicas de Supabase sin RLS | Acceso externo bloqueado, RLS por tenant y pruebas cross-tenant aprobadas | Antes de despliegue público |
+| SEC-001 | Alta | Producción | En progreso 2026-07-28 | RLS runtime, rol dedicado y trigger de consistencia aplicados en Supabase principal; falta activar el enforcement como configuración operativa y cerrar la revisión de referencias | Acceso externo bloqueado, `DB_RUNTIME_ENFORCE=true` validado mediante canary, referencias tenant compuestas revisadas y pruebas cross-tenant aprobadas | Antes de despliegue público |
 | OPS-001 | Media | Operación | Aceptado en desarrollo | Backend y workers se ejecutan manualmente | Worker desplegado con healthcheck y alerta de atraso | Fase de despliegue |
 | ING-001 | Media | Datos | Registrado | Jobs históricos pendientes o fallidos por configuración de prueba | Configuración validada y jobs históricos cerrados | Antes de onboarding de cliente |
 | DEP-001 | Media | Dependencias | Registrado | Alertas moderadas transitivas de OCI SDK y Prisma | Actualización o reducción controlada sin regresiones | Hardening productivo |
@@ -34,5 +34,18 @@ La etapa no deja deuda funcional adicional: el aislamiento, la evidencia y el fl
 La fase no agrega deuda funcional conocida: cola, recuperación, permisos, aislamiento, evidencia,
 auditoría, persistencia y UI quedaron cubiertos por pruebas locales reproducibles. Continúan
 vigentes `AI-001` para un canary controlado del proveedor real, `AWS-001` por ausencia de cuenta AWS
-y `SEC-001` para el programa global de RLS. Las tablas nuevas del pipeline no tienen grants directos
-para `anon` ni `authenticated`; no se amplió esta fase a resolver RLS para todo el esquema.
+y `SEC-001` para activar el enforcement en runtime. La validación del 2026-07-28 cubre los 36
+modelos con `tenantId` en schema aislado y Supabase principal, workers con contexto explícito,
+trigger de consistencia y pruebas cross-tenant; el cierre productivo exige canary, revisión de
+referencias compuestas y benchmark.
+
+## Beta integrada y segura — 2026-07-28
+
+- `TenantAwarePool` aplica el contexto de tenant, usuario, rol, request y worker sin imprimir
+  secretos y con configuración SQL agrupada para evitar una ronda por variable.
+- Los workers reclaman en modo operador controlado y procesan únicamente después de cambiar al
+  tenant de la fila; las colas no quedan bloqueadas por RLS.
+- La evidencia ejecutable es `npm run typecheck`, `npm run test:unit`, la prueba de integración
+  `src/testing/tenantContext.integration.test.ts` y `finops-app` `npm run test:e2e:full` con
+  `DB_RUNTIME_ENFORCE=true`. Las migraciones principales ya están aplicadas; queda la activación
+  operativa y su rollback documentado.

@@ -7,7 +7,7 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-07-26.
+> Última revisión: 2026-07-28.
 
 ---
 
@@ -81,10 +81,11 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 - Marcar `REFACTOR_PLAN.md` como cerrado (resuelve la discrepancia de estado).
 
 ### Fase 1 — Robustez y confianza (sin credenciales) · CORTO/MEDIO
-- Tests de integración contra BD real aislada (Docker Compose preparado; pendiente instalar Docker o
-  ejecutar en CI) y, cuando Supabase esté activa, verificación en una rama dedicada.
-- RLS a nivel de base de datos (el esquema ya es "RLS-ready"; envolver las consultas Prisma en
-  contexto por request).
+- Tests de integración contra BD real aislada: verificados en un schema Supabase efímero; Docker
+  local sigue siendo opcional y CI conserva la ruta PostgreSQL.
+- RLS a nivel de base de datos: el contexto Prisma/pg, rol `finops_runtime`, políticas para los 36
+  modelos tenant y contexto de workers ya están implementados en la rama beta. Falta aplicar y
+  verificar el mismo conjunto en la base Supabase principal.
 - Permisos multi-cliente reales con `tenant_access_assignments` (técnicos FinOps multi-tenant).
 - Logging estructurado y gestión/rotación de secretos (fuera de `.env` plano).
 
@@ -121,8 +122,21 @@ Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_r
 
 Se considera terminada cuando, además del núcleo actual: la ingesta es productiva y automática para
 al menos un proveedor real (Fase 2); existen métricas técnicas reales que enriquecen las
-recomendaciones (Fase 4); el aislamiento multi-tenant está reforzado a nivel de BD (Fase 1); y el
-sistema tiene hardening de producción (Fase 0/1). Todo manteniendo las decisiones firmes de la §1.
+recomendaciones (Fase 4); el aislamiento multi-tenant está aplicado y verificado también en la BD
+principal (Fase 1); y el sistema tiene hardening de producción (Fase 0/1). Todo manteniendo las
+decisiones firmes de la §1.
+
+## Actualización 2026-07-28 — Beta integrada y segura
+
+- La rama de trabajo integrada consolida el valor realizado, onboarding, análisis gobernado y el
+  contexto runtime tenant-aware sin alterar la baseline aprobada.
+- La batería reproducible validó login, cambio de tenant, recomendaciones, análisis IA fixture,
+  inventario, métricas, evidencia, decisión y ejecución manual con RLS runtime activo.
+- Las cinco migraciones runtime/RLS ya fueron aplicadas y resueltas en Supabase `public`; la
+  prueba de contexto pasó contra la base principal y el E2E completo pasó en schema aislado.
+- El siguiente bloque técnico es activar `DB_RUNTIME_ENFORCE=true` mediante canary, cerrar las
+  referencias tenant compuestas, medir consultas con `EXPLAIN (ANALYZE, BUFFERS)` y documentar
+  rollback.
 
 ---
 
@@ -170,8 +184,8 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - `cloud_resources` ya no depende solo de datos manuales: los jobs de ingesta crean recursos desde inventario declarativo y, si falta inventario completo, desde las metricas tecnicas recolectadas.
 - `resource_metric_samples.cloudResourceId` se enlaza durante la persistencia y se reconcilia para muestras previas de la misma conexion/recurso, habilitando cruces costo-metrica-recomendacion mas confiables.
 - Las recomendaciones `COST_USAGE_AND_TECHNICAL` ahora tienen guardrails: requieren referencias tecnicas, recurso enlazado, cobertura/muestras suficientes y frescura. Si no, deben quedar como validacion tecnica pendiente.
-- El hardening ya no parte de cero: existen `helmet`, CORS configurable multi-origen, rate limits globales/especificos y logging estructurado por request. Quedan pendientes RLS/staged DB policies, gestion externa de secretos y tests de integracion contra BD real.
-- Pendiente critico vigente: validar inventario SDK Compute/EC2 con cuentas reales y benchmark, AWS productivo, RLS gradual, observabilidad centralizada y cierre de documentos historicos que aun usen terminos anteriores.
+- El hardening ya no parte de cero: existen `helmet`, CORS configurable multi-origen, rate limits globales/especificos, logging estructurado por request y RLS runtime aplicado en Supabase principal. Quedan pendientes activación/canary del enforcement, gestión externa de secretos, observabilidad centralizada y benchmark con volumen representativo.
+- Pendiente critico vigente: validar inventario SDK Compute/EC2 con cuentas reales y benchmark, AWS productivo, activación RLS runtime, observabilidad centralizada y cierre de documentos históricos que aun usen terminos anteriores.
 
 ## 7. Actualizacion 2026-07-11 - Ciclo operacional de recomendaciones
 
@@ -204,8 +218,9 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
   reintentar fuentes fallidas y cancelar ventanas pendientes sin borrar histórico.
 - OCI real quedó `PARTIAL`: identidad, inventario, métricas y FOCUS disponibles; Usage API denegada
   por policy. AWS conserva cobertura con fixtures y requiere una cuenta real para canary productivo.
-- Supabase tiene unicidad parcial para jobs activos y acceso PostgREST directo revocado en las
-  tablas operativas de onboarding. La RLS global del producto sigue registrada como deuda aparte.
+- Supabase tiene unicidad parcial para jobs activos, acceso PostgREST directo revocado en las
+  tablas operativas de onboarding y RLS runtime aplicada en las tablas del producto. La deuda
+  restante es activar el enforcement desde el backend y verificarlo en canary.
 
 ## 11. Actualización 2026-07-23 - Análisis gobernado post-ingesta
 

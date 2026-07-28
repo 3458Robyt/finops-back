@@ -44,7 +44,9 @@ Los canales de correo SMTP y Telegram se reutilizan de `OutboundMessageService` 
 - La exportación está limitada a 10.000 filas.
 - El portafolio presenta la última ejecución por recomendación; el histórico completo sigue en el detalle y timeline.
 - La conciliación considera todas las ejecuciones manuales `EXECUTED`/`PARTIAL` sin medición `VERIFIED`; que el portafolio muestre la última ejecución no oculta ejecuciones históricas pendientes.
-- El aislamiento usa JWT, guards y filtros tenant-scoped; RLS global sigue siendo una tarea separada.
+- El aislamiento usa JWT, guards, filtros tenant-scoped y, en la rama beta, contexto runtime con RLS
+  aplicado en Supabase principal; la activación operativa del enforcement y su canary siguen
+  pendientes.
 - No hay conversión de monedas ni estimación de ahorro mediante LLM.
 
 ## Conciliación automática durante desarrollo

@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-07-12
+Fecha: 2026-07-28
 
 ## Resumen
 
@@ -48,10 +48,12 @@ Implementado:
 
 Pendiente:
 
-- RLS o controles equivalentes a nivel BD de forma gradual.
+- Activar `DB_RUNTIME_ENFORCE=true` mediante canary en el backend y revisar referencias tenant
+  compuestas antes del despliegue público. Las migraciones RLS ya están aplicadas en Supabase
+  principal.
 - Gestion externa y rotacion formal de secretos.
 - Observabilidad centralizada.
-- Tests de integracion contra BD real controlada.
+- Benchmark con `EXPLAIN (ANALYZE, BUFFERS)` y volumen representativo.
 
 ## Rendimiento y pruebas recientes
 
@@ -61,6 +63,9 @@ Pendiente:
   memoria; la persistencia mantiene inserción idempotente por hash.
 - Backend: typecheck, suite completa (42 archivos, 173 tests), evaluación IA offline y build aprobados.
 - Frontend: lint, build y smoke E2E sin dependencia de API/BD aprobados.
+- Canary principal: la prueba `tenantContext.integration.test.ts` pasó con enforcement runtime contra
+  Supabase `public`; el plan de métricas usa el índice `(tenant_id, sampled_at)` y la línea base
+  observada fue 52.029 ms raw y 7.692 ms agregada para 660 filas/grupos.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
   desarrollo; Supabase se valida mediante migraciones Prisma antes de cambios de esquema.
 
@@ -70,7 +75,7 @@ Pendiente:
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Ejecutar el canary opcional de IA real con fixtures controlados antes de depender de un proveedor en entornos compartidos.
-- RLS gradual en Supabase.
+- Activación controlada del enforcement runtime RLS, rollback documentado y benchmark de consultas.
 - Limpieza de documentos antiguos que aun describen estados superados.
 
 ## Operación durante desarrollo
@@ -83,3 +88,6 @@ Pendiente:
 
 - La CI ejecuta el flujo Playwright completo contra fixtures de PostgreSQL y la API local del job de integración.
 - El flujo cubre login, cambio de tenant, inventario, detalle 360, evidencia, oportunidades relacionadas, plan auditado de fixture, decisión, timeline y ejecución manual sin depender de proveedores cloud ni de un LLM real.
+- El 2026-07-28 se repitió el E2E integral con `DB_RUNTIME_ENFORCE=true`: 4/4 pruebas pasaron en un
+  schema Supabase aislado y la prueba de contexto pasó contra Supabase principal. La activación
+  operativa del enforcement principal permanece pendiente.
