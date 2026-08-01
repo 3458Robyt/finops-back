@@ -1,51 +1,47 @@
 # Deuda técnica y faltantes — FinOps Inteligente
 
-> Registro único de hallazgos. Durante desarrollo se prioriza funcionalidad; los ítems de producción se corrigen antes del despliegue público.
+> Registro autoritativo al 2026-07-31. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
+> `DIFERIDO` o `CERRADO` y evidencia asociada. Los ítems de desarrollo manual no son incidentes.
 
-| ID | Prioridad | Tipo | Estado | Hallazgo | Criterio de cierre | Momento objetivo |
-|---|---|---|---|---|---|---|
-| SEC-001 | Alta | Producción | En progreso 2026-07-28 | RLS runtime, rol dedicado y trigger de consistencia aplicados en Supabase principal; falta activar el enforcement como configuración operativa y cerrar la revisión de referencias | Acceso externo bloqueado, `DB_RUNTIME_ENFORCE=true` validado mediante canary, referencias tenant compuestas revisadas y pruebas cross-tenant aprobadas | Antes de despliegue público |
-| OPS-001 | Media | Operación | Aceptado en desarrollo | Backend y workers se ejecutan manualmente | Worker desplegado con healthcheck y alerta de atraso | Fase de despliegue |
-| ING-001 | Media | Datos | Registrado | Jobs históricos pendientes o fallidos por configuración de prueba | Configuración validada y jobs históricos cerrados | Antes de onboarding de cliente |
-| DEP-001 | Media | Dependencias | Registrado | Alertas moderadas transitivas de OCI SDK y Prisma | Actualización o reducción controlada sin regresiones | Hardening productivo |
-| DOC-001 | Baja | Documentación | Cerrado 2026-07-16 | Documentos antiguos contenían estados superados | `ONBOARDING_CLOUD.md` es autoritativo y los contextos antiguos están marcados como históricos | Cerrado |
-| QA-001 | Baja | Entorno de desarrollo | Cerrado 2026-07-16 | Docker no está disponible localmente | Integración PostgreSQL y Playwright completo aprobados contra schema Supabase efímero, posteriormente eliminado | Cerrado |
-| AI-001 | Baja | Validación de proveedor | Registrado | El canary de IA real es opcional y no debe ejecutarse contra datos productivos sin fixtures controlados | Ejecutar `AI_LIVE_TESTS=true npm run test:ai:live` con fixtures aislados y revisar latencia, tokens, auditoría y snapshot | Antes de activar IA real compartida |
-| OPS-002 | Baja | Operación | Aceptado en desarrollo | La evaluación de presupuestos es manual mientras backend/workers se ejecutan bajo demanda | Conectar `POST /api/v1/budgets/evaluate` al worker o scheduler desplegado y monitorear ejecuciones | Antes de alertas operativas permanentes |
-| FIN-001 | Baja | Alcance FinOps | Diferido | La asignación usa primera coincidencia completa; no distribuye costos compartidos ni genera chargeback contable | Diseñar reglas porcentuales, conciliación y aprobación financiera separadas | Después de validar showback con usuarios |
-| AWS-001 | Alta | Validación cloud | Bloqueado externo | No hay cuenta/rol AWS real disponible; STS, EC2, CloudWatch, Cost Explorer y S3 solo están validados con fixtures | Ejecutar canary read-only con rol de mínimo privilegio y benchmark documentado | Antes de onboarding AWS productivo |
-| OCI-001 | Media | Permisos cloud | Registrado | OCI Usage API devuelve `DENIED`; identidad, Compute, Monitoring y FOCUS sí funcionan | Conceder policy read-only de Usage API o aceptar FOCUS como única fuente de costos | Antes de requerir redundancia de costos OCI |
-| PERF-001 | Media | Rendimiento | Registrado | Importar `oci-sdk` añade aproximadamente 35–42 s al arranque de procesos one-shot aunque las llamadas reales tarden 3–5 s | Carga diferida o worker persistente con benchmark antes/después | Antes de escalar workers efímeros |
-| VAL-001 | Media | Rendimiento/validación | Registrado | El Centro de Realización de Valor tiene agregaciones SQL, pero falta medirlas con 10.000 recomendaciones y 20.000 mediciones en PostgreSQL aislado | Capturar `EXPLAIN (ANALYZE, BUFFERS)` y benchmark de resumen, página y exportación; ajustar índices solo con evidencia | Antes de activar conciliación automática compartida |
-| QA-002 | Media | Validación UI | Bloqueado externo | No se conoce la contraseña del admin maestro para ejecutar el smoke autenticado completo en navegador | Proveer una cuenta de prueba autorizada o rotar la contraseña con aprobación explícita | Antes de aceptación manual del onboarding |
+| ID | Prioridad | Tipo | Estado | Hallazgo / criterio de cierre | Evidencia o siguiente acción |
+|---|---|---|---|---|---|
+| SEC-001 | Alta | Producción | ABIERTO | Activar `DB_RUNTIME_ENFORCE=true` en producción y documentar rollback. | Migraciones RLS/hardening aplicadas; canary aislado aprobado. |
+| DB-001 | Alta | Supabase | CERRADO | Hardening de funciones y cobertura de índices FK. | 32 migraciones al día; Advisors seguridad sin lints; 27 índices FK presentes. |
+| ING-001 | Media | Datos | CERRADO | Scheduler no debe encolar conexiones sin validación/capacidades vigentes. | Validación e invalidación implementadas; se conservaron 5 fallos no asociados a prueba. |
+| DEP-001 | Media | Dependencias | CERRADO | Reducir carga OCI y eliminar vulnerabilidades de producción. | Módulos OCI específicos 2.138.0; mediana fría ~2,13 s; audit productivo sin vulnerabilidades. |
+| AI-001 | Media | Validación de proveedor | ABIERTO | Cerrar el canary IA real solo cuando el proveedor supere español, auditor, snapshot, latencia y tokens. | Chat pasó; generación fue rechazada correctamente por cobertura técnica insuficiente del fixture (2 días) y desalineación canónica. Mejorar fixture/evidencia y repetir; no ejecutar contra producción. |
+| AWS-001 | Alta | Validación cloud | BLOQUEADO | Validar STS/EC2/CloudWatch/Cost Explorer/FOCUS con una cuenta y rol AWS reales. | Falta cuenta/rol externo. Las credenciales bootstrap permiten `AssumeRole`; no son credenciales de tenants. |
+| OCI-001 | Media | Redundancia cloud | BLOQUEADO | Habilitar canary read-only de OCI Usage API con policy mínima: `Allow group <group_name> to read usage-report in tenancy`. | FOCUS sigue como fuente primaria; falta aplicar policy en IAM OCI. |
+| OPS-001 | Media | Operación | DIFERIDO | Workers, healthchecks, alertas 24/7 y scheduler productivo. | Desarrollo manual aceptado hasta definir despliegue. |
+| OPS-002 | Baja | Presupuestos | DIFERIDO | Conectar evaluación periódica de presupuestos a worker/scheduler desplegado. | La evaluación manual funciona durante desarrollo. |
+| OPS-003 | Media | Secretos/observabilidad | DIFERIDO | Secret manager externo, rotación formal, logs/alertas centralizados. | Requerido antes de producción pública. |
+| FIN-001 | Baja | Alcance FinOps | DIFERIDO | Distribución porcentual de costos compartidos y chargeback contable. | Showback determinístico actual queda fuera de la beta. |
+| QA-001 | Baja | Entorno | CERRADO | Integración y E2E reproducibles sin Docker local. | Schema Supabase aislado migrado, probado y eliminado. |
+| QA-002 | Media | Validación UI | CERRADO | Smoke autenticado reproducible sin depender de una contraseña real compartida. | Fixtures E2E generan credenciales controladas y cleanup automático. |
+| VAL-001 | Media | Rendimiento | CERRADO | Medir realización de valor con 10.000 recomendaciones y 20.000 mediciones. | Benchmark aislado: resumen 459 ms, página 447 ms, exportación 994 ms, EXPLAIN 131 ms. |
 
-## Regla de mantenimiento
+## Componentes permanentes del roadmap
 
-- Cada bug o faltante encontrado se registra aquí antes de posponerlo.
-- Un ítem solo pasa a `Cerrado` con evidencia de prueba, CI o verificación manual documentada.
-- Los ítems aceptados en desarrollo no deben presentarse como incidentes mientras la aplicación se ejecute manualmente.
+1. Gobernanza de releases y configuración.
+2. Higiene de datos y jobs operativos.
+3. Mantenimiento periódico de Supabase y Advisors.
+4. Rendimiento de dependencias y arranque.
+5. Calificación periódica del proveedor IA.
+6. Operación productiva activable cuando exista destino de despliegue.
 
-## Cierre de inteligencia por recurso — 2026-07-11
+## Decisiones de alcance
 
-La etapa no deja deuda funcional adicional: el aislamiento, la evidencia y el flujo E2E se validan en CI. Los ítems de esta tabla permanecen abiertos porque corresponden a producción, datos reales o documentación histórica, no a la rebanada funcional cerrada.
+- FOCUS continúa como fuente operativa primaria; CPU, memoria, red y disco provienen de Monitoring/CloudWatch.
+- AWS real y OCI Usage API requieren permisos/cuentas externas; no se simulan para cerrar deuda.
+- No se implementa remediación automática cloud.
+- Los workers se ejecutan manualmente durante desarrollo.
+- El grafo visual fue retirado por baja utilidad y latencia.
+- Los documentos históricos no son fuentes de estado; consultar `docs/ESTADO_ACTUAL_FINOPS.md`,
+  `docs/ROADMAP_PRODUCTO.md` y `PROGRESO_ROADMAP_FINOPS.md`.
 
-## Pipeline gobernado post-ingesta — 2026-07-23
+## Historial de cierre
 
-La fase no agrega deuda funcional conocida: cola, recuperación, permisos, aislamiento, evidencia,
-auditoría, persistencia y UI quedaron cubiertos por pruebas locales reproducibles. Continúan
-vigentes `AI-001` para un canary controlado del proveedor real, `AWS-001` por ausencia de cuenta AWS
-y `SEC-001` para activar el enforcement en runtime. La validación del 2026-07-28 cubre los 36
-modelos con `tenantId` en schema aislado y Supabase principal, workers con contexto explícito,
-trigger de consistencia y pruebas cross-tenant; el cierre productivo exige canary, revisión de
-referencias compuestas y benchmark.
-
-## Beta integrada y segura — 2026-07-28
-
-- `TenantAwarePool` aplica el contexto de tenant, usuario, rol, request y worker sin imprimir
-  secretos y con configuración SQL agrupada para evitar una ronda por variable.
-- Los workers reclaman en modo operador controlado y procesan únicamente después de cambiar al
-  tenant de la fila; las colas no quedan bloqueadas por RLS.
-- La evidencia ejecutable es `npm run typecheck`, `npm run test:unit`, la prueba de integración
-  `src/testing/tenantContext.integration.test.ts` y `finops-app` `npm run test:e2e:full` con
-  `DB_RUNTIME_ENFORCE=true`. Las migraciones principales ya están aplicadas; queda la activación
-  operativa y su rollback documentado.
+- 2026-07-31: hardening Supabase, índices FK, limpieza controlada, scheduler validado y reducción de OCI.
+- 2026-07-28: beta integrada con contexto tenant, RLS runtime y workers seguros.
+- 2026-07-26: Centro de Realización de Valor y benchmark.
+- 2026-07-11: evidencia técnica canónica, auditor IA y aprendizaje por recurso.

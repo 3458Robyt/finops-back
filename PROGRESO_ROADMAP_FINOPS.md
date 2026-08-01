@@ -1,5 +1,27 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-07-31 — Cierre técnico de Supabase, scheduler y dependencias OCI
+
+- Se aplicaron y verificaron en Supabase `public` las migraciones `202607310001_supabase_function_hardening` y
+  `202607310002_cover_foreign_keys`. Las funciones FinOps tienen `search_path` seguro, no son ejecutables por
+  `anon`, `authenticated` ni `service_role`, y solo `finops_runtime` conserva ejecución.
+- Se agregaron los 27 índices líderes de claves foráneas públicas detectados por Supabase Advisor.
+- Se eliminaron exactamente 433 jobs `FAILED` de `BILLING_EXPORT` asociados al bucket/namespace de prueba `asd`;
+  se conservaron los otros 5 fallos históricos. También se eliminaron los tres schemas E2E aprobados:
+  `finops_e2e_integrated_secure_beta`, `finops_e2e_local` y `finops_e2e_verified_savings`.
+- El scheduler ahora exige validación vigente, `IDENTITY` y capacidades específicas por fuente. Cambios de
+  credenciales, región o configuración invalidan la validación previa.
+- El paquete OCI paraguas fue sustituido por módulos específicos `2.138.0`; la mediana de importación en frío
+  quedó en aproximadamente 2,13 s en cinco mediciones. `npm audit --omit=dev` no reportó vulnerabilidades.
+- Evidencia: 32 migraciones Prisma al día, Advisors de seguridad sin lints y performance solo con índices no usados
+  informativos; el canary IA real y OCI Usage API quedan condicionados a proveedor/policy externos.
+- Verificación final local: backend `npm run typecheck`, `npm run test:unit` (56 archivos, 235 pruebas, 1 omitida),
+  `npm run test:ai:offline` (16/16), `npm run build` y `npm audit --omit=dev` sin vulnerabilidades altas; frontend
+  lint/build y audit también aprobados.
+- Canary IA real en schema aislado: chat en español y trazas aprobados; la generación fue rechazada por el
+  auditor de forma correcta debido a cobertura técnica de solo 2 días y evidencia canónica insuficiente. El
+  schema y fixtures fueron eliminados automáticamente; `AI-001` permanece abierto.
+
 ### 2026-07-28 — Beta integrada: contexto tenant, RLS runtime y workers seguros
 - Se verificó la integridad de las ramas aprobadas antes de continuar: backend `f5ed051` y frontend integrado `b0fc256`, con cambios locales únicamente del objetivo activo.
 - Se agregó `TenantAwarePool` con `AsyncLocalStorage`, rol PostgreSQL `finops_runtime` y configuración de contexto tenant/usuario/request en una sola sentencia SQL por consulta; las consultas sin contexto no agregan sobrecarga cuando no está activo el enforcement.

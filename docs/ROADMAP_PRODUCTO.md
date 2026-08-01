@@ -1,5 +1,15 @@
 # Roadmap de Producto — FinOps Inteligente
 
+> **Consolidación técnica 2026-07-31:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
+> gobernada, métricas técnicas, presupuestos, asignación, realización de valor y RLS verificados.
+> Los pendientes se gestionan en `docs/DEUDA_TECNICA.md` con estados `ABIERTO`, `BLOQUEADO`,
+> `DIFERIDO` o `CERRADO`. FOCUS sigue como fuente operativa primaria; OCI Usage API es
+> redundancia; AWS real requiere una cuenta/rol externo.
+>
+> Componentes permanentes añadidos: gobernanza de releases/configuración, higiene de jobs y datos,
+> mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
+> y operación productiva activable cuando exista destino de despliegue.
+
 > Documento de **propuesta y planificación de producto**. Traza el camino desde el estado actual
 > hacia una versión terminada, por fases y con dependencias explícitas.
 >
@@ -7,7 +17,7 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-07-28.
+> Última revisión: 2026-07-31.
 
 ---
 
@@ -72,8 +82,9 @@ Las fases se ordenan por dependencia y por si requieren credenciales cloud reale
 son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 
 ### Fase 0 — Cierre de lo actual (sin credenciales) · CORTO
-- **Hardening base:** `helmet`, rate limiting, CORS configurable y logging estructurado ya están
-  implementados; queda validar despliegue y observabilidad centralizada.
+- **Hardening base:** `helmet`, rate limiting, CORS configurable, logging estructurado, runtime RLS,
+  funciones Supabase endurecidas e índices FK están implementados y verificados. Queda la activación
+  operativa de `DB_RUNTIME_ENFORCE=true` y observabilidad centralizada.
 - **Seed/demo sintético** para `ingestion_jobs`, `data_quality_checks`, `cloud_resources`,
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
 - **Verificación en vivo** del stack local cuando Docker esté disponible; CI ya valida PostgreSQL/API de forma aislada.
@@ -84,20 +95,21 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 - Tests de integración contra BD real aislada: verificados en un schema Supabase efímero; Docker
   local sigue siendo opcional y CI conserva la ruta PostgreSQL.
 - RLS a nivel de base de datos: el contexto Prisma/pg, rol `finops_runtime`, políticas para los 36
-  modelos tenant y contexto de workers ya están implementados en la rama beta. Falta aplicar y
-  verificar el mismo conjunto en la base Supabase principal.
+  modelos tenant, funciones con `search_path` seguro y permisos API revocados están aplicados y
+  verificados en Supabase principal. Falta la activación operativa productiva y el rollback documentado.
 - Permisos multi-cliente reales con `tenant_access_assignments` (técnicos FinOps multi-tenant).
-- Logging estructurado y gestión/rotación de secretos (fuera de `.env` plano).
+- Gestión/rotación de secretos fuera de `.env` plano y observabilidad centralizada.
 
 ### Fase 2 — Validación AWS productiva (requiere credenciales) · MEDIO
 El adaptador SDK, STS `AssumeRole`, EC2, CloudWatch, Cost Explorer, FOCUS/S3, worker y onboarding
-están implementados y cubiertos con fixtures. Falta una cuenta/rol AWS real para ejecutar el canary,
-medir volumen y cerrar permisos mínimos con evidencia productiva. No se usarán admins temporales.
+están implementados y cubiertos con fixtures. La validación real permanece bloqueada por falta de
+cuenta/rol AWS; no se usarán admins temporales. Las credenciales AWS de entorno son bootstrap de la
+plataforma para `AssumeRole`, no credenciales de los tenants.
 
 ### Fase 3 — Consolidación OCI productiva (requiere credenciales) · MEDIO
-OCI real está validado para identidad, Compute, Monitoring y Object Storage/FOCUS. Usage API está
-denegada por policy, pero AUTO puede operar con FOCUS. Falta optimizar importación del SDK, validar
-mayor volumen y decidir si se habilitará Usage API para redundancia de costos.
+OCI real está validado para identidad, Compute, Monitoring y Object Storage/FOCUS. La importación
+OCI se redujo a módulos específicos y una mediana aproximada de 2,13 s. Usage API permanece como
+redundancia requerida, bloqueada hasta aplicar la policy mínima oficial; AUTO opera con FOCUS.
 
 ### Fase 4 — Métricas técnicas reales (requiere credenciales) · MEDIO/LARGO
 Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_resources` /
@@ -110,6 +122,13 @@ Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_r
 - TimescaleDB hypertable para `cost_metrics` (`prisma/timescale.sql` ya existe).
 - Paneles de gobernanza y trazabilidad ampliados.
 - **La remediación automática cloud queda explícitamente fuera del alcance.**
+
+### Fase transversal — Gobernanza de beta y producción
+- Releases por PR, configuración auditable y secretos fuera del repositorio.
+- Higiene periódica de jobs, datos E2E y migraciones; revisión de Supabase Advisors.
+- Benchmark de dependencias/arranque y consultas con evidencia antes de retirar índices.
+- Calificación periódica del proveedor IA con canary, auditor, snapshots y estimación de tokens.
+- Workers, healthchecks, observabilidad y alertas 24/7 únicamente cuando exista destino de despliegue.
 ### Fase 5.1 — Realización de valor · IMPLEMENTADA EN RAMA DE DESARROLLO
 - Centro `Valor realizado` con resumen por moneda, embudo del ciclo, tendencia, portafolio paginado, filtros, exportación CSV y enlace al detalle.
 - Conciliación determinística e idempotente sobre `recommendation_savings_measurements`, manual y opcional posterior a ingesta; sin ledger paralelo ni llamadas LLM.
@@ -134,9 +153,9 @@ decisiones firmes de la §1.
   inventario, métricas, evidencia, decisión y ejecución manual con RLS runtime activo.
 - Las cinco migraciones runtime/RLS ya fueron aplicadas y resueltas en Supabase `public`; la
   prueba de contexto pasó contra la base principal y el E2E completo pasó en schema aislado.
-- El siguiente bloque técnico es activar `DB_RUNTIME_ENFORCE=true` mediante canary, cerrar las
-  referencias tenant compuestas, medir consultas con `EXPLAIN (ANALYZE, BUFFERS)` y documentar
-  rollback.
+- El siguiente bloque técnico es activar `DB_RUNTIME_ENFORCE=true` mediante canary productivo
+  controlado, ejecutar el canary IA real si el proveedor está disponible y completar la
+  documentación de release.
 
 ---
 

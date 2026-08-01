@@ -1,5 +1,8 @@
 # Contexto para auditoría completa — FinOps Inteligente
 
+> **Histórico:** corte 2026-07-09. No usar para decidir el estado actual; consultar
+> `docs/ESTADO_ACTUAL_FINOPS.md` y `docs/DEUDA_TECNICA.md`.
+
 > **Snapshot histórico del 2026-07-09.** No describe el estado vigente posterior al retiro de
 > Recharts y a la integración del onboarding cloud. Consulta `ROADMAP_PRODUCTO.md`,
 > `PROGRESO_ROADMAP_FINOPS.md` y `ONBOARDING_CLOUD.md`.

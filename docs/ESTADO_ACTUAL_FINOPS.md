@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-07-28
+Fecha: 2026-07-31
 
 ## Resumen
 
@@ -48,9 +48,9 @@ Implementado:
 
 Pendiente:
 
-- Activar `DB_RUNTIME_ENFORCE=true` mediante canary en el backend y revisar referencias tenant
-  compuestas antes del despliegue público. Las migraciones RLS ya están aplicadas en Supabase
-  principal.
+- Las migraciones de hardening de funciones e índices FK ya están aplicadas en Supabase principal.
+  La seguridad Advisor quedó sin hallazgos; falta activar `DB_RUNTIME_ENFORCE=true` en la configuración
+  productiva mediante canary y documentar rollback antes del despliegue público.
 - Gestion externa y rotacion formal de secretos.
 - Observabilidad centralizada.
 - Benchmark con `EXPLAIN (ANALYZE, BUFFERS)` y volumen representativo.
@@ -61,7 +61,9 @@ Pendiente:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: typecheck, suite completa (42 archivos, 173 tests), evaluación IA offline y build aprobados.
+- Backend: typecheck, pruebas dirigidas de runtime/scheduler, integración PostgreSQL aislada, evaluación IA
+  offline, build y `npm audit --omit=dev` sin vulnerabilidades altas. La suite completa final se ejecuta al
+  cerrar esta consolidación.
 - Frontend: lint, build y smoke E2E sin dependencia de API/BD aprobados.
 - Canary principal: la prueba `tenantContext.integration.test.ts` pasó con enforcement runtime contra
   Supabase `public`; el plan de métricas usa el índice `(tenant_id, sampled_at)` y la línea base
@@ -74,7 +76,8 @@ Pendiente:
 - Asignación de costos: reglas persistentes por tenant y showback determinístico ya están disponibles; la distribución porcentual de costos compartidos y el chargeback contable siguen fuera de alcance.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
-- Ejecutar el canary opcional de IA real con fixtures controlados antes de depender de un proveedor en entornos compartidos.
+- Ejecutar el canary opcional de IA real con fixtures controlados; si el proveedor externo no está disponible,
+  conservar `AI-001` abierto sin falsear el cierre.
 - Activación controlada del enforcement runtime RLS, rollback documentado y benchmark de consultas.
 - Limpieza de documentos antiguos que aun describen estados superados.
 
