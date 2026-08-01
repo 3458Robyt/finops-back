@@ -6,6 +6,8 @@
   rama del pull request (`github.event.pull_request.head.ref`) en lugar de fijarse siempre en `main`.
 - El fallo observado en onboarding era de desalineación entre repositorios: el E2E probaba backend beta con un
   frontend antiguo. La corrida final pasó `verify` e `integration`; el diagnóstico temporal fue retirado del test.
+- Durante la estabilización también se corrigió una condición de carrera del selector de cuentas: reseleccionar la
+  conexión activa ya no borra el detalle cargado sin volver a solicitarlo.
 - PRs vigentes: backend #16 y frontend #19. AWS real, OCI Usage API y el canary de generación IA con evidencia
   suficiente permanecen en los estados documentados de `docs/DEUDA_TECNICA.md`.
 
