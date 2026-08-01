@@ -1,5 +1,14 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-01 — CI integrado de beta cerrado
+
+- La integración GitHub del backend quedó verde después de hacer que el job checkout del frontend use la misma
+  rama del pull request (`github.event.pull_request.head.ref`) en lugar de fijarse siempre en `main`.
+- El fallo observado en onboarding era de desalineación entre repositorios: el E2E probaba backend beta con un
+  frontend antiguo. La corrida final pasó `verify` e `integration`; el diagnóstico temporal fue retirado del test.
+- PRs vigentes: backend #16 y frontend #19. AWS real, OCI Usage API y el canary de generación IA con evidencia
+  suficiente permanecen en los estados documentados de `docs/DEUDA_TECNICA.md`.
+
 ### 2026-07-31 — Cierre técnico de Supabase, scheduler y dependencias OCI
 
 - Se aplicaron y verificaron en Supabase `public` las migraciones `202607310001_supabase_function_hardening` y
