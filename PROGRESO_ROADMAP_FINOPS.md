@@ -1,5 +1,79 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-01 — CI integrado de beta cerrado
+
+- La integración GitHub del backend quedó verde después de hacer que el job checkout del frontend use la misma
+  rama del pull request (`github.event.pull_request.head.ref`) en lugar de fijarse siempre en `main`.
+- El fallo observado en onboarding era de desalineación entre repositorios: el E2E probaba backend beta con un
+  frontend antiguo. La corrida final pasó `verify` e `integration`; el diagnóstico temporal fue retirado del test.
+- Durante la estabilización también se corrigió una condición de carrera del selector de cuentas: reseleccionar la
+  conexión activa ya no borra el detalle cargado sin volver a solicitarlo.
+- PRs vigentes: backend #16 y frontend #19. AWS real, OCI Usage API y el canary de generación IA con evidencia
+  suficiente permanecen en los estados documentados de `docs/DEUDA_TECNICA.md`.
+
+### 2026-07-31 — Cierre técnico de Supabase, scheduler y dependencias OCI
+
+- Se aplicaron y verificaron en Supabase `public` las migraciones `202607310001_supabase_function_hardening` y
+  `202607310002_cover_foreign_keys`. Las funciones FinOps tienen `search_path` seguro, no son ejecutables por
+  `anon`, `authenticated` ni `service_role`, y solo `finops_runtime` conserva ejecución.
+- Se agregaron los 27 índices líderes de claves foráneas públicas detectados por Supabase Advisor.
+- Se eliminaron exactamente 433 jobs `FAILED` de `BILLING_EXPORT` asociados al bucket/namespace de prueba `asd`;
+  se conservaron los otros 5 fallos históricos. También se eliminaron los tres schemas E2E aprobados:
+  `finops_e2e_integrated_secure_beta`, `finops_e2e_local` y `finops_e2e_verified_savings`.
+- El scheduler ahora exige validación vigente, `IDENTITY` y capacidades específicas por fuente. Cambios de
+  credenciales, región o configuración invalidan la validación previa.
+- El paquete OCI paraguas fue sustituido por módulos específicos `2.138.0`; la mediana de importación en frío
+  quedó en aproximadamente 2,13 s en cinco mediciones. `npm audit --omit=dev` no reportó vulnerabilidades.
+- Evidencia: 32 migraciones Prisma al día, Advisors de seguridad sin lints y performance solo con índices no usados
+  informativos; el canary IA real y OCI Usage API quedan condicionados a proveedor/policy externos.
+- Verificación final local: backend `npm run typecheck`, `npm run test:unit` (56 archivos, 235 pruebas, 1 omitida),
+  `npm run test:ai:offline` (16/16), `npm run build` y `npm audit --omit=dev` sin vulnerabilidades altas; frontend
+  lint/build y audit también aprobados.
+- Canary IA real en schema aislado: chat en español y trazas aprobados; la generación fue rechazada por el
+  auditor de forma correcta debido a cobertura técnica de solo 2 días y evidencia canónica insuficiente. El
+  schema y fixtures fueron eliminados automáticamente; `AI-001` permanece abierto.
+
+### 2026-07-28 — Beta integrada: contexto tenant, RLS runtime y workers seguros
+- Se verificó la integridad de las ramas aprobadas antes de continuar: backend `f5ed051` y frontend integrado `b0fc256`, con cambios locales únicamente del objetivo activo.
+- Se agregó `TenantAwarePool` con `AsyncLocalStorage`, rol PostgreSQL `finops_runtime` y configuración de contexto tenant/usuario/request en una sola sentencia SQL por consulta; las consultas sin contexto no agregan sobrecarga cuando no está activo el enforcement.
+- Los workers de ingesta, aprendizaje, análisis y schedulers reclaman con `workerId` y cambian al `tenantId` de la fila antes de procesar datos. Las políticas de cola permiten reclamar de forma controlada y las operaciones tenant siguen restringidas.
+- Las migraciones `202607280001_runtime_tenant_rls` a `202607280005_allow_cross_tenant_operator_user_refs` cubren los 36 modelos con `tenantId`; se corrigieron las omisiones iniciales de `cloud_connections` y `operator_storage_locations`, el vínculo tenant de exportaciones cloud y el caso legítimo de usuarios operadores con acceso multi-tenant.
+- Las cinco migraciones ya están aplicadas y resueltas en Supabase `public`. La base principal conserva RLS en sus tablas operativas, el rol `finops_runtime` existe y el trigger de consistencia tenant está presente en 36 tablas; `_prisma_migrations` es la única tabla pública sin RLS.
+- Verificación: typecheck backend OK; 227 pruebas unitarias OK; integración real de contexto/RLS OK en schema aislado y Supabase principal; E2E Playwright integral con `DB_RUNTIME_ENFORCE=true`: 4/4 pruebas, 53.0 s.
+- Pendiente para cerrar el hardening productivo: ejecutar `EXPLAIN (ANALYZE, BUFFERS)` con volumen representativo, revisar referencias tenant compuestas restantes y activar `DB_RUNTIME_ENFORCE=true` mediante una ventana/canary operativo. No se declara producción cerrada todavía.
+- Canary principal: `src/testing/tenantContext.integration.test.ts` pasó contra Supabase `public` con `DB_RUNTIME_ENFORCE=true`. El `EXPLAIN` de la consulta raw de métricas usó `resource_metric_samples_tenant_id_sampled_at_idx` y terminó en 52.029 ms para 660 filas; la agregación de 30 minutos terminó en 7.692 ms para 660 grupos. Estos valores son una línea base de la cuenta actual, no un SLA productivo.
+
+### 2026-07-26 — Centro de realización de valor FinOps (rama `feat/value-realization-center`)
+- Se agregó el centro sobre `recommendation_savings_measurements` como única fuente de verdad: resumen por moneda, conteos del ciclo, tendencia mensual, filtros, cursor estable y exportación CSV limitada.
+- Se implementó `POST /api/v1/value-realization/reconcile` con lotes acotados, hash idempotente, separación de aumentos de costo, tolerancia a fallos por candidato y notificaciones in-app en español.
+- La conciliación posterior a ingesta es opcional (`SAVINGS_RECONCILIATION_ENABLED=false` por defecto). Email/Telegram se reutilizan de `OutboundMessageService` y solo se activan con `VALUE_REALIZATION_OUTBOUND_ENABLED=true`.
+- Frontend: nueva vista `Valor realizado` con KPIs, embudo, uPlot, portafolio filtrable, carga paginada, actualización manual, exportación autenticada y navegación al detalle.
+- Verificación realizada: backend typecheck y prueba unitaria de conciliación; frontend lint y build. Pendiente: integración PostgreSQL aislada, benchmark de consultas y smoke E2E autenticado.
+
+
+## 2026-07-23 — Pipeline gobernado de análisis FinOps post-ingesta
+
+- Se agregó una corrida durable por tenant o recurso con estados, etapas, snapshot canónico, hash de
+  evidencia, conteos, modelos, tokens estimados, latencia, diagnóstico y enlaces a recomendaciones.
+- La cola responde `202`, evita corridas activas equivalentes y el worker reclama trabajo con
+  `FOR UPDATE SKIP LOCKED`, reintentos acotados y recuperación de leases vencidos. El scheduler
+  post-ingesta existe, pero permanece desactivado por defecto.
+- El preanálisis calcula tendencias de costo y consumo sin mezclar unidades. La compuerta de
+  evidencia evita llamadas al LLM cuando no hay fundamentos y generador/auditor reciben el mismo
+  snapshot; solo se publican artefactos aprobados y deduplicados.
+- Los candidatos fuera del lote de seis de mayor impacto quedan registrados como aplazados, con
+  motivo explícito, en vez de desaparecer silenciosamente o consumir tokens en esa corrida.
+- `Agente IA > Análisis` muestra readiness, progreso, descartes, historial y recomendaciones. Los
+  roles de lectura pueden consultar sin iniciar, cancelar ni reintentar corridas.
+- Verificación: 217 pruebas backend, 16 escenarios IA offline, integración PostgreSQL aislada,
+  frontend lint/build, 2 E2E dedicados y el E2E integral. Un smoke contra la API compilada encoló
+  una corrida real en PostgreSQL con `202` en 48 ms y luego la canceló. La migración
+  `recommendation_analysis_runs` fue aplicada en Supabase y las tablas nuevas no conceden acceso
+  directo a `anon`/`authenticated`; el historial Prisma también quedó reconciliado y
+  `prisma migrate status` reporta las 22 migraciones al día.
+- Alcance validado con fixtures y PostgreSQL aislado. No se ejecutó canary LLM real ni se afirma
+  validación del pipeline con AWS real; OCI/AWS conservan el estado documentado del onboarding.
+
 ## 2026-07-16 — Onboarding operativo cloud por tenant
 
 - Se integró en Ingesta un flujo reanudable OCI/AWS para crear conexión, cifrar/revocar
@@ -514,3 +588,37 @@ pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }.
 - Los workers de ingesta, aprendizaje, scheduler y mensajes reutilizan un único loop no solapable; conserva ejecución inmediata, detención y manejo de errores.
 - Se centralizó la traducción de errores FinOps repetida en cuatro controladores, sin alterar sus contratos HTTP.
 - Se removieron aliases TypeScript y generación de declaraciones no utilizados. `dotenv` se conserva por sus entrypoints activos.
+
+### 2026-07-25 - Medición verificable del ahorro post-ejecución
+
+- Se implementó `recommendation_savings_measurements` para separar el ahorro
+  reportado manualmente, el ahorro observado/calculado, la proyección mensual,
+  los aumentos de costo y el ahorro verificado.
+- El cálculo es determinístico y tenant-scoped: usa ventanas UTC comparables,
+  costo efectivo cuando es consistente, costo facturado como fallback, alcance
+  explícito por recurso/servicio/cuenta, fuente/moneda/conexión única y hash de
+  evidencia idempotente. No usa LLM ni convierte automáticamente históricos.
+- La eficiencia por unidad registra cantidad, unidad y costo unitario; un cambio
+  de volumen superior al 20% bloquea la afirmación de eficiencia.
+- Las recomendaciones ligadas a recursos requieren evidencia técnica posterior
+  suficiente de CPU y memoria; las señales de saturación bloquean la verificación.
+- La UI permite calcular/recalcular, revisar evidencia, verificar o rechazar y
+  conserva el historial en el timeline. El KPI confirmado y el ROI solo suman
+  mediciones `VERIFIED`; el valor manual no se mezcla.
+- Migraciones `202607250001_verified_savings_measurements` y
+  `202607250002_savings_unit_normalization` aplicadas en Supabase y en el
+  esquema aislado `finops_e2e_verified_savings`; no se insertaron fixtures en
+  producción.
+- Verificación: 53 archivos y 224 pruebas unitarias, 16 pruebas IA offline, 4
+  suites/5 pruebas de integración PostgreSQL, typecheck/build backend y
+  lint/build frontend aprobados.
+
+### 2026-07-26 - Centro de realización de valor
+
+- Se añadió el Centro `Valor realizado` con resumen por moneda, portafolio SQL paginado, tendencia semántica (observado, proyectado/run-rate verificado y aumentos separados), cola de trabajo y exportación CSV acotada.
+- La conciliación usa únicamente `recommendation_savings_measurements`, procesa todas las ejecuciones manuales elegibles, excluye mediciones verificadas y conserva idempotencia por hash. Los roles operativos pueden ejecutar la actualización; los roles autenticados restantes mantienen lectura.
+- Se agregó deduplicación explícita de notificaciones por tenant, usuario, medición y estado. El correo/Telegram opcional solo se dispara después de crear una alerta in-app nueva y nunca revierte una medición ante una falla externa.
+- La ingesta exitosa puede disparar una conciliación acotada; el inicio y scheduler por tenant son opt-in, no solapables y desactivados por defecto durante desarrollo.
+- Supabase: aplicada la migración `202607260001_value_realization_notification_dedupe` con índices para ejecuciones y mediciones; `prisma migrate status` quedó al día.
+- Evidencia de rendimiento en esquema aislado Supabase: 5 tenants, 10.000 recomendaciones y 20.000 mediciones; `summary=459 ms`, página de 100=`447 ms`, exportación de 10.000=`994 ms`, `EXPLAIN ANALYZE=131.263 ms`. Sin fixtures en el esquema principal.
+- Verificación: typecheck backend, 227 pruebas unitarias, integración PostgreSQL tenant-scoped, smoke HTTP autenticado de login/summary/items/trend/export, lint/build frontend y benchmark de lectura aprobados.
