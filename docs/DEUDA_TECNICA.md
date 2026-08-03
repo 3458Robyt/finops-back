@@ -19,6 +19,8 @@
 | QA-001 | Baja | Entorno | CERRADO | Integración y E2E reproducibles sin Docker local. | Schema Supabase aislado migrado, probado y eliminado. |
 | QA-002 | Media | Validación UI | CERRADO | Smoke autenticado reproducible sin depender de una contraseña real compartida. | Fixtures E2E generan credenciales controladas y cleanup automático. |
 | VAL-001 | Media | Rendimiento | CERRADO | Medir realización de valor con 10.000 recomendaciones y 20.000 mediciones. | Benchmark aislado: resumen 459 ms, página 447 ms, exportación 994 ms, EXPLAIN 131 ms. |
+| LINEAGE-001 | Alta | Datos/IA | CERRADO | Mantener una identidad normalizada y auditable entre inventario, costos, métricas y recomendaciones. | Migraciones `202608030001_resource_lineage_normalization` y `202608030002_recommendation_resource_guard`; backfill paginado aplicado; endpoint `/ingestion/resource-linkage`; evidencia técnica exige `cloudResourceId`. |
+| LINEAGE-002 | Alta | Cobertura OCI | ABIERTO | Aumentar la cobertura histórica de costos enlazados cuando el inventario OCI no contiene el mismo identificador que FOCUS. | Supabase 2026-08-03: 36/9.160 costos enlazados; 8.692 `INVENTORY_RESOURCE_NOT_FOUND` y 432 `CONNECTION_NOT_AVAILABLE`. Requiere inventario OCI real compatible y nueva ingesta; no se permite fuzzy matching. |
 
 ## Componentes permanentes del roadmap
 

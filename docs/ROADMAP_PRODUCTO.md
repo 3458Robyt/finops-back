@@ -71,7 +71,7 @@ temporales ni modifica IAM del cliente.
 
 | Documento | Qué es | Estado |
 |---|---|---|
-| `REFACTOR_PLAN.md` | Plan de refactor a <200 líneas efectivas (T-01…T-12) | **Completado**. El documento aún se lee como "en progreso": conviene marcarlo cerrado. |
+| `REFACTOR_PLAN.md` | Plan de refactor a <200 líneas efectivas (T-01…T-12) | **Histórico/completado**. No contiene trabajo activo; se conserva como evidencia del refactor. |
 | `PROGRESO_ROADMAP_FINOPS.md` | Bitácora de avance (cronológica inversa) | Vigente. Refleja los bloques entregados. |
 | `docs/CONTEXTO_INGESTA_DATOS.md` | Contexto histórico de la primera arquitectura de ingesta | **Histórico**; `ONBOARDING_CLOUD.md` describe el flujo vigente. |
 | `docs/ONBOARDING_CLOUD.md` | Operación, seguridad, API, readiness y troubleshooting OCI/AWS | **Autoritativo y vigente**. |
@@ -93,7 +93,7 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
 - **Verificación en vivo** del stack local cuando Docker esté disponible; CI ya valida PostgreSQL/API de forma aislada.
 - **Endurecimiento de prompts medido** contra la rúbrica y los golden scenarios ya construidos.
-- Marcar `REFACTOR_PLAN.md` como cerrado (resuelve la discrepancia de estado).
+- Mantener `REFACTOR_PLAN.md` como referencia histórica; no abrir nuevas tareas allí.
 
 ### Fase 1 — Robustez y confianza (sin credenciales) · CORTO/MEDIO
 - Tests de integración contra BD real aislada: verificados en un schema Supabase efímero; Docker
@@ -118,8 +118,12 @@ redundancia requerida, bloqueada hasta aplicar la policy mínima oficial; AUTO o
 
 ### Fase 4 — Métricas técnicas reales (requiere credenciales) · MEDIO/LARGO
 Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_resources` /
-`resource_metric_samples`; agentes opcionales. Habilita recomendaciones con evidencia
-`COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales, no inferido de FOCUS).
+`resource_metric_samples`; agentes opcionales. La trazabilidad normalizada ya está implementada para
+costos, métricas y recomendaciones: vínculo exacto por conexión + identificador externo, razones de no
+vínculo, backfill paginado/idempotente, cobertura visible en Ingesta y guardrail IA que exige
+`cloudResourceId` para evidencia técnica. Falta completar cobertura histórica cuando el inventario real
+no contiene los IDs de los reportes FOCUS y validar frecuencia/volumen productivo. Habilita recomendaciones
+con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales, no inferido de FOCUS).
 
 ### Fase 5 — Expansión y gobernanza avanzada · LARGO
 - Proveedores Azure y GCP (la arquitectura ya los soporta como capacidad de catálogo).
@@ -134,7 +138,7 @@ Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_r
 - Benchmark de dependencias/arranque y consultas con evidencia antes de retirar índices.
 - Calificación periódica del proveedor IA con canary, auditor, snapshots y estimación de tokens.
 - Workers, healthchecks, observabilidad y alertas 24/7 únicamente cuando exista destino de despliegue.
-### Fase 5.1 — Realización de valor · IMPLEMENTADA EN RAMA DE DESARROLLO
+### Fase 5.1 — Realización de valor · IMPLEMENTADA
 - Centro `Valor realizado` con resumen por moneda, embudo del ciclo, tendencia, portafolio paginado, filtros, exportación CSV y enlace al detalle.
 - Conciliación determinística e idempotente sobre `recommendation_savings_measurements`, manual y opcional posterior a ingesta; sin ledger paralelo ni llamadas LLM.
 - Notificaciones in-app con dedupe específico por medición/estado y canales email/Telegram opcionales mediante el servicio outbound existente. Ver `docs/VALUE_REALIZATION_CENTER.md`.
@@ -154,7 +158,8 @@ decisiones firmes de la §1.
 
 - Los PRs frontend #19 (`11fb31c`) y backend #16 (`cb78e4c`) se fusionaron en ese orden, con CI verde;
   `main` local se actualizó por fast-forward y los cambios posteriores viven en
-  `feat/post-beta-canary-closure`.
+  ramas de cierre independientes (`feat/post-beta-canary-closure` y
+  `feat/resource-lineage-readiness`).
 - El canary runtime RLS pasó contra Supabase principal con `finops_runtime`: dos tenants, contexto de
   usuario/worker, consultas operativas y conteo cross-tenant cero. La activación permanente está diferida
   hasta disponer de un entorno desplegado; el procedimiento de rollback está en `docs/RUNTIME_RLS_CANARY.md`.
