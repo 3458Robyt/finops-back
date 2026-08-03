@@ -1,6 +1,6 @@
 # Roadmap de Producto — FinOps Inteligente
 
-> **Consolidación técnica 2026-07-31:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
+> **Consolidación técnica 2026-08-03:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
 > gobernada, métricas técnicas, presupuestos, asignación, realización de valor y RLS verificados.
 > Los pendientes se gestionan en `docs/DEUDA_TECNICA.md` con estados `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO`. FOCUS sigue como fuente operativa primaria; OCI Usage API es
@@ -17,7 +17,10 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-07-31.
+> Última revisión: 2026-08-03.
+
+> Las actualizaciones fechadas antes del 2026-08-03 son snapshots históricos. Para el estado vigente
+> prevalecen la sección 1, la sección 3, la actualización 2026-08-03 y `docs/DEUDA_TECNICA.md`.
 
 ---
 
@@ -83,8 +86,9 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 
 ### Fase 0 — Cierre de lo actual (sin credenciales) · CORTO
 - **Hardening base:** `helmet`, rate limiting, CORS configurable, logging estructurado, runtime RLS,
-  funciones Supabase endurecidas e índices FK están implementados y verificados. Queda la activación
-  operativa de `DB_RUNTIME_ENFORCE=true` y observabilidad centralizada.
+  funciones Supabase endurecidas e índices FK están implementados y verificados. El canary runtime RLS
+  pasó con `DB_RUNTIME_ENFORCE=true` y `DB_RUNTIME_ROLE=finops_runtime`; la activación permanente queda
+  diferida hasta disponer de un destino de despliegue.
 - **Seed/demo sintético** para `ingestion_jobs`, `data_quality_checks`, `cloud_resources`,
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
 - **Verificación en vivo** del stack local cuando Docker esté disponible; CI ya valida PostgreSQL/API de forma aislada.
@@ -96,7 +100,8 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
   local sigue siendo opcional y CI conserva la ruta PostgreSQL.
 - RLS a nivel de base de datos: el contexto Prisma/pg, rol `finops_runtime`, políticas para los 36
   modelos tenant, funciones con `search_path` seguro y permisos API revocados están aplicados y
-  verificados en Supabase principal. Falta la activación operativa productiva y el rollback documentado.
+  verificados en Supabase principal. El canary de aislamiento, workers y rollback está documentado;
+  la activación operativa productiva se difiere hasta existir despliegue.
 - Permisos multi-cliente reales con `tenant_access_assignments` (técnicos FinOps multi-tenant).
 - Gestión/rotación de secretos fuera de `.env` plano y observabilidad centralizada.
 
@@ -145,7 +150,21 @@ recomendaciones (Fase 4); el aislamiento multi-tenant está aplicado y verificad
 principal (Fase 1); y el sistema tiene hardening de producción (Fase 0/1). Todo manteniendo las
 decisiones firmes de la §1.
 
-## Actualización 2026-07-28 — Beta integrada y segura
+## Actualización 2026-08-03 — Canaries internos cerrados
+
+- Los PRs frontend #19 (`11fb31c`) y backend #16 (`cb78e4c`) se fusionaron en ese orden, con CI verde;
+  `main` local se actualizó por fast-forward y los cambios posteriores viven en
+  `feat/post-beta-canary-closure`.
+- El canary runtime RLS pasó contra Supabase principal con `finops_runtime`: dos tenants, contexto de
+  usuario/worker, consultas operativas y conteo cross-tenant cero. La activación permanente está diferida
+  hasta disponer de un entorno desplegado; el procedimiento de rollback está en `docs/RUNTIME_RLS_CANARY.md`.
+- El canary IA real pasó en schema aislado y con `persist=false`: chat en español, tres recomendaciones,
+  snapshot canónico, evidencia determinística, auditoría, trazabilidad y ahorros no negativos. La generación
+  tardó 56.184 s y registró una estimación de 4.047 tokens; el schema/fixtures se eliminaron al finalizar.
+- `AI-001` y `SEC-001` quedan cerrados técnicamente. No se declara producción permanente, AWS real ni OCI
+  Usage API resueltos sin sus prerrequisitos externos.
+
+## Actualización 2026-07-28 — Beta integrada y segura (histórica)
 
 - La rama de trabajo integrada consolida el valor realizado, onboarding, análisis gobernado y el
   contexto runtime tenant-aware sin alterar la baseline aprobada.
@@ -153,33 +172,32 @@ decisiones firmes de la §1.
   inventario, métricas, evidencia, decisión y ejecución manual con RLS runtime activo.
 - Las cinco migraciones runtime/RLS ya fueron aplicadas y resueltas en Supabase `public`; la
   prueba de contexto pasó contra la base principal y el E2E completo pasó en schema aislado.
-- El siguiente bloque técnico es activar `DB_RUNTIME_ENFORCE=true` mediante canary productivo
-  controlado, ejecutar el canary IA real si el proveedor está disponible y completar la
-  documentación de release.
+- Este bloque fue cerrado posteriormente por los canaries del 2026-08-03; la activación permanente sigue
+  diferida por no existir todavía un destino de despliegue.
 
 ---
 
-## 5. Actualizacion 2026-06-05 - Ingesta SDK OCI/AWS
+## 5. Actualizacion 2026-06-05 - Ingesta SDK OCI/AWS (histórica)
 
 Estado actualizado del roadmap general:
 
-- Ya existe una base de worker persistente sobre ingestion_jobs, activable con INGESTION_WORKER_ENABLED=true, con claim por FOR UPDATE SKIP LOCKED, reintentos, started_at, completed_at y 
-esult_summary.
+- Ya existe una base de worker persistente sobre ingestion_jobs, activable con INGESTION_WORKER_ENABLED=true, con claim por FOR UPDATE SKIP LOCKED, reintentos, started_at, completed_at y
+result_summary.
 - Ya existe una primera rebanada de conectores SDK:
   - OCI: OciSdkIngestionProvider recolecta TECHNICAL_METRIC via OCI Monitoring usando metadata.ociMetricDefinitions.
   - AWS: AwsSdkIngestionProvider recolecta TECHNICAL_METRIC via STS AssumeRole + CloudWatch GetMetricData usando metadata.awsMetricDefinitions.
-- Avance 2026-06-05: ya existe parser FOCUS comun y lectura por objetos configurados para AWS S3 (wsFocusExportObjects) y OCI Object Storage (ociFocusReportObjects). Queda pendiente discovery automatico de particiones/exports y benchmark con cuentas reales.
+- Avance 2026-06-05: ya existe parser FOCUS comun y lectura por objetos configurados para AWS S3 (awsFocusExportObjects) y OCI Object Storage (ociFocusReportObjects). Queda pendiente discovery automatico de particiones/exports y benchmark con cuentas reales.
 - Sigue pendiente la parte canonica de costos/consumo FOCUS productiva:
-  - OCI Cost Reports/Object Storage hacia ocus_cost_line_items.
-  - AWS Data Exports/S3 hacia ocus_cost_line_items.
+  - OCI Cost Reports/Object Storage hacia focus_cost_line_items.
+  - AWS Data Exports/S3 hacia focus_cost_line_items.
 - Sigue pendiente benchmark SDK vs CLI con cuenta real: duracion total, llamadas API, muestras por segundo, errores y cobertura.
 - No se debe inferir CPU/memoria/IOPS desde FOCUS. Memoria en AWS/OCI solo se considera evidencia tecnica cuando exista agente/namespace que la entregue.
-- Hallazgo de seguridad: 
-pm install reporto 174 vulnerabilidades transitivas. No se ejecuto 
-pm audit fix --force para evitar cambios destructivos; queda como tarea controlada.
+- Hallazgo de seguridad:
+npm install reporto 174 vulnerabilidades transitivas. No se ejecuto
+npm audit fix --force para evitar cambios destructivos; queda como tarea controlada.
 
-- Avance 2026-06-05 adicional: AWS/OCI ya soportan discovery por prefijo (wsFocusExportLocations, ociFocusReportLocations) con limite maxObjects para evitar barridos gigantes. Se agrego 
-pm run ingestion:worker:once para benchmark manual de un job pendiente.
+- Avance 2026-06-05 adicional: AWS/OCI ya soportan discovery por prefijo (awsFocusExportLocations, ociFocusReportLocations) con limite maxObjects para evitar barridos gigantes. Se agrego
+npm run ingestion:worker:once para benchmark manual de un job pendiente.
 
 - Avance 2026-06-05 adicional 2: OCI TECHNICAL_METRIC ya fue probado contra Supabase con credencial OCI cifrada. Se agregaron scripts operativos `npm run oci:register-profile` y `npm run ingestion:create-job`. El benchmark historico sobre OCI Monitoring proceso 11 metricas y normalizo 429 muestras en 660 ms internos. El principal hallazgo fue de integracion SDK: la respuesta TypeScript expone `items`; leer `summarizedMetricsData` producia 0 muestras aunque OCI CLI si devolvia datos. Queda pendiente prueba AWS real y ejecucion con ventana diaria viva.
 
@@ -203,7 +221,7 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - `cloud_resources` ya no depende solo de datos manuales: los jobs de ingesta crean recursos desde inventario declarativo y, si falta inventario completo, desde las metricas tecnicas recolectadas.
 - `resource_metric_samples.cloudResourceId` se enlaza durante la persistencia y se reconcilia para muestras previas de la misma conexion/recurso, habilitando cruces costo-metrica-recomendacion mas confiables.
 - Las recomendaciones `COST_USAGE_AND_TECHNICAL` ahora tienen guardrails: requieren referencias tecnicas, recurso enlazado, cobertura/muestras suficientes y frescura. Si no, deben quedar como validacion tecnica pendiente.
-- El hardening ya no parte de cero: existen `helmet`, CORS configurable multi-origen, rate limits globales/especificos, logging estructurado por request y RLS runtime aplicado en Supabase principal. Quedan pendientes activación/canary del enforcement, gestión externa de secretos, observabilidad centralizada y benchmark con volumen representativo.
+- El hardening ya no parte de cero: existen `helmet`, CORS configurable multi-origen, rate limits globales/especificos, logging estructurado por request y RLS runtime aplicado en Supabase principal. En la fecha de esta entrada quedaban pendientes la activación/canary del enforcement, gestión externa de secretos, observabilidad centralizada y benchmark con volumen representativo; el canary se cerró el 2026-08-03.
 - Pendiente critico vigente: validar inventario SDK Compute/EC2 con cuentas reales y benchmark, AWS productivo, activación RLS runtime, observabilidad centralizada y cierre de documentos históricos que aun usen terminos anteriores.
 
 ## 7. Actualizacion 2026-07-11 - Ciclo operacional de recomendaciones
@@ -218,7 +236,7 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - La IA ya no depende de texto técnico reparseado: `RecommendationEvidenceSnapshot` concentra, versiona y hashea los hechos de costo/consumo, métricas agregadas, cobertura, frescura, vínculo y reglas por recurso.
 - El mismo artefacto se entrega a la compuerta de readiness, prompt del generador, auditor IA, rúbrica determinística, evidencia persistida y detalle visual. Una referencia o métrica inventada, cobertura insuficiente, dato obsoleto o regla bloqueante impide una acción técnica ejecutable.
 - El aprendizaje aprobado/rechazado también se incorpora en análisis aislados por recurso, pero solo como contexto auditado; los hechos siguen limitados al snapshot del recurso exacto.
-- La evaluación offline cubre CPU, memoria, red, disco, evidencia escasa, datos obsoletos, señales contradictorias, costo sin métrica y referencias inventadas. El canary real permanece opcional y medirá auditoría, tokens y latencia con fixtures.
+- La evaluación offline cubre CPU, memoria, red, disco, evidencia escasa, datos obsoletos, señales contradictorias, costo sin métrica y referencias inventadas. El canary real descrito entonces como opcional quedó cerrado técnicamente el 2026-08-03.
 
 ## 9. Actualizacion 2026-07-12 - Asignación de costos
 
@@ -239,7 +257,7 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
   por policy. AWS conserva cobertura con fixtures y requiere una cuenta real para canary productivo.
 - Supabase tiene unicidad parcial para jobs activos, acceso PostgREST directo revocado en las
   tablas operativas de onboarding y RLS runtime aplicada en las tablas del producto. La deuda
-  restante es activar el enforcement desde el backend y verificarlo en canary.
+  restante era activar el enforcement desde el backend y verificarlo en canary; el canary pasó el 2026-08-03.
 
 ## 11. Actualización 2026-07-23 - Análisis gobernado post-ingesta
 
@@ -251,9 +269,9 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - El worker es reanudable e idempotente; el disparador automático post-ingesta está implementado
   con cooldown, pero desactivado durante desarrollo. La UI permite operación manual y consulta
   read-only.
-- Estado de validación: unitarias, golden scenarios offline, PostgreSQL aislado y E2E con fixtures
-  aprobados; esquema aplicado en Supabase. El canary de proveedor IA real continúa opcional
-  (`AI-001`) y AWS real continúa bloqueado externamente (`AWS-001`).
+- Estado de validación en la fecha de esta entrada: unitarias, golden scenarios offline, PostgreSQL aislado y E2E con fixtures
+  aprobados; esquema aplicado en Supabase. El canary de proveedor IA real se cerró posteriormente
+  (`AI-001`); AWS real continúa bloqueado externamente (`AWS-001`).
 - Próximo incremento de producto recomendado: medir ahorro observado después de la ejecución manual,
   sin confundir ahorro estimado, proyectado y confirmado.
 

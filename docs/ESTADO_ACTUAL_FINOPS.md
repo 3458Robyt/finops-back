@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-07-31
+Fecha: 2026-08-03
 
 ## Resumen
 
@@ -46,14 +46,15 @@ Implementado:
 - Logging estructurado por request con `x-request-id`.
 - Validacion runtime estricta en produccion para secretos/configuracion critica.
 
-Pendiente:
+Estado de cierre:
 
 - Las migraciones de hardening de funciones e índices FK ya están aplicadas en Supabase principal.
-  La seguridad Advisor quedó sin hallazgos; falta activar `DB_RUNTIME_ENFORCE=true` en la configuración
-  productiva mediante canary y documentar rollback antes del despliegue público.
+  La seguridad Advisor quedó sin hallazgos. El canary runtime con `DB_RUNTIME_ENFORCE=true` y
+  `DB_RUNTIME_ROLE=finops_runtime` pasó contra Supabase principal, con aislamiento cross-tenant y
+  contexto de workers; la activación permanente queda diferida hasta disponer de un entorno desplegado.
 - Gestion externa y rotacion formal de secretos.
 - Observabilidad centralizada.
-- Benchmark con `EXPLAIN (ANALYZE, BUFFERS)` y volumen representativo.
+- Benchmark con `EXPLAIN (ANALYZE, BUFFERS)` y volumen productivo representativo.
 
 ## Rendimiento y pruebas recientes
 
@@ -61,10 +62,12 @@ Pendiente:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: typecheck, pruebas dirigidas de runtime/scheduler, integración PostgreSQL aislada, evaluación IA
-  offline, build y `npm audit --omit=dev` sin vulnerabilidades altas. La suite completa final se ejecuta al
-  cerrar esta consolidación.
-- Frontend: lint, build y smoke E2E sin dependencia de API/BD aprobados.
+- Backend: `npm run test:all` pasó con 56 archivos, 236 pruebas y 1 omitida; IA offline 16/16, build,
+  typecheck y `npm audit --omit=dev` sin vulnerabilidades.
+- Frontend: lint y build aprobados; el CI de la beta ejecutó el smoke E2E con éxito.
+- Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
+  ahorros no negativos, trazabilidad y `persist=false` aprobados con el modelo `gpt-5.4-mini`.
+  Latencia de generación: 56.184 s; estimación de trazas: 4.047 tokens; recomendaciones: 3.
 - Canary principal: la prueba `tenantContext.integration.test.ts` pasó con enforcement runtime contra
   Supabase `public`; el plan de métricas usa el índice `(tenant_id, sampled_at)` y la línea base
   observada fue 52.029 ms raw y 7.692 ms agregada para 660 filas/grupos.
@@ -76,9 +79,9 @@ Pendiente:
 - Asignación de costos: reglas persistentes por tenant y showback determinístico ya están disponibles; la distribución porcentual de costos compartidos y el chargeback contable siguen fuera de alcance.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - AWS productivo con rol real y bucket/prefix FOCUS.
-- Ejecutar el canary opcional de IA real con fixtures controlados; si el proveedor externo no está disponible,
-  conservar `AI-001` abierto sin falsear el cierre.
-- Activación controlada del enforcement runtime RLS, rollback documentado y benchmark de consultas.
+- Mantener un canary periódico de IA real con fixtures controlados; no persistir datos de prueba en tenants normales.
+- Activar permanentemente el enforcement runtime RLS solo al desplegar, usando el procedimiento de
+  `docs/RUNTIME_RLS_CANARY.md` y su rollback.
 - Limpieza de documentos antiguos que aun describen estados superados.
 
 ## Operación durante desarrollo
@@ -91,6 +94,6 @@ Pendiente:
 
 - La CI ejecuta el flujo Playwright completo contra fixtures de PostgreSQL y la API local del job de integración.
 - El flujo cubre login, cambio de tenant, inventario, detalle 360, evidencia, oportunidades relacionadas, plan auditado de fixture, decisión, timeline y ejecución manual sin depender de proveedores cloud ni de un LLM real.
-- El 2026-07-28 se repitió el E2E integral con `DB_RUNTIME_ENFORCE=true`: 4/4 pruebas pasaron en un
-  schema Supabase aislado y la prueba de contexto pasó contra Supabase principal. La activación
-  operativa del enforcement principal permanece pendiente.
+- El 2026-08-03 el canary runtime RLS pasó contra Supabase principal: usuario `finops_runtime`, dos tenants,
+  consultas tenant-scoped, conteo cross-tenant cero, contexto de worker y tablas operativas verificadas.
+  La activación operativa permanente permanece diferida por no existir todavía un destino de despliegue.

@@ -1,15 +1,15 @@
 # Deuda técnica y faltantes — FinOps Inteligente
 
-> Registro autoritativo al 2026-07-31. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
+> Registro autoritativo al 2026-08-03. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO` y evidencia asociada. Los ítems de desarrollo manual no son incidentes.
 
 | ID | Prioridad | Tipo | Estado | Hallazgo / criterio de cierre | Evidencia o siguiente acción |
 |---|---|---|---|---|---|
-| SEC-001 | Alta | Producción | ABIERTO | Activar `DB_RUNTIME_ENFORCE=true` en producción y documentar rollback. | Migraciones RLS/hardening aplicadas; canary aislado aprobado. |
+| SEC-001 | Alta | Producción | CERRADO | Verificar técnicamente el enforcement runtime RLS y dejar activación permanente condicionada al despliegue. | Canary 2026-08-03 contra Supabase principal: `finops_runtime`, dos tenants, worker context y cross-tenant cero. Activación permanente/rollback operativo quedan documentados y diferidos hasta tener destino de despliegue. |
 | DB-001 | Alta | Supabase | CERRADO | Hardening de funciones y cobertura de índices FK. | 32 migraciones al día; Advisors seguridad sin lints; 27 índices FK presentes. |
 | ING-001 | Media | Datos | CERRADO | Scheduler no debe encolar conexiones sin validación/capacidades vigentes. | Validación e invalidación implementadas; se conservaron 5 fallos no asociados a prueba. |
 | DEP-001 | Media | Dependencias | CERRADO | Reducir carga OCI y eliminar vulnerabilidades de producción. | Módulos OCI específicos 2.138.0; mediana fría ~2,13 s; audit productivo sin vulnerabilidades. |
-| AI-001 | Media | Validación de proveedor | ABIERTO | Cerrar el canary IA real solo cuando el proveedor supere español, auditor, snapshot, latencia y tokens. | Chat pasó; generación fue rechazada correctamente por cobertura técnica insuficiente del fixture (2 días) y desalineación canónica. Mejorar fixture/evidencia y repetir; no ejecutar contra producción. |
+| AI-001 | Media | Validación de proveedor | CERRADO | Verificar el flujo real de chat y recomendaciones sin persistir datos de prueba. | Canary 2026-08-03 en schema aislado con `gpt-5.4-mini`: chat/recomendaciones en español, auditor, snapshot canónico, rúbrica, trazas, 3 recomendaciones y ahorros no negativos; 56.184 s y 4.047 tokens estimados. |
 | AWS-001 | Alta | Validación cloud | BLOQUEADO | Validar STS/EC2/CloudWatch/Cost Explorer/FOCUS con una cuenta y rol AWS reales. | Falta cuenta/rol externo. Las credenciales bootstrap permiten `AssumeRole`; no son credenciales de tenants. |
 | OCI-001 | Media | Redundancia cloud | BLOQUEADO | Habilitar canary read-only de OCI Usage API con policy mínima: `Allow group <group_name> to read usage-report in tenancy`. | FOCUS sigue como fuente primaria; falta aplicar policy en IAM OCI. |
 | OPS-001 | Media | Operación | DIFERIDO | Workers, healthchecks, alertas 24/7 y scheduler productivo. | Desarrollo manual aceptado hasta definir despliegue. |
@@ -41,6 +41,7 @@
 
 ## Historial de cierre
 
+- 2026-08-03: canaries runtime RLS e IA real cerrados técnicamente; activación productiva permanente diferida por falta de despliegue.
 - 2026-07-31: hardening Supabase, índices FK, limpieza controlada, scheduler validado y reducción de OCI.
 - 2026-07-28: beta integrada con contexto tenant, RLS runtime y workers seguros.
 - 2026-07-26: Centro de Realización de Valor y benchmark.

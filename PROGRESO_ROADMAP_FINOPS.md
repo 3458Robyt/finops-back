@@ -1,5 +1,28 @@
 # Progreso — FinOps Inteligente (Backend)
 
+> **Estado vigente 2026-08-03:** las entradas inferiores son bitácora histórica. La beta se integró en
+> `main` mediante PR #19 frontend y PR #16 backend; los canaries SEC-001 y AI-001 están cerrados
+> técnicamente. Los bloqueos externos AWS-001/OCI-001 y la activación productiva permanente permanecen
+> abiertos o diferidos según `docs/DEUDA_TECNICA.md`.
+
+### 2026-08-03 — Cierre de canaries runtime RLS e IA
+
+- Se verificó que frontend PR #19 (`11fb31c`) y backend PR #16 (`cb78e4c`) están fusionados con CI verde;
+  `main` local quedó actualizado y el trabajo posterior continúa en `feat/post-beta-canary-closure`.
+- El canary `npm run test:canary:runtime-rls` pasó contra Supabase principal con
+  `DB_RUNTIME_ENFORCE=true` y `DB_RUNTIME_ROLE=finops_runtime`: usuario runtime, dos tenants, tablas de
+  costos/métricas/recomendaciones/presupuestos/jobs, contexto de worker y conteo cross-tenant cero.
+- Se documentaron activación y rollback en `docs/RUNTIME_RLS_CANARY.md`. La preparación técnica está cerrada;
+  la activación permanente queda diferida hasta disponer de un destino de despliegue.
+- Se corrigió el fixture del canary IA para usar periodo reciente, 14 días de muestras y evidencia enlazada.
+  También se corrigió la referencia a periodos de facturación abiertos, se normalizaron candidatos antes de
+  auditar y se reforzaron las instrucciones de generador/auditor sin relajar la rúbrica determinística.
+- El canary IA aislado pasó con `persist=false`: chat en español, tres recomendaciones, auditoría aprobada,
+  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.047 tokens. Latencia de
+  generación: 56.184 s. El schema y fixture se eliminaron automáticamente.
+- `AI-001` y `SEC-001` quedaron cerrados técnicamente; AWS real y OCI Usage API siguen bloqueados por
+  credenciales/policy externas.
+
 ### 2026-08-01 — CI integrado de beta cerrado
 
 - La integración GitHub del backend quedó verde después de hacer que el job checkout del frontend use la misma
@@ -8,8 +31,8 @@
   frontend antiguo. La corrida final pasó `verify` e `integration`; el diagnóstico temporal fue retirado del test.
 - Durante la estabilización también se corrigió una condición de carrera del selector de cuentas: reseleccionar la
   conexión activa ya no borra el detalle cargado sin volver a solicitarlo.
-- PRs vigentes: backend #16 y frontend #19. AWS real, OCI Usage API y el canary de generación IA con evidencia
-  suficiente permanecen en los estados documentados de `docs/DEUDA_TECNICA.md`.
+- PRs integrados posteriormente: frontend #19 (`11fb31c`) y backend #16 (`cb78e4c`). AWS real y OCI Usage API
+  siguen en los estados documentados de `docs/DEUDA_TECNICA.md`.
 
 ### 2026-07-31 — Cierre técnico de Supabase, scheduler y dependencias OCI
 
@@ -24,14 +47,13 @@
   credenciales, región o configuración invalidan la validación previa.
 - El paquete OCI paraguas fue sustituido por módulos específicos `2.138.0`; la mediana de importación en frío
   quedó en aproximadamente 2,13 s en cinco mediciones. `npm audit --omit=dev` no reportó vulnerabilidades.
-- Evidencia: 32 migraciones Prisma al día, Advisors de seguridad sin lints y performance solo con índices no usados
-  informativos; el canary IA real y OCI Usage API quedan condicionados a proveedor/policy externos.
+- Evidencia en la fecha de esta entrada: 32 migraciones Prisma al día, Advisors de seguridad sin lints y performance solo con índices no usados
+  informativos; el canary IA real se cerró posteriormente el 2026-08-03 y OCI Usage API continúa condicionado a policy externa.
 - Verificación final local: backend `npm run typecheck`, `npm run test:unit` (56 archivos, 235 pruebas, 1 omitida),
   `npm run test:ai:offline` (16/16), `npm run build` y `npm audit --omit=dev` sin vulnerabilidades altas; frontend
   lint/build y audit también aprobados.
-- Canary IA real en schema aislado: chat en español y trazas aprobados; la generación fue rechazada por el
-  auditor de forma correcta debido a cobertura técnica de solo 2 días y evidencia canónica insuficiente. El
-  schema y fixtures fueron eliminados automáticamente; `AI-001` permanece abierto.
+- Canary IA real de esa fecha: chat y trazas pasaron, pero la generación fue rechazada por cobertura insuficiente
+  del primer fixture. Ese resultado fue corregido y superado por el canary aislado del 2026-08-03.
 
 ### 2026-07-28 — Beta integrada: contexto tenant, RLS runtime y workers seguros
 - Se verificó la integridad de las ramas aprobadas antes de continuar: backend `f5ed051` y frontend integrado `b0fc256`, con cambios locales únicamente del objetivo activo.
@@ -40,7 +62,7 @@
 - Las migraciones `202607280001_runtime_tenant_rls` a `202607280005_allow_cross_tenant_operator_user_refs` cubren los 36 modelos con `tenantId`; se corrigieron las omisiones iniciales de `cloud_connections` y `operator_storage_locations`, el vínculo tenant de exportaciones cloud y el caso legítimo de usuarios operadores con acceso multi-tenant.
 - Las cinco migraciones ya están aplicadas y resueltas en Supabase `public`. La base principal conserva RLS en sus tablas operativas, el rol `finops_runtime` existe y el trigger de consistencia tenant está presente en 36 tablas; `_prisma_migrations` es la única tabla pública sin RLS.
 - Verificación: typecheck backend OK; 227 pruebas unitarias OK; integración real de contexto/RLS OK en schema aislado y Supabase principal; E2E Playwright integral con `DB_RUNTIME_ENFORCE=true`: 4/4 pruebas, 53.0 s.
-- Pendiente para cerrar el hardening productivo: ejecutar `EXPLAIN (ANALYZE, BUFFERS)` con volumen representativo, revisar referencias tenant compuestas restantes y activar `DB_RUNTIME_ENFORCE=true` mediante una ventana/canary operativo. No se declara producción cerrada todavía.
+- Pendiente en la fecha de esta entrada: ejecutar `EXPLAIN (ANALYZE, BUFFERS)` con volumen representativo y activar `DB_RUNTIME_ENFORCE=true` mediante una ventana/canary operativo. El canary técnico pasó posteriormente el 2026-08-03; la producción permanente sigue diferida por falta de despliegue.
 - Canary principal: `src/testing/tenantContext.integration.test.ts` pasó contra Supabase `public` con `DB_RUNTIME_ENFORCE=true`. El `EXPLAIN` de la consulta raw de métricas usó `resource_metric_samples_tenant_id_sampled_at_idx` y terminó en 52.029 ms para 660 filas; la agregación de 30 minutos terminó en 7.692 ms para 660 grupos. Estos valores son una línea base de la cuenta actual, no un SLA productivo.
 
 ### 2026-07-26 — Centro de realización de valor FinOps (rama `feat/value-realization-center`)
@@ -283,16 +305,17 @@ PostgreSQL).
 Se inicio el objetivo de ingesta productiva por SDK para costos, consumo y metricas tecnicas.
 - Commit inicial seguro backend: 127c4f3 (chore: harden backend baseline before SDK ingestion).
 - Commit hardening backend: 34f510c (chore: harden ingestion prerequisites).
-- Commit hardening frontend: 8c8767 (chore: remove demo password from login form).
+- Commit hardening frontend: 8c8767 (chore: remove demo password from login form).
 - Seguridad previa: .env.*, *.pem, *.key, .oci/, .claude/, descargas y artefactos quedan ignorados; seed/importador ya no usan password demo por defecto ni imprimen contrasenas demo.
-- Base worker: nueva migracion 202606050001_ingestion_job_observability agrega started_at, completed_at y esult_summary a ingestion_jobs; el worker reclama jobs con FOR UPDATE SKIP LOCKED, desencripta credenciales operativas y persiste resultados normalizados.
+- Base worker: nueva migracion 202606050001_ingestion_job_observability agrega started_at, completed_at y
+result_summary a ingestion_jobs; el worker reclama jobs con FOR UPDATE SKIP LOCKED, desencripta credenciales operativas y persiste resultados normalizados.
 - Conectores SDK iniciales: OCI usa OCI Monitoring para TECHNICAL_METRIC desde metadata.ociMetricDefinitions; AWS usa STS AssumeRole + CloudWatch GetMetricData desde metadata.awsMetricDefinitions.
 - FOCUS queda definido como fuente canonica pendiente de parser productivo: OCI Cost Reports/Object Storage y AWS Data Exports/S3.
 - Retroalimentacion de la meta: para esta rebanada no se inventan datos si faltan credenciales o metadata; el job registra warning/cobertura parcial. Memoria en AWS/OCI sigue requiriendo agente cuando el proveedor no la entrega por defecto.
-- Hallazgo: 
-pm install reporto 174 vulnerabilidades transitivas (172 moderadas, 2 altas). No se aplico 
-pm audit fix --force porque puede romper dependencias; queda como tarea de seguridad.
-- Avance adicional: ocusCsvIngestion normaliza CSV/CSV.GZ FOCUS a ocus_cost_line_items con hash estable; AWS BILLING_EXPORT puede leer objetos declarados en metadata.awsFocusExportObjects o descubrirlos por prefijo en metadata.awsFocusExportLocations; OCI BILLING_EXPORT puede leer objetos declarados en metadata.ociFocusReportObjects o descubrirlos por prefijo en metadata.ociFocusReportLocations. Queda pendiente benchmark con datos reales y discovery especifico de particiones por fecha.
+- Hallazgo:
+npm install reporto 174 vulnerabilidades transitivas (172 moderadas, 2 altas). No se aplico
+npm audit fix --force porque puede romper dependencias; queda como tarea de seguridad.
+- Avance adicional: focusCsvIngestion normaliza CSV/CSV.GZ FOCUS a focus_cost_line_items con hash estable; AWS BILLING_EXPORT puede leer objetos declarados en metadata.awsFocusExportObjects o descubrirlos por prefijo en metadata.awsFocusExportLocations; OCI BILLING_EXPORT puede leer objetos declarados en metadata.ociFocusReportObjects o descubrirlos por prefijo en metadata.ociFocusReportLocations. Queda pendiente benchmark con datos reales y discovery especifico de particiones por fecha.
 ### 2026-05-30 — Bloque 5: Hardening + documentación ✅
 
 Documentación alineada con lo que el código **realmente** hace (sin afirmaciones aspiracionales) y
@@ -387,22 +410,23 @@ nueva en el frontend. Additivo, multi-tenant, sin tocar prompts/IA ni contratos 
 **Bloque 1 COMPLETADO.** Backend `tsc` 0 + 45/45 tests; frontend build 0. Rebanada vertical de
 ingesta/calidad de datos operativa de extremo a extremo (API → UI), multi-tenant, sin migración.
 
-## 3. Próximos bloques (orden de prioridad del goal)
+## 3. Próximos bloques (estado vigente 2026-08-03)
 
-1. **(en curso)** UI de ingesta / calidad de datos — API + vista.
-2. Métricas técnicas separadas de FOCUS (vista + API sobre `ResourceMetricSample`; **sin** inferir
-   CPU/memoria/IOPS desde FOCUS).
-3. Fortalecimiento del motor IA con evidencia/auditoría + golden scenarios del agente.
-4. Hardening y documentación de despliegue (secretos, CORS, JWT, rate limits, variables de entorno).
-5. Conectores cloud reales + scheduler de jobs (sin remediación automática).
+1. **Validación cloud externa:** AWS real con cuenta/rol y FOCUS; OCI Usage API con la policy mínima oficial.
+2. **Cierre de despliegue:** activar permanentemente `DB_RUNTIME_ENFORCE=true`, secret manager, observabilidad,
+   healthchecks y workers 24/7 cuando exista un destino operativo.
+3. **Calidad operacional:** inventario normalizado por SDK, cobertura/frecuencia de ingesta y benchmarks con
+   volumen representativo; durante desarrollo los workers manuales siguen siendo aceptados.
+4. **FinOps avanzado:** distribución de costos compartidos, chargeback y expansión de proveedores/canales,
+   siempre sin remediación automática cloud.
 
-- Runner manual agregado: 
-pm run ingestion:worker:once ejecuta un job pendiente y devuelve JSON con duracion/resumen para pruebas de rendimiento controladas.
+- Runner manual agregado:
+npm run ingestion:worker:once ejecuta un job pendiente y devuelve JSON con duracion/resumen para pruebas de rendimiento controladas.
 
-- Preflight agregado: 
-pm run ingestion:worker:preflight valida DATABASE_URL y CREDENTIAL_ENCRYPTION_KEY sin exponer valores. Evidencia 2026-06-05: DATABASE_URL=true, CREDENTIAL_ENCRYPTION_KEY=false en .env actual.
-- Benchmark base sin jobs pendientes: con una clave temporal de proceso, 
-pm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }. Falta benchmark real con credenciales cifradas y jobs OCI/AWS.
+- Preflight agregado:
+npm run ingestion:worker:preflight valida DATABASE_URL y CREDENTIAL_ENCRYPTION_KEY sin exponer valores. Evidencia 2026-06-05: DATABASE_URL=true, CREDENTIAL_ENCRYPTION_KEY=false en .env actual.
+- Benchmark base sin jobs pendientes: con una clave temporal de proceso,
+npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }. Falta benchmark real con credenciales cifradas y jobs OCI/AWS.
 
 ### 2026-06-05 - Ingesta OCI SDK verificada con metricas reales
 
