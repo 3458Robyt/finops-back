@@ -2,7 +2,7 @@
 
 > **Estado vigente 2026-08-03:** las entradas inferiores son bitácora histórica. La beta se integró en
 > `main` mediante PR #19 frontend y PR #16 backend; el cierre posterior de trazabilidad continúa en
-> la rama `feat/resource-lineage-readiness`; los canaries SEC-001 y AI-001 están cerrados
+> la rama `feat/resource-lineage-readiness` con PR #18 backend y PR #20 frontend; los canaries SEC-001 y AI-001 están cerrados
 > técnicamente. Los bloqueos externos AWS-001/OCI-001 y la activación productiva permanente permanecen
 > abiertos o diferidos según `docs/DEUDA_TECNICA.md`.
 
@@ -19,10 +19,26 @@
   También se corrigió la referencia a periodos de facturación abiertos, se normalizaron candidatos antes de
   auditar y se reforzaron las instrucciones de generador/auditor sin relajar la rúbrica determinística.
 - El canary IA aislado pasó con `persist=false`: chat en español, tres recomendaciones, auditoría aprobada,
-  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.047 tokens. Latencia de
-  generación: 56.184 s. El schema y fixture se eliminaron automáticamente.
+  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.093 tokens. La última
+  generación tardó 54.662 s. El schema y fixture se eliminaron automáticamente.
 - `AI-001` y `SEC-001` quedaron cerrados técnicamente; AWS real y OCI Usage API siguen bloqueados por
   credenciales/policy externas.
+
+### 2026-08-03 — Cierre de trazabilidad canónica por recurso
+
+- Se agregaron las migraciones `202608030003_resource_lineage_readiness_indexes` y
+  `202608030004_analysis_run_canonical_resource`, aplicadas en Supabase; las corridas de análisis ahora
+  persisten también `cloudResourceId` para no depender solo de `externalResourceId`.
+- La identidad de cruce es exacta por `cloudConnectionId + externalResourceId`; si hay duplicidad, la compuerta
+  bloquea la recomendación hasta resolver el recurso canónico. Readiness expone estado, frescura, bloqueadores,
+  cobertura por conexión y contadores del backfill idempotente.
+- La suite aislada `npm run test:integration:resource-lineage` pasó 5/5. Con 10.000 costos y 20.000 muestras,
+  cinco lecturas de readiness dieron mediana 186,46 ms.
+- El canary IA real pasó después de endurecer artefactos de revisión técnica: 3 recomendaciones, auditoría
+  aprobada, snapshot canónico, trazas y ahorros no negativos; 54,662 s y 4.093 tokens estimados.
+- El canary OCI read-only pasó inventario Compute, Monitoring y FOCUS/Object Storage: 1 recurso y 20 objetos
+  descubiertos/5 retornados. `COSTS=DENIED` queda explícito por la policy faltante de OCI Usage API.
+- Verificación adicional: backend build/typecheck/unit/audit, frontend lint/build y `prisma migrate status` al día.
 
 ### 2026-08-03 — Trazabilidad normalizada y readiness por recurso
 

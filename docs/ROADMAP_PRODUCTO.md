@@ -41,7 +41,9 @@ Incluye presupuestos mensuales persistentes por tenant, cuenta o servicio, evalu
   ejecución auditados; aprobación/rechazo con aprendizaje asíncrono; Context Engine, memoria,
 reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad practica.
 - **Evaluación de calidad IA:** rúbrica determinista + golden scenarios (sin llamar al modelo).
-- **Inteligencia por recurso:** inventario cloud, detalle 360, oportunidades relacionadas y análisis IA aislado por `externalResourceId`.
+- **Inteligencia por recurso:** inventario cloud, detalle 360, oportunidades relacionadas y análisis IA aislado por
+  identidad canónica (`cloudResourceId` con `cloudConnectionId + externalResourceId`); las corridas durables
+  también persisten `cloudResourceId`.
 - **Canales:** notificaciones in-app; Telegram MVP; base outbound con correo SMTP y scheduler opcional.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de
   recomendación, chat, historial, agente IA, ingesta/calidad, métricas técnicas, perfil, login).
@@ -121,7 +123,8 @@ Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_r
 `resource_metric_samples`; agentes opcionales. La trazabilidad normalizada ya está implementada para
 costos, métricas y recomendaciones: vínculo exacto por conexión + identificador externo, razones de no
 vínculo, backfill paginado/idempotente, cobertura visible en Ingesta y guardrail IA que exige
-`cloudResourceId` para evidencia técnica. Falta completar cobertura histórica cuando el inventario real
+`cloudResourceId` para evidencia técnica. El análisis por recurso persiste el vínculo canónico y sus
+índices ya están aplicados en Supabase. Falta completar cobertura histórica cuando el inventario real
 no contiene los IDs de los reportes FOCUS y validar frecuencia/volumen productivo. Habilita recomendaciones
 con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales, no inferido de FOCUS).
 
@@ -164,10 +167,23 @@ decisiones firmes de la §1.
   usuario/worker, consultas operativas y conteo cross-tenant cero. La activación permanente está diferida
   hasta disponer de un entorno desplegado; el procedimiento de rollback está en `docs/RUNTIME_RLS_CANARY.md`.
 - El canary IA real pasó en schema aislado y con `persist=false`: chat en español, tres recomendaciones,
-  snapshot canónico, evidencia determinística, auditoría, trazabilidad y ahorros no negativos. La generación
-  tardó 56.184 s y registró una estimación de 4.047 tokens; el schema/fixtures se eliminaron al finalizar.
+  snapshot canónico, evidencia determinística, auditoría, trazabilidad y ahorros no negativos. La última
+  generación tardó 54.662 s y registró una estimación de 4.093 tokens; el schema/fixtures se eliminaron al finalizar.
 - `AI-001` y `SEC-001` quedan cerrados técnicamente. No se declara producción permanente, AWS real ni OCI
   Usage API resueltos sin sus prerrequisitos externos.
+
+## Actualización 2026-08-03 — Trazabilidad canónica cerrada en la rama de entrega
+
+- El trabajo continúa en `feat/resource-lineage-readiness`, sin merge directo a `main`; PR backend #18 y
+  frontend #20 contienen los cambios de esta fase.
+- Las migraciones `202608030003_resource_lineage_readiness_indexes` y
+  `202608030004_analysis_run_canonical_resource` están aplicadas en Supabase y en schemas aislados.
+- El vínculo válido entre inventario, costos, métricas y recomendaciones es exacto por conexión e identificador;
+  los duplicados de `externalResourceId` se bloquean hasta resolver `cloudResourceId` canónico. El readiness
+  por tenant/conexión expone frescura, bloqueadores y contadores de reconciliación.
+- La integración PostgreSQL pasó 5/5 y la mediana de readiness fue 186,46 ms con volumen representativo.
+- El canary IA real con `gpt-5.4-mini` pasó generación, auditoría y persistencia aislada; el canary OCI read-only
+  leyó Compute, Monitoring, Object Storage/FOCUS y dejó explícitamente `COSTS=DENIED`.
 
 ## Actualización 2026-07-28 — Beta integrada y segura (histórica)
 

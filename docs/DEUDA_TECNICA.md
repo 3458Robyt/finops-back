@@ -6,10 +6,10 @@
 | ID | Prioridad | Tipo | Estado | Hallazgo / criterio de cierre | Evidencia o siguiente acción |
 |---|---|---|---|---|---|
 | SEC-001 | Alta | Producción | CERRADO | Verificar técnicamente el enforcement runtime RLS y dejar activación permanente condicionada al despliegue. | Canary 2026-08-03 contra Supabase principal: `finops_runtime`, dos tenants, worker context y cross-tenant cero. Activación permanente/rollback operativo quedan documentados y diferidos hasta tener destino de despliegue. |
-| DB-001 | Alta | Supabase | CERRADO | Hardening de funciones y cobertura de índices FK. | 32 migraciones al día; Advisors seguridad sin lints; 27 índices FK presentes. |
+| DB-001 | Alta | Supabase | CERRADO | Hardening de funciones y cobertura de índices FK. | 36 migraciones al día; Advisors seguridad sin lints; 27 índices FK presentes. |
 | ING-001 | Media | Datos | CERRADO | Scheduler no debe encolar conexiones sin validación/capacidades vigentes. | Validación e invalidación implementadas; se conservaron 5 fallos no asociados a prueba. |
 | DEP-001 | Media | Dependencias | CERRADO | Reducir carga OCI y eliminar vulnerabilidades de producción. | Módulos OCI específicos 2.138.0; mediana fría ~2,13 s; audit productivo sin vulnerabilidades. |
-| AI-001 | Media | Validación de proveedor | CERRADO | Verificar el flujo real de chat y recomendaciones sin persistir datos de prueba. | Canary 2026-08-03 en schema aislado con `gpt-5.4-mini`: chat/recomendaciones en español, auditor, snapshot canónico, rúbrica, trazas, 3 recomendaciones y ahorros no negativos; 56.184 s y 4.047 tokens estimados. |
+| AI-001 | Media | Validación de proveedor | CERRADO | Verificar el flujo real de chat y recomendaciones sin persistir datos de prueba. | Canary 2026-08-03 en schema aislado con `gpt-5.4-mini`: chat/recomendaciones en español, auditor, snapshot canónico, rúbrica, trazas, 3 recomendaciones y ahorros no negativos; 54.662 s y 4.093 tokens estimados. |
 | AWS-001 | Alta | Validación cloud | BLOQUEADO | Validar STS/EC2/CloudWatch/Cost Explorer/FOCUS con una cuenta y rol AWS reales. | Falta cuenta/rol externo. Las credenciales bootstrap permiten `AssumeRole`; no son credenciales de tenants. |
 | OCI-001 | Media | Redundancia cloud | BLOQUEADO | Habilitar canary read-only de OCI Usage API con policy mínima: `Allow group <group_name> to read usage-report in tenancy`. | FOCUS sigue como fuente primaria; falta aplicar policy en IAM OCI. |
 | OPS-001 | Media | Operación | DIFERIDO | Workers, healthchecks, alertas 24/7 y scheduler productivo. | Desarrollo manual aceptado hasta definir despliegue. |
@@ -19,7 +19,7 @@
 | QA-001 | Baja | Entorno | CERRADO | Integración y E2E reproducibles sin Docker local. | Schema Supabase aislado migrado, probado y eliminado. |
 | QA-002 | Media | Validación UI | CERRADO | Smoke autenticado reproducible sin depender de una contraseña real compartida. | Fixtures E2E generan credenciales controladas y cleanup automático. |
 | VAL-001 | Media | Rendimiento | CERRADO | Medir realización de valor con 10.000 recomendaciones y 20.000 mediciones. | Benchmark aislado: resumen 459 ms, página 447 ms, exportación 994 ms, EXPLAIN 131 ms. |
-| LINEAGE-001 | Alta | Datos/IA | CERRADO | Mantener una identidad normalizada y auditable entre inventario, costos, métricas y recomendaciones. | Migraciones `202608030001_resource_lineage_normalization` y `202608030002_recommendation_resource_guard`; backfill paginado aplicado; endpoint `/ingestion/resource-linkage`; evidencia técnica exige `cloudResourceId`. |
+| LINEAGE-001 | Alta | Datos/IA | CERRADO | Mantener una identidad normalizada y auditable entre inventario, costos, métricas, recomendaciones y corridas de análisis. | Migraciones `202608030001_resource_lineage_normalization`, `202608030002_recommendation_resource_guard`, `202608030003_resource_lineage_readiness_indexes` y `202608030004_analysis_run_canonical_resource`; backfill paginado aplicado; endpoint `/ingestion/resource-linkage`; evidencia y análisis técnico exigen `cloudResourceId` canónico cuando existe ambigüedad. |
 | LINEAGE-002 | Alta | Cobertura OCI | ABIERTO | Aumentar la cobertura histórica de costos enlazados cuando el inventario OCI no contiene el mismo identificador que FOCUS. | Supabase 2026-08-03: 36/9.160 costos enlazados; 8.692 `INVENTORY_RESOURCE_NOT_FOUND` y 432 `CONNECTION_NOT_AVAILABLE`. Requiere inventario OCI real compatible y nueva ingesta; no se permite fuzzy matching. |
 
 ## Componentes permanentes del roadmap
@@ -43,7 +43,7 @@
 
 ## Historial de cierre
 
-- 2026-08-03: canaries runtime RLS e IA real cerrados técnicamente; activación productiva permanente diferida por falta de despliegue.
+- 2026-08-03: canaries runtime RLS, IA real y OCI read-only cerrados técnicamente; integración de trazabilidad 5/5 con mediana de readiness 186,46 ms; activación productiva permanente diferida por falta de despliegue.
 - 2026-07-31: hardening Supabase, índices FK, limpieza controlada, scheduler validado y reducción de OCI.
 - 2026-07-28: beta integrada con contexto tenant, RLS runtime y workers seguros.
 - 2026-07-26: Centro de Realización de Valor y benchmark.
