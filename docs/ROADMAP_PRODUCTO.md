@@ -187,8 +187,10 @@ decisiones firmes de la §1.
   frontend TypeScript y auditoría de dependencias están verdes; no se declara AWS real ni OCI Usage API sin
   prerrequisitos externos.
 - El benchmark del cálculo determinista con 10.000 costos y 10 reglas tuvo mediana de 66,98 ms en cinco
-  iteraciones; la medición de cierre end-to-end contra una base de datos productiva queda para cuando exista
-  un volumen/entorno de despliegue representativo.
+  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.437,96 ms y cierre
+  4.800,78 ms en el Supabase actual; el snapshot conserva 10.000 líneas. Se optimizó el insert masivo y se
+  documentó la brecha frente a los objetivos orientativos de 500 ms/2 s, que debe reevaluarse con un entorno
+  de despliegue representativo antes de fijar un SLA.
 - La integración desde schema vacío pasó 5/5 con las 43 migraciones y el hardening de RLS; readiness tuvo
   mediana de 212,80 ms en cinco lecturas, con un outlier de 607,78 ms que debe reevaluarse con volumen estable.
 - La integración específica de asignación pasó 2/2 contra un schema temporal: flujo completo de costos,

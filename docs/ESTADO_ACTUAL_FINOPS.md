@@ -96,6 +96,10 @@ Estado de cierre:
 - Benchmark del motor determinista de asignación: 10.000 costos, 10 reglas y 5 iteraciones; mediana de
   66,98 ms con invariantes de suma conservadas. Es una medición del cálculo en memoria, no un SLA completo
   de la transacción de cierre contra la base de datos.
+- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.437,96 ms,
+  cierre 4.800,78 ms y 10.000 líneas de evidencia en el Supabase actual. El guardado masivo usa JSONB
+  parametrizado y la transacción no expira por el timeout genérico de Prisma; los objetivos orientativos de
+  500 ms/2 s quedan abiertos para reevaluación con un entorno de despliegue representativo.
 - Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 2/2 con 43
   migraciones; validó costos → regla → preview → activación → cierre, idempotencia, FK tenant-aware
   e inmutabilidad de cierres.

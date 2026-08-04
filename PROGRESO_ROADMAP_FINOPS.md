@@ -735,3 +735,9 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - El historial de cierres ahora permite abrir el detalle y comparar una versión seleccionada bajo demanda, mostrando hashes de fuente/reglas, responsable, totales, resultados por destino y razón de reemplazo sin duplicar cálculos financieros.
 - Se añadió `e2e/cost-allocation.spec.ts` para cubrir el flujo SPLIT, validación 100 %, preview sin persistencia, guardado, cierre, detalle, comparación y exportación CSV.
 - Verificación vigente: frontend typecheck, lint y build; E2E de asignación 1/1 y smoke E2E 1/1. No se modificó el contrato HTTP.
+
+### 2026-08-04 - Benchmark E2E de cierre y persistencia masiva
+
+- La suite aislada de asignación incorporó una medición reproducible con 10.000 costos persistidos, preview, cierre y validación de 10.000 líneas de evidencia.
+- Se corrigió la expiración del cierre por el timeout interactivo predeterminado de Prisma y se redujo el payload de líneas grandes a un `INSERT` parametrizado con `jsonb_to_recordset`; los lotes pequeños mantienen `createMany`.
+- Resultado en el Supabase actual: preview `1.437,96 ms`, cierre `4.800,78 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada para una medición con infraestructura de despliegue representativa.

@@ -157,8 +157,21 @@ idempotencia, FK tenant-aware e inmutabilidad, y elimina el schema en `finally`.
 
 El clasificador Node reutiliza el motor existente y se ejecuta en memoria por
 tenant/período. El benchmark de 10.000 costos y 10 reglas tuvo mediana de
-66,98 ms en cinco iteraciones, con invariantes preservadas. El cierre end-to-end
-contra una base productiva todavía requiere un benchmark con volumen real.
+66,98 ms en cinco iteraciones, con invariantes preservadas. Para cierres con
+más de 500 líneas, la evidencia se persiste mediante un `INSERT` parametrizado
+con `jsonb_to_recordset`; los cierres pequeños conservan `createMany`. El
+cierre usa una transacción serializable con timeout ampliado para no fallar por
+el límite genérico de Prisma cuando el snapshot es grande. La compuerta de
+fuente conserva el hash canónico inicial y valida, dentro de la misma
+transacción, que el conteo y el total Decimal no hayan cambiado.
+
+La integración aislada con 10.000 costos persistidos se ejecutó contra el
+Supabase actual: preview `1.437,96 ms` y cierre `4.800,78 ms`, con 10.000
+líneas de evidencia y las tres pruebas de la suite aprobadas. El objetivo
+orientativo de 500 ms para preview y 2 s para cierre no se alcanza en esta
+ruta directa/remota; debe reevaluarse con un entorno de despliegue
+representativo y métricas `EXPLAIN (ANALYZE, BUFFERS)` antes de convertirlo en
+un SLA. El resultado no evidenció pérdida de datos ni inconsistencia financiera.
 
 No se implementan todavía chargeback contable, asignación automática basada en
 IA, costos dinámicos de negocio ni un worker permanente.
