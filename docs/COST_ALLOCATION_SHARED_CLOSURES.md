@@ -34,7 +34,9 @@ reglas explícitas y conserva `UNALLOCATED` cuando no encuentra una coincidencia
 | `DIRECT` | Asigna el 100 % a un único destino, manteniendo el comportamiento legado. | Dimensiones existentes: centro de costo, unidad, proyecto, equipo y ambiente. |
 | `SPLIT` | Divide cada costo coincidente entre varios destinos con porcentajes explícitos. | Dos o más destinos; la suma exacta debe ser 100 %. |
 
-Las reglas existentes se interpretan como `DIRECT`. Las condiciones de
+Las reglas existentes se interpretan como `DIRECT` y conservan un destino
+explícito del 100 %; las nuevas reglas `DIRECT` también persisten ese destino.
+Las condiciones de
 coincidencia actuales (cuenta, proveedor, servicio, región, recurso y
 etiqueta) se mantienen; la prioridad se ordena de forma determinista.
 
@@ -64,7 +66,9 @@ responsable, fecha, estado y razón de reemplazo.
 Snapshot inmutable por línea de costo y destino. Conserva monto fuente,
 monto asignado, moneda, `metric_identity_hash`, `allocation_key`, modo,
 porcentaje, regla y evidencia de recurso (`cloud_resource_id`, identificador
-externo y `resource_link_reason`). Permite auditar y atribuir valor solo cuando
+externo y `resource_link_reason`). En `SPLIT`, `source_amount` se repite como
+referencia en cada destino; los totales se reconstruyen sumando
+`allocation_amount`, no `source_amount`. Permite auditar y atribuir valor solo cuando
 la evidencia exacta coincide. Los cierres anteriores a la migración de líneas
 pueden conservar únicamente resultados agregados.
 
@@ -82,6 +86,12 @@ pueden conservar únicamente resultados agregados.
 - El hash de fuente incluye periodo, identidad de métrica, moneda, importe,
   proveedor, cuenta, servicio, región, recurso, vínculo canónico y etiquetas.
   Si cualquiera cambia, no se reutiliza silenciosamente un cierre anterior.
+- El hash de configuración incluye únicamente la configuración funcional de la
+  regla y sus destinos, no el estado de ciclo de vida ni el contador de versión;
+  activar una regla después de un preview no invalida el preview. La secuencia
+  ordenada de reglas, incluyendo prioridad e identificador, forma el `rules_hash`.
+- `UNALLOCATED` se agrupa por recurso canónico cuando existe; nunca mezcla dos
+  recursos de conexiones distintas que compartan el mismo identificador externo.
 - El mismo tenant, período, fuente y configuración produce el mismo resultado;
   la misma operación de cierre es idempotente.
 
@@ -116,14 +126,21 @@ ahorro; el ahorro potencial nunca se presenta como ahorro verificado.
 
 ## Seguridad y migraciones
 
-Las migraciones `202608040001`–`202608040006` crean enums, targets, cierres,
-snapshots de líneas, grants runtime y la compuerta de preview. Las tablas de
+Las migraciones `202608040001`–`202608040007` crean enums, targets, cierres,
+snapshots de líneas, grants runtime, la compuerta de preview y la inmutabilidad
+tenant-aware de la evidencia. Las tablas de
 asignación tienen RLS; `anon`, `authenticated` y `service_role` no tienen
 acceso directo y el runtime usa `finops_runtime` con contexto tenant.
 
-La aplicación de migraciones desde cero y sobre Supabase se verificó con 42
-migraciones. No se eliminan datos históricos; la limpieza de fixtures E2E se
-realiza fuera de las migraciones.
+La aplicación de migraciones desde cero y sobre Supabase se verificó con 43
+migraciones. Las reglas antiguas que tenían un hash de compatibilidad se
+normalizan al hash canónico al ejecutar su preview; no se eliminan datos
+históricos. La limpieza de fixtures E2E se realiza fuera de las migraciones.
+
+La integración aislada reproducible se ejecuta con
+`npm run test:integration:cost-allocation`: crea un schema temporal, aplica
+las migraciones, prueba costos → regla → preview → activación → cierre,
+idempotencia, FK tenant-aware e inmutabilidad, y elimina el schema en `finally`.
 
 ## Rendimiento y límites conocidos
 

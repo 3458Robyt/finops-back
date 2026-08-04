@@ -24,15 +24,22 @@
   con evidencia cerrada; la UI añade checklist y estados ABIERTO/LISTO/CERRADO/REEMPLAZADO.
 - Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
   vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
-- Verificación de esta fase: Supabase con 42 migraciones al día, 59 archivos unitarios, 252 pruebas pasadas,
-  6 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
+- Verificación de esta fase: Supabase con 43 migraciones al día, 59 archivos unitarios, 252 pruebas pasadas,
+  8 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
 - Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
   de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
-- Integración final desde schema vacío: 5/5 pruebas con las 42 migraciones y permisos RLS de asignación;
+- Integración final desde schema vacío: 5/5 pruebas con las 43 migraciones y permisos RLS de asignación;
   readiness mediana 212,80 ms en cinco lecturas, con un outlier de 607,78 ms documentado.
 - La documentación del módulo y del modelo de datos quedó consolidada en
   `docs/COST_ALLOCATION_SHARED_CLOSURES.md`, incluyendo ciclo de vida, invariantes,
   API, RLS, integración financiera y límites conocidos.
+- Se corrigió el hash canónico para excluir estado/versión de ciclo de vida:
+  activar una regla no invalida su preview y una modificación funcional sí
+  incrementa la versión. Las reglas `DIRECT` nuevas persisten su destino del
+  100 %, los costos `UNALLOCATED` se agrupan por recurso canónico y el motor
+  comprueba que los grupos por moneda cuadren exactamente con la fuente.
+- Se añadió `npm run test:integration:cost-allocation`, con schema temporal y cleanup en `finally`,
+  para validar el flujo completo y la inmutabilidad tenant-aware contra PostgreSQL real.
 
 ### 2026-08-03 — Cierre de canaries runtime RLS e IA
 

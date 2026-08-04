@@ -45,7 +45,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El motor mantiene primera coincidencia, separa monedas y calcula con `Prisma.Decimal`; el residuo se asigna al último destino y las líneas sin regla permanecen como `UNALLOCATED`.
 - Los cierres son independientes por tenant, período y moneda. Guardan totales, resultados por destino, hashes de costos y reglas, versión, responsable y fecha. Una entrada idéntica es idempotente; una corrección crea una versión nueva y conserva la anterior.
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
-- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040006_cost_allocation_preview_gate`; el historial contiene 42 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, acceso directo revocado para roles API y compuerta de preview antes de activar.
+- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040007_cost_allocation_immutability`; el historial contiene 43 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
@@ -77,7 +77,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 252 pruebas pasadas y 6 omitidas),
+- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 252 pruebas pasadas y 8 omitidas),
   `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
 - Frontend: lint y build aprobados; el CI de la beta ejecutó el smoke E2E con éxito.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
@@ -95,6 +95,9 @@ Estado de cierre:
 - Benchmark del motor determinista de asignación: 10.000 costos, 10 reglas y 5 iteraciones; mediana de
   66,98 ms con invariantes de suma conservadas. Es una medición del cálculo en memoria, no un SLA completo
   de la transacción de cierre contra la base de datos.
+- Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 2/2 con 43
+  migraciones; validó costos → regla → preview → activación → cierre, idempotencia, FK tenant-aware
+  e inmutabilidad de cierres.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
   desarrollo; Supabase se valida mediante migraciones Prisma antes de cambios de esquema.
 
