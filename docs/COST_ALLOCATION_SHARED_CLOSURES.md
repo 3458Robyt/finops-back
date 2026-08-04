@@ -166,15 +166,16 @@ más de 500 líneas, la evidencia se persiste mediante un `INSERT` parametrizado
 con `jsonb_to_recordset`; los cierres pequeños conservan `createMany`. El
 cierre usa una transacción serializable con timeout ampliado para no fallar por
 el límite genérico de Prisma cuando el snapshot es grande. La compuerta de
-fuente conserva el hash canónico inicial y valida, dentro de la misma
-transacción, que el conteo y el total Decimal no hayan cambiado.
+fuente conserva el hash canónico inicial y vuelve a consultar la huella de
+las filas dentro de la misma transacción; valida conteo, total Decimal y hash
+antes de persistir el cierre.
 
 La integración aislada con 10.000 costos persistidos se ejecutó contra el
-Supabase actual: preview `1.466,65 ms` y cierre `5.108,36 ms`, con 10.000
+Supabase actual: preview `1.647,36 ms` y cierre `6.604,64 ms`, con 10.000
 líneas de evidencia y las tres pruebas de la suite aprobadas. El objetivo
 orientativo de 500 ms para preview y 2 s para cierre no se alcanza en esta
 ruta directa/remota. `EXPLAIN (ANALYZE, BUFFERS)` confirmó el uso de
-`cost_metrics_tenant_period_idx` con 9,597 ms de ejecución del plan para
+`cost_metrics_tenant_period_idx` con 10,35 ms de ejecución del plan para
 10.000 filas; la latencia restante está fuera del plan SQL (transferencia y
 snapshot de líneas). Debe reevaluarse con un entorno de despliegue
 representativo antes de convertirlo en un SLA. El resultado no evidenció

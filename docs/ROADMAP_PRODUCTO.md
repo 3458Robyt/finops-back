@@ -185,13 +185,15 @@ decisiones firmes de la §1.
   Presupuestos por destino consultan el mismo cierre cerrado.
 - Se sustituyó el limitador de dependencia vulnerable por una ventana fija en memoria; `npm audit --omit=dev`
   quedó en cero vulnerabilidades. El store compartido para varias instancias sigue siendo requisito de despliegue.
-- Supabase quedó al día con 44 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
+- Supabase quedó al día con 44 migraciones. Las validaciones locales dirigidas, 255 pruebas unitarias pasadas,
+  typecheck, build,
   frontend TypeScript y auditoría de dependencias están verdes; no se declara AWS real ni OCI Usage API sin
   prerrequisitos externos.
 - El benchmark del cálculo determinista con 10.000 costos y 10 reglas tuvo mediana de 66,98 ms en cinco
-  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.466,65 ms y cierre
-  5.108,36 ms en el Supabase actual; el snapshot conserva 10.000 líneas. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
-  el uso de `cost_metrics_tenant_period_idx` con 9,597 ms de ejecución SQL. Se optimizó el insert masivo y se
+  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.647,36 ms y cierre
+  6.604,64 ms en el Supabase actual; el snapshot conserva 10.000 líneas. La compuerta revalida la huella
+  canónica de la fuente además de conteo y total. `EXPLAIN (ANALYZE, BUFFERS)` confirmó el uso de
+  `cost_metrics_tenant_period_idx` con 10,35 ms de ejecución SQL. Se optimizó el insert masivo y se
   documentó la brecha frente a los objetivos orientativos de 500 ms/2 s, que debe reevaluarse con un entorno
   de despliegue representativo antes de fijar un SLA.
 - La integración desde schema vacío pasó 5/5 con las 44 migraciones y el hardening de RLS; readiness tuvo

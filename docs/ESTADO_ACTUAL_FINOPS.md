@@ -43,6 +43,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 
 - `CostAllocationRule` conserva DIRECT y agrega SPLIT con destinos porcentuales explícitos; la suma debe ser exactamente 100 %.
 - El motor mantiene primera coincidencia, separa monedas y calcula con `Prisma.Decimal`; el residuo se asigna al último destino y las líneas sin regla permanecen como `UNALLOCATED`.
+- Antes de cerrar, la fuente se valida con conteo, total Decimal y una segunda huella canónica de las filas dentro de la transacción; una regla SPLIT persistida con porcentajes inválidos también bloquea el cálculo.
 - Los cierres son independientes por tenant, período y moneda. Guardan totales, resultados por destino, hashes de costos y reglas, versión, responsable y fecha. Una entrada idéntica es idempotente; una corrección crea una versión nueva y conserva la anterior.
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación auditada de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
 - La interfaz añade un resumen financiero por destino que combina costo cerrado vigente (o costo live identificado como no cerrado), período anterior, variación, presupuesto consumido y ahorro potencial/aprobado/verificado/acumulado sin duplicar el motor financiero.
@@ -79,7 +80,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 254 pruebas pasadas y 9 omitidas),
+- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 255 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
 - Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
@@ -97,9 +98,10 @@ Estado de cierre:
 - Benchmark del motor determinista de asignación: 10.000 costos, 10 reglas y 5 iteraciones; mediana de
   66,98 ms con invariantes de suma conservadas. Es una medición del cálculo en memoria, no un SLA completo
   de la transacción de cierre contra la base de datos.
-- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.466,65 ms,
-  cierre 5.108,36 ms y 10.000 líneas de evidencia en el Supabase actual. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
-  el uso de `cost_metrics_tenant_period_idx` con 9,597 ms de ejecución SQL. El guardado masivo usa JSONB
+- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.647,36 ms,
+  cierre 6.604,64 ms y 10.000 líneas de evidencia en el Supabase actual. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
+  el uso de `cost_metrics_tenant_period_idx` con 10,35 ms de ejecución SQL. La compuerta revalida la huella
+  canónica de la fuente además de conteo y total; el guardado masivo usa JSONB
   parametrizado y la transacción no expira por el timeout genérico de Prisma; los objetivos orientativos de
   500 ms/2 s quedan abiertos para reevaluación con un entorno de despliegue representativo.
 - Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 3/3 con 44

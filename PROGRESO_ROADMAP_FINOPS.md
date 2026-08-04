@@ -24,11 +24,11 @@
   con evidencia cerrada; la UI añade checklist y estados ABIERTO/LISTO/CERRADO/REEMPLAZADO.
 - Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
   vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
-- Verificación de esta fase: Supabase con 44 migraciones al día, 59 archivos unitarios, 254 pruebas pasadas,
+- Verificación de esta fase: Supabase con 44 migraciones al día, 59 archivos unitarios, 255 pruebas pasadas,
   9 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
 - Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
   de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
-- Integración final desde schema vacío: 5/5 pruebas con las 44 migraciones y permisos RLS de asignación;
+- Validación inicial desde schema vacío: 5/5 pruebas con las 44 migraciones y permisos RLS de asignación;
   readiness mediana 212,80 ms en cinco lecturas, con un outlier de 607,78 ms documentado.
 - La documentación del módulo y del modelo de datos quedó consolidada en
   `docs/COST_ALLOCATION_SHARED_CLOSURES.md`, incluyendo ciclo de vida, invariantes,
@@ -40,6 +40,10 @@
   comprueba que los grupos por moneda cuadren exactamente con la fuente.
 - Se añadió `npm run test:integration:cost-allocation`, con schema temporal y cleanup en `finally`,
   para validar el flujo completo y la inmutabilidad tenant-aware contra PostgreSQL real.
+- La compuerta de cierre ahora revalida la huella canónica de las filas fuente además de conteo y total;
+  las reglas SPLIT persistidas con destinos o porcentajes inválidos se rechazan antes de asignar.
+- Verificación posterior: 59 archivos unitarios, 255 pruebas pasadas y 9 omitidas; integración PostgreSQL
+  3/3, preview 1.647,36 ms y cierre 6.604,64 ms con 10.000 líneas persistidas. `PERF-001` continúa diferido.
 
 ### 2026-08-03 — Cierre de canaries runtime RLS e IA
 
