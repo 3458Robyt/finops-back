@@ -160,7 +160,7 @@ con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales,
   LISTO, CERRADO o REEMPLAZADO y checklist de cierre. Las líneas preservan recurso canónico, hash de métrica y montos para auditoría.
 - Presupuesto y valor realizado por destino reutilizan cierres cerrados y no duplican cálculos. La atribución
   de ahorro requiere evidencia exacta; cuando falta, el sistema no inventa ni distribuye el ahorro.
-- Las migraciones `202608040001` a `202608040007` están aplicadas en Supabase; los cierres antiguos sin
+- Las migraciones `202608040001` a `202608040008` están aplicadas en Supabase; los cierres antiguos sin
   snapshot de líneas conservan sus agregados, pero no habilitan atribución histórica por línea.
 
 ---
@@ -183,15 +183,16 @@ decisiones firmes de la §1.
   financiero y valor realizado por destino. Presupuestos por destino consultan el mismo cierre cerrado.
 - Se sustituyó el limitador de dependencia vulnerable por una ventana fija en memoria; `npm audit --omit=dev`
   quedó en cero vulnerabilidades. El store compartido para varias instancias sigue siendo requisito de despliegue.
-- Supabase quedó al día con 43 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
+- Supabase quedó al día con 44 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
   frontend TypeScript y auditoría de dependencias están verdes; no se declara AWS real ni OCI Usage API sin
   prerrequisitos externos.
 - El benchmark del cálculo determinista con 10.000 costos y 10 reglas tuvo mediana de 66,98 ms en cinco
-  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.437,96 ms y cierre
-  4.800,78 ms en el Supabase actual; el snapshot conserva 10.000 líneas. Se optimizó el insert masivo y se
+  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.470,90 ms y cierre
+  4.560,54 ms en el Supabase actual; el snapshot conserva 10.000 líneas. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
+  el uso de `cost_metrics_tenant_period_idx` con 9,704 ms de ejecución SQL. Se optimizó el insert masivo y se
   documentó la brecha frente a los objetivos orientativos de 500 ms/2 s, que debe reevaluarse con un entorno
   de despliegue representativo antes de fijar un SLA.
-- La integración desde schema vacío pasó 5/5 con las 43 migraciones y el hardening de RLS; readiness tuvo
+- La integración desde schema vacío pasó 5/5 con las 44 migraciones y el hardening de RLS; readiness tuvo
   mediana de 212,80 ms en cinco lecturas, con un outlier de 607,78 ms que debe reevaluarse con volumen estable.
 - La integración específica de asignación pasó 2/2 contra un schema temporal: flujo completo de costos,
   regla, preview, activación, cierre idempotente, FK tenant-aware y bloqueo de mutación de evidencia cerrada.

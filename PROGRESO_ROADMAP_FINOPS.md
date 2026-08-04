@@ -738,6 +738,7 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 
 ### 2026-08-04 - Benchmark E2E de cierre y persistencia masiva
 
-- La suite aislada de asignación incorporó una medición reproducible con 10.000 costos persistidos, preview, cierre y validación de 10.000 líneas de evidencia.
+- La suite aislada de asignación incorporó una medición reproducible con 10.000 costos persistidos, preview, cierre, `EXPLAIN (ANALYZE, BUFFERS)` y validación de 10.000 líneas de evidencia.
 - Se corrigió la expiración del cierre por el timeout interactivo predeterminado de Prisma y se redujo el payload de líneas grandes a un `INSERT` parametrizado con `jsonb_to_recordset`; los lotes pequeños mantienen `createMany`.
-- Resultado en el Supabase actual: preview `1.437,96 ms`, cierre `4.800,78 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada para una medición con infraestructura de despliegue representativa.
+- La migración `202608040008_cost_metrics_tenant_period_index` se aplicó en Supabase; el plan usa `cost_metrics_tenant_period_idx` y ejecuta en 9,704 ms para 10.000 filas.
+- Resultado de la última ejecución en Supabase: preview `1.470,90 ms`, cierre `4.560,54 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada como `PERF-001` para una medición con infraestructura de despliegue representativa.

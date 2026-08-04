@@ -137,13 +137,13 @@ ahorro; el ahorro potencial nunca se presenta como ahorro verificado.
 
 ## Seguridad y migraciones
 
-Las migraciones `202608040001`–`202608040007` crean enums, targets, cierres,
+Las migraciones `202608040001`–`202608040008` crean enums, targets, cierres,
 snapshots de líneas, grants runtime, la compuerta de preview y la inmutabilidad
 tenant-aware de la evidencia. Las tablas de
 asignación tienen RLS; `anon`, `authenticated` y `service_role` no tienen
 acceso directo y el runtime usa `finops_runtime` con contexto tenant.
 
-La aplicación de migraciones desde cero y sobre Supabase se verificó con 43
+La aplicación de migraciones desde cero y sobre Supabase se verificó con 44
 migraciones. Las reglas antiguas que tenían un hash de compatibilidad se
 normalizan al hash canónico al ejecutar su preview; no se eliminan datos
 históricos. La limpieza de fixtures E2E se realiza fuera de las migraciones.
@@ -166,12 +166,15 @@ fuente conserva el hash canónico inicial y valida, dentro de la misma
 transacción, que el conteo y el total Decimal no hayan cambiado.
 
 La integración aislada con 10.000 costos persistidos se ejecutó contra el
-Supabase actual: preview `1.437,96 ms` y cierre `4.800,78 ms`, con 10.000
+Supabase actual: preview `1.470,90 ms` y cierre `4.560,54 ms`, con 10.000
 líneas de evidencia y las tres pruebas de la suite aprobadas. El objetivo
 orientativo de 500 ms para preview y 2 s para cierre no se alcanza en esta
-ruta directa/remota; debe reevaluarse con un entorno de despliegue
-representativo y métricas `EXPLAIN (ANALYZE, BUFFERS)` antes de convertirlo en
-un SLA. El resultado no evidenció pérdida de datos ni inconsistencia financiera.
+ruta directa/remota. `EXPLAIN (ANALYZE, BUFFERS)` confirmó el uso de
+`cost_metrics_tenant_period_idx` con 9,704 ms de ejecución del plan para
+10.000 filas; la latencia restante está fuera del plan SQL (transferencia y
+snapshot de líneas). Debe reevaluarse con un entorno de despliegue
+representativo antes de convertirlo en un SLA. El resultado no evidenció
+pérdida de datos ni inconsistencia financiera.
 
 No se implementan todavía chargeback contable, asignación automática basada en
 IA, costos dinámicos de negocio ni un worker permanente.

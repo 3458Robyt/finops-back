@@ -46,7 +46,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Los cierres son independientes por tenant, período y moneda. Guardan totales, resultados por destino, hashes de costos y reglas, versión, responsable y fecha. Una entrada idéntica es idempotente; una corrección crea una versión nueva y conserva la anterior.
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
 - El historial de cierres permite cargar bajo demanda el detalle y comparar versiones, incluyendo hashes, responsable, totales y resultados por destino. El botón `Previsualizar` no persiste reglas: el frontend distingue explícitamente la acción del formulario antes de llamar a la API.
-- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040007_cost_allocation_immutability`; el historial contiene 43 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
+- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index`; el historial contiene 44 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. Antes del cierre, el actual queda explícitamente no disponible y el preview conserva el valor como proyectado. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
@@ -96,11 +96,12 @@ Estado de cierre:
 - Benchmark del motor determinista de asignación: 10.000 costos, 10 reglas y 5 iteraciones; mediana de
   66,98 ms con invariantes de suma conservadas. Es una medición del cálculo en memoria, no un SLA completo
   de la transacción de cierre contra la base de datos.
-- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.437,96 ms,
-  cierre 4.800,78 ms y 10.000 líneas de evidencia en el Supabase actual. El guardado masivo usa JSONB
+- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.470,90 ms,
+  cierre 4.560,54 ms y 10.000 líneas de evidencia en el Supabase actual. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
+  el uso de `cost_metrics_tenant_period_idx` con 9,704 ms de ejecución SQL. El guardado masivo usa JSONB
   parametrizado y la transacción no expira por el timeout genérico de Prisma; los objetivos orientativos de
   500 ms/2 s quedan abiertos para reevaluación con un entorno de despliegue representativo.
-- Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 2/2 con 43
+- Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 3/3 con 44
   migraciones; validó costos → regla → preview → activación → cierre, idempotencia, FK tenant-aware
   e inmutabilidad de cierres.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
