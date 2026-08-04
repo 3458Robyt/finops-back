@@ -101,6 +101,11 @@ El cierre exige `confirmUnallocated=true`. La corrección exige una razón y
 genera una versión nueva. Los controladores y repositorios validan el tenant
 del actor antes de leer reglas, costos, cierres o destinos.
 
+El preview incluye `financialImpact`: consumo proyectado contra presupuestos
+por destino y ahorros potenciales, aprobados y verificados que ya tengan
+evidencia cerrada. Estos ahorros se muestran como históricos y no se proyectan
+por la nueva regla; una atribución nueva requiere cierre, ejecución y evidencia.
+
 ## Presupuestos y valor realizado
 
 `ALLOCATION_DESTINATION` usa el cierre cerrado como fuente de costo actual y
@@ -111,12 +116,12 @@ ahorro; el ahorro potencial nunca se presenta como ahorro verificado.
 
 ## Seguridad y migraciones
 
-Las migraciones `202608040001`–`202608040005` crean enums, targets, cierres,
-snapshots de líneas, índices tenant/período y grants runtime. Las tablas de
+Las migraciones `202608040001`–`202608040006` crean enums, targets, cierres,
+snapshots de líneas, grants runtime y la compuerta de preview. Las tablas de
 asignación tienen RLS; `anon`, `authenticated` y `service_role` no tienen
 acceso directo y el runtime usa `finops_runtime` con contexto tenant.
 
-La aplicación de migraciones desde cero y sobre Supabase se verificó con 41
+La aplicación de migraciones desde cero y sobre Supabase se verificó con 42
 migraciones. No se eliminan datos históricos; la limpieza de fixtures E2E se
 realiza fuera de las migraciones.
 

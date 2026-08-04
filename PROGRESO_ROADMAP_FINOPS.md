@@ -18,14 +18,18 @@
   sin líneas siguen siendo visibles, pero no permiten atribución histórica por línea.
 - Presupuestos por destino y `Value Realization` consultan el cierre cerrado; el ahorro solo aparece por destino
   cuando la evidencia exacta coincide. El frontend muestra preview, historial/comparación e impacto financiero.
+- La activación de una regla ahora exige un preview exitoso de la misma configuración; cualquier modificación
+  invalida el hash previsualizado y la UI informa el error en español.
+- El preview incorpora impacto de presupuestos por destino y separa ahorros potenciales, aprobados y verificados
+  con evidencia cerrada; la UI añade checklist y estados ABIERTO/LISTO/CERRADO/REEMPLAZADO.
 - Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
   vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
-- Verificación de esta fase: Supabase con 41 migraciones al día, 59 archivos unitarios, 250 pruebas pasadas,
+- Verificación de esta fase: Supabase con 42 migraciones al día, 59 archivos unitarios, 252 pruebas pasadas,
   6 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
 - Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
   de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
-- Integración final desde schema vacío: 5/5 pruebas con las 41 migraciones y permisos RLS de asignación;
-  readiness mediana 206,86 ms en cinco lecturas, con un outlier de 702,22 ms documentado.
+- Integración final desde schema vacío: 5/5 pruebas con las 42 migraciones y permisos RLS de asignación;
+  readiness mediana 212,80 ms en cinco lecturas, con un outlier de 607,78 ms documentado.
 - La documentación del módulo y del modelo de datos quedó consolidada en
   `docs/COST_ALLOCATION_SHARED_CLOSURES.md`, incluyendo ciclo de vida, invariantes,
   API, RLS, integración financiera y límites conocidos.

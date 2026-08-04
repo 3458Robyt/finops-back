@@ -44,8 +44,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - `CostAllocationRule` conserva DIRECT y agrega SPLIT con destinos porcentuales explícitos; la suma debe ser exactamente 100 %.
 - El motor mantiene primera coincidencia, separa monedas y calcula con `Prisma.Decimal`; el residuo se asigna al último destino y las líneas sin regla permanecen como `UNALLOCATED`.
 - Los cierres son independientes por tenant, período y moneda. Guardan totales, resultados por destino, hashes de costos y reglas, versión, responsable y fecha. Una entrada idéntica es idempotente; una corrección crea una versión nueva y conserva la anterior.
-- `Asignación de costos` muestra suma SPLIT, preview con período anterior y reglas usadas, costo compartido, confirmación de `UNALLOCATED` e historial de cierres. La API incorpora cierre, historial, detalle y comparación de versiones.
-- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040005_cost_allocation_runtime_grants`; el historial contiene 41 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado y acceso directo revocado para roles API.
+- `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
+- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040006_cost_allocation_preview_gate`; el historial contiene 42 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
@@ -77,7 +77,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 250 pruebas pasadas y 6 omitidas),
+- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 252 pruebas pasadas y 6 omitidas),
   `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
 - Frontend: lint y build aprobados; el CI de la beta ejecutó el smoke E2E con éxito.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
@@ -88,7 +88,7 @@ Estado de cierre:
   la capacidad de costos directa quedó denegada y el resultado fue `PARTIAL`, consistente con el bloqueo
   documentado de OCI Usage API.
 - Integración de trazabilidad en PostgreSQL aislado: 5/5 pruebas; readiness con 10.000 costos y 20.000
-  muestras técnicas tuvo mediana de 206,86 ms en cinco lecturas (un outlier de 702,22 ms).
+  muestras técnicas tuvo mediana de 212,80 ms en cinco lecturas (un outlier de 607,78 ms).
 - Canary principal: la prueba `tenantContext.integration.test.ts` pasó con enforcement runtime contra
   Supabase `public`; el plan de métricas usa el índice `(tenant_id, sampled_at)` y la línea base
   observada fue 52.029 ms raw y 7.692 ms agregada para 660 filas/grupos.

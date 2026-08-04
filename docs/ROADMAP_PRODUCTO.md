@@ -155,11 +155,12 @@ con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales,
   primera coincidencia determinista, separación por moneda y destino `UNALLOCATED` explícito.
 - El cierre es reproducible e idempotente por tenant/período/moneda. Una corrección crea una versión
   nueva y conserva la anterior como `REPLACED`; un cierre `CLOSED` no se edita.
-- El preview y la UI exponen fuente, asignado, compartido, no asignado, reglas, período anterior e impacto
-  financiero. Las líneas del cierre preservan recurso canónico, hash de métrica y montos para auditoría.
+- El preview y la UI exponen fuente, asignado, compartido, no asignado, reglas, período anterior, impacto
+  presupuestal por destino y ahorros con evidencia cerrada (sin proyectarlos). La UI muestra estado ABIERTO,
+  LISTO, CERRADO o REEMPLAZADO y checklist de cierre. Las líneas preservan recurso canónico, hash de métrica y montos para auditoría.
 - Presupuesto y valor realizado por destino reutilizan cierres cerrados y no duplican cálculos. La atribución
   de ahorro requiere evidencia exacta; cuando falta, el sistema no inventa ni distribuye el ahorro.
-- Las migraciones `202608040001` a `202608040005` están aplicadas en Supabase; los cierres antiguos sin
+- Las migraciones `202608040001` a `202608040006` están aplicadas en Supabase; los cierres antiguos sin
   snapshot de líneas conservan sus agregados, pero no habilitan atribución histórica por línea.
 
 ---
@@ -182,14 +183,14 @@ decisiones firmes de la §1.
   financiero y valor realizado por destino. Presupuestos por destino consultan el mismo cierre cerrado.
 - Se sustituyó el limitador de dependencia vulnerable por una ventana fija en memoria; `npm audit --omit=dev`
   quedó en cero vulnerabilidades. El store compartido para varias instancias sigue siendo requisito de despliegue.
-- Supabase quedó al día con 41 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
+- Supabase quedó al día con 42 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
   frontend TypeScript y auditoría de dependencias están verdes; no se declara AWS real ni OCI Usage API sin
   prerrequisitos externos.
 - El benchmark del cálculo determinista con 10.000 costos y 10 reglas tuvo mediana de 66,98 ms en cinco
   iteraciones; la medición de cierre end-to-end contra una base de datos productiva queda para cuando exista
   un volumen/entorno de despliegue representativo.
-- La integración desde schema vacío pasó 5/5 con las 41 migraciones y el hardening de RLS; readiness tuvo
-  mediana de 206,86 ms en cinco lecturas, con un outlier de 702,22 ms que debe reevaluarse con volumen estable.
+- La integración desde schema vacío pasó 5/5 con las 42 migraciones y el hardening de RLS; readiness tuvo
+  mediana de 212,80 ms en cinco lecturas, con un outlier de 607,78 ms que debe reevaluarse con volumen estable.
 
 ## Actualización 2026-08-03 — Canaries internos cerrados
 
