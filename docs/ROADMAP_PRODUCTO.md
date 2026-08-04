@@ -79,6 +79,7 @@ temporales ni modifica IAM del cliente.
 | `PROGRESO_ROADMAP_FINOPS.md` | Bitácora de avance (cronológica inversa) | Vigente. Refleja los bloques entregados. |
 | `docs/CONTEXTO_INGESTA_DATOS.md` | Contexto histórico de la primera arquitectura de ingesta | **Histórico**; `ONBOARDING_CLOUD.md` describe el flujo vigente. |
 | `docs/ONBOARDING_CLOUD.md` | Operación, seguridad, API, readiness y troubleshooting OCI/AWS | **Autoritativo y vigente**. |
+| `docs/COST_ALLOCATION_SHARED_CLOSURES.md` | Modelo, invariantes y API de asignación compartida y cierres | **Autoritativo y vigente**. |
 | **Este documento** | Roadmap de producto por fases | Nuevo. Llena el vacío: ningún doc previo trazaba el camino producto-completo. |
 
 ---

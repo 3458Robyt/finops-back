@@ -48,6 +48,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040005_cost_allocation_runtime_grants`; el historial contiene 41 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado y acceso directo revocado para roles API.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
+- El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
 
 ## Seguridad y produccion
 

@@ -26,6 +26,9 @@
   de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
 - Integración final desde schema vacío: 5/5 pruebas con las 41 migraciones y permisos RLS de asignación;
   readiness mediana 206,86 ms en cinco lecturas, con un outlier de 702,22 ms documentado.
+- La documentación del módulo y del modelo de datos quedó consolidada en
+  `docs/COST_ALLOCATION_SHARED_CLOSURES.md`, incluyendo ciclo de vida, invariantes,
+  API, RLS, integración financiera y límites conocidos.
 
 ### 2026-08-03 — Cierre de canaries runtime RLS e IA
 
