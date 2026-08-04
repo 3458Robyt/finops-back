@@ -116,7 +116,10 @@ por destino y ahorros potenciales, aprobados y verificados que ya tengan
 evidencia cerrada. Estos ahorros se muestran como históricos y no se proyectan
 por la nueva regla; una atribución nueva requiere cierre, ejecución y evidencia.
 
-La interfaz de `Asignación de costos` expone el historial de cierres y carga
+La interfaz de `Asignación de costos` expone un resumen financiero por destino
+con costo actual/anterior, variación, presupuesto consumido y ahorro; usa el
+cierre vigente cuando no hay filtros parciales y marca el costo live como no
+cerrado en caso contrario. También expone el historial de cierres y carga
 bajo demanda el detalle o la comparación de una versión seleccionada. El
 detalle muestra los hashes de fuente y reglas, responsables, totales, estado y
 resultados por destino; la comparación identifica la versión anterior y la
@@ -166,11 +169,11 @@ fuente conserva el hash canónico inicial y valida, dentro de la misma
 transacción, que el conteo y el total Decimal no hayan cambiado.
 
 La integración aislada con 10.000 costos persistidos se ejecutó contra el
-Supabase actual: preview `1.470,90 ms` y cierre `4.560,54 ms`, con 10.000
+Supabase actual: preview `1.466,65 ms` y cierre `5.108,36 ms`, con 10.000
 líneas de evidencia y las tres pruebas de la suite aprobadas. El objetivo
 orientativo de 500 ms para preview y 2 s para cierre no se alcanza en esta
 ruta directa/remota. `EXPLAIN (ANALYZE, BUFFERS)` confirmó el uso de
-`cost_metrics_tenant_period_idx` con 9,704 ms de ejecución del plan para
+`cost_metrics_tenant_period_idx` con 9,597 ms de ejecución del plan para
 10.000 filas; la latencia restante está fuera del plan SQL (transferencia y
 snapshot de líneas). Debe reevaluarse con un entorno de despliegue
 representativo antes de convertirlo en un SLA. El resultado no evidenció

@@ -24,11 +24,11 @@
   con evidencia cerrada; la UI añade checklist y estados ABIERTO/LISTO/CERRADO/REEMPLAZADO.
 - Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
   vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
-- Verificación de esta fase: Supabase con 43 migraciones al día, 59 archivos unitarios, 252 pruebas pasadas,
-  8 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
+- Verificación de esta fase: Supabase con 44 migraciones al día, 59 archivos unitarios, 253 pruebas pasadas,
+  9 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
 - Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
   de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
-- Integración final desde schema vacío: 5/5 pruebas con las 43 migraciones y permisos RLS de asignación;
+- Integración final desde schema vacío: 5/5 pruebas con las 44 migraciones y permisos RLS de asignación;
   readiness mediana 212,80 ms en cinco lecturas, con un outlier de 607,78 ms documentado.
 - La documentación del módulo y del modelo de datos quedó consolidada en
   `docs/COST_ALLOCATION_SHARED_CLOSURES.md`, incluyendo ciclo de vida, invariantes,
@@ -725,8 +725,8 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Se implementaron cierres por tenant/período/moneda con fuente y reglas hasheadas, resultados por destino, versiones inmutables, reemplazo con motivo e idempotencia.
 - Se extendió la API con cierre, historial, detalle y comparación de versiones. La UI actual de `Asignación de costos` muestra suma SPLIT, preview con período anterior/reglas usadas, impacto presupuestal, costo compartido, confirmación de cierre e historial.
 - Los presupuestos por destino reutilizan únicamente cierres CLOSED; antes del cierre el actual se reporta explícitamente como no disponible y el preview conserva el valor como proyectado. Valor realizado solo atribuye ahorro con evidencia exacta.
-- Migraciones aplicadas en Supabase: `202608040001` a `202608040007`; el estado reporta 43 migraciones al día.
-- Evidencia de verificación: backend 59 archivos, 253 pruebas unitarias pasadas y 8 omitidas, typecheck, build, integración aislada 2/2 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
+- Migraciones aplicadas en Supabase: `202608040001` a `202608040008`; el estado reporta 44 migraciones al día.
+- Evidencia de verificación: backend 59 archivos, 253 pruebas unitarias pasadas y 9 omitidas, typecheck, build, integración aislada 3/3 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
 - Pendiente: validación productiva AWS/OCI Usage API cuando existan prerrequisitos externos. Chargeback contable continúa fuera del alcance.
 
 ### 2026-08-04 - Auditoría frontend del cierre
@@ -734,11 +734,12 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Se corrigió la compuerta de `Previsualizar`: el formulario identifica el botón que originó el envío y ya no crea una regla cuando el usuario solo solicita un preview.
 - El historial de cierres ahora permite abrir el detalle y comparar una versión seleccionada bajo demanda, mostrando hashes de fuente/reglas, responsable, totales, resultados por destino y razón de reemplazo sin duplicar cálculos financieros.
 - Se añadió `e2e/cost-allocation.spec.ts` para cubrir el flujo SPLIT, validación 100 %, preview sin persistencia, guardado, cierre, detalle, comparación y exportación CSV.
+- La UI ahora combina resumen live, cierres vigentes, periodo anterior, presupuestos de destino y ahorro con evidencia en un resumen financiero por destino; identifica explícitamente cuándo no existe un cierre o cuando hay filtros parciales.
 - Verificación vigente: frontend typecheck, lint y build; E2E de asignación 1/1 y smoke E2E 1/1. No se modificó el contrato HTTP.
 
 ### 2026-08-04 - Benchmark E2E de cierre y persistencia masiva
 
 - La suite aislada de asignación incorporó una medición reproducible con 10.000 costos persistidos, preview, cierre, `EXPLAIN (ANALYZE, BUFFERS)` y validación de 10.000 líneas de evidencia.
 - Se corrigió la expiración del cierre por el timeout interactivo predeterminado de Prisma y se redujo el payload de líneas grandes a un `INSERT` parametrizado con `jsonb_to_recordset`; los lotes pequeños mantienen `createMany`.
-- La migración `202608040008_cost_metrics_tenant_period_index` se aplicó en Supabase; el plan usa `cost_metrics_tenant_period_idx` y ejecuta en 9,704 ms para 10.000 filas.
-- Resultado de la última ejecución en Supabase: preview `1.470,90 ms`, cierre `4.560,54 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada como `PERF-001` para una medición con infraestructura de despliegue representativa.
+- La migración `202608040008_cost_metrics_tenant_period_index` se aplicó en Supabase; el plan usa `cost_metrics_tenant_period_idx` y ejecuta en 9,597 ms para 10.000 filas.
+- Resultado de la última ejecución en Supabase: preview `1.466,65 ms`, cierre `5.108,36 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada como `PERF-001` para una medición con infraestructura de despliegue representativa.

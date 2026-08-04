@@ -1,6 +1,6 @@
 # Roadmap de Producto — FinOps Inteligente
 
-> **Consolidación técnica 2026-08-03:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
+> **Consolidación técnica 2026-08-04:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
 > gobernada, métricas técnicas, presupuestos, asignación, realización de valor y RLS verificados.
 > Los pendientes se gestionan en `docs/DEUDA_TECNICA.md` con estados `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO`. FOCUS sigue como fuente operativa primaria; OCI Usage API es
@@ -17,7 +17,7 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-08-03.
+> Última revisión: 2026-08-04.
 
 > Las actualizaciones fechadas antes del 2026-08-03 son snapshots históricos. Para el estado vigente
 > prevalecen la sección 1, la sección 3, la actualización 2026-08-03 y `docs/DEUDA_TECNICA.md`.
@@ -180,21 +180,23 @@ decisiones firmes de la §1.
 - El cierre valida fuente, reglas, consistencia de tenant, moneda, período y estado de ingesta; persiste
   hashes, responsable, versión y líneas de evidencia. El flujo no permite mutar cierres cerrados.
 - La página `Asignación de costos` incorpora construcción de reglas, preview, historial/comparación, resumen
-  financiero y valor realizado por destino. Presupuestos por destino consultan el mismo cierre cerrado.
+  financiero por destino (costo actual/anterior, variación, presupuesto consumido y ahorro) y valor realizado.
+  Cuando existe un cierre usa sus resultados; con filtros parciales identifica el costo como dato en vivo.
+  Presupuestos por destino consultan el mismo cierre cerrado.
 - Se sustituyó el limitador de dependencia vulnerable por una ventana fija en memoria; `npm audit --omit=dev`
   quedó en cero vulnerabilidades. El store compartido para varias instancias sigue siendo requisito de despliegue.
 - Supabase quedó al día con 44 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
   frontend TypeScript y auditoría de dependencias están verdes; no se declara AWS real ni OCI Usage API sin
   prerrequisitos externos.
 - El benchmark del cálculo determinista con 10.000 costos y 10 reglas tuvo mediana de 66,98 ms en cinco
-  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.470,90 ms y cierre
-  4.560,54 ms en el Supabase actual; el snapshot conserva 10.000 líneas. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
-  el uso de `cost_metrics_tenant_period_idx` con 9,704 ms de ejecución SQL. Se optimizó el insert masivo y se
+  iteraciones. La integración end-to-end con 10.000 costos persistidos midió preview 1.466,65 ms y cierre
+  5.108,36 ms en el Supabase actual; el snapshot conserva 10.000 líneas. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
+  el uso de `cost_metrics_tenant_period_idx` con 9,597 ms de ejecución SQL. Se optimizó el insert masivo y se
   documentó la brecha frente a los objetivos orientativos de 500 ms/2 s, que debe reevaluarse con un entorno
   de despliegue representativo antes de fijar un SLA.
 - La integración desde schema vacío pasó 5/5 con las 44 migraciones y el hardening de RLS; readiness tuvo
   mediana de 212,80 ms en cinco lecturas, con un outlier de 607,78 ms que debe reevaluarse con volumen estable.
-- La integración específica de asignación pasó 2/2 contra un schema temporal: flujo completo de costos,
+- La integración específica de asignación pasó 3/3 contra un schema temporal: flujo completo de costos,
   regla, preview, activación, cierre idempotente, FK tenant-aware y bloqueo de mutación de evidencia cerrada.
 
 ## Actualización 2026-08-03 — Canaries internos cerrados
@@ -360,5 +362,5 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - Se añadieron `cost_allocation_rule_targets` y `cost_allocation_closures`. Las reglas históricas se convierten en destinos DIRECT explícitos de 100 %; no se convierten automáticamente cierres históricos.
 - El cierre se registra por tenant/período/moneda con hash de costos y reglas, resultados por destino, responsable, versión y estado. La repetición idéntica es idempotente; costos tardíos o correcciones generan una versión reemplazante con motivo y conservan historia.
 - La sección actual `Asignación de costos` incorpora constructor DIRECT/SPLIT, suma visible, preview con reglas usadas y comparación mensual, costos compartidos, confirmación de `UNALLOCATED` e historial de cierres. Se añadieron endpoints de cierre, consulta histórica y comparación de versiones.
-- Supabase reportaba 38 migraciones en este snapshot; actualmente el estado vigente es 43 migraciones y el detalle de validación está en la actualización 2026-08-04 superior.
+- Supabase reportaba 38 migraciones en este snapshot; esa cifra es histórica. El estado vigente es 44 migraciones y el detalle de validación está en la actualización 2026-08-04 superior.
 - En este snapshot quedaba pendiente integrar presupuestos y valor por destino; ese trabajo está implementado y verificado en Fase 5.2. No se implementará contabilidad ni chargeback.
