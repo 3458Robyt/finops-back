@@ -107,7 +107,8 @@ Todas las rutas están bajo `/api/v1/cost-allocation` y requieren autenticación
 | Exportación | `GET /export.csv` |
 | Valor por destino | `GET /api/v1/value-realization/destinations?period=YYYY-MM&currency=USD` |
 
-El cierre exige `confirmUnallocated=true`. La corrección exige una razón y
+El cierre exige `confirmUnallocated=true`; la auditoría de cierre conserva esa
+confirmación y el total `UNALLOCATED`. La corrección exige una razón y
 genera una versión nueva. Los controladores y repositorios validan el tenant
 del actor antes de leer reglas, costos, cierres o destinos.
 
