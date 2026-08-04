@@ -79,7 +79,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 253 pruebas pasadas y 9 omitidas),
+- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 254 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
 - Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,

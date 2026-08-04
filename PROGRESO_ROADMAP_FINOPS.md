@@ -24,7 +24,7 @@
   con evidencia cerrada; la UI añade checklist y estados ABIERTO/LISTO/CERRADO/REEMPLAZADO.
 - Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
   vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
-- Verificación de esta fase: Supabase con 44 migraciones al día, 59 archivos unitarios, 253 pruebas pasadas,
+- Verificación de esta fase: Supabase con 44 migraciones al día, 59 archivos unitarios, 254 pruebas pasadas,
   9 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
 - Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
   de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
@@ -726,7 +726,7 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Se extendió la API con cierre, historial, detalle y comparación de versiones. La UI actual de `Asignación de costos` muestra suma SPLIT, preview con período anterior/reglas usadas, impacto presupuestal, costo compartido, confirmación de cierre e historial.
 - Los presupuestos por destino reutilizan únicamente cierres CLOSED; antes del cierre el actual se reporta explícitamente como no disponible y el preview conserva el valor como proyectado. Valor realizado solo atribuye ahorro con evidencia exacta.
 - Migraciones aplicadas en Supabase: `202608040001` a `202608040008`; el estado reporta 44 migraciones al día.
-- Evidencia de verificación: backend 59 archivos, 253 pruebas unitarias pasadas y 9 omitidas, typecheck, build, integración aislada 3/3 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
+- Evidencia de verificación: backend 59 archivos, 254 pruebas unitarias pasadas y 9 omitidas, typecheck, build, integración aislada 3/3 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
 - Pendiente: validación productiva AWS/OCI Usage API cuando existan prerrequisitos externos. Chargeback contable continúa fuera del alcance.
 
 ### 2026-08-04 - Auditoría frontend del cierre
