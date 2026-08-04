@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-03
+Fecha: 2026-08-04
 
 ## Resumen
 
@@ -39,6 +39,16 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La evaluación manual de umbrales 80/90/100 crea eventos idempotentes, notificaciones in-app y registros outbound pendientes, sin exigir un scheduler durante desarrollo.
 - El dashboard ya no calcula un presupuesto inventado; muestra únicamente el presupuesto tenant real cuando existe.
 
+## Asignación compartida y cierre financiero
+
+- `CostAllocationRule` conserva DIRECT y agrega SPLIT con destinos porcentuales explícitos; la suma debe ser exactamente 100 %.
+- El motor mantiene primera coincidencia, separa monedas y calcula con `Prisma.Decimal`; el residuo se asigna al último destino y las líneas sin regla permanecen como `UNALLOCATED`.
+- Los cierres son independientes por tenant, período y moneda. Guardan totales, resultados por destino, hashes de costos y reglas, versión, responsable y fecha. Una entrada idéntica es idempotente; una corrección crea una versión nueva y conserva la anterior.
+- `Asignación de costos` muestra suma SPLIT, preview con período anterior y reglas usadas, costo compartido, confirmación de `UNALLOCATED` e historial de cierres. La API incorpora cierre, historial, detalle y comparación de versiones.
+- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040005_cost_allocation_runtime_grants`; el historial contiene 41 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado y acceso directo revocado para roles API.
+- Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
+- Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
+
 ## Seguridad y produccion
 
 Implementado:
@@ -66,7 +76,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run typecheck`, `npm run test:unit` (57 archivos aprobados, 245 pruebas pasadas y 6 omitidas),
+- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 250 pruebas pasadas y 6 omitidas),
   `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
 - Frontend: lint y build aprobados; el CI de la beta ejecutó el smoke E2E con éxito.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
@@ -77,23 +87,27 @@ Estado de cierre:
   la capacidad de costos directa quedó denegada y el resultado fue `PARTIAL`, consistente con el bloqueo
   documentado de OCI Usage API.
 - Integración de trazabilidad en PostgreSQL aislado: 5/5 pruebas; readiness con 10.000 costos y 20.000
-  muestras técnicas tuvo mediana de 186,46 ms en cinco lecturas.
+  muestras técnicas tuvo mediana de 206,86 ms en cinco lecturas (un outlier de 702,22 ms).
 - Canary principal: la prueba `tenantContext.integration.test.ts` pasó con enforcement runtime contra
   Supabase `public`; el plan de métricas usa el índice `(tenant_id, sampled_at)` y la línea base
   observada fue 52.029 ms raw y 7.692 ms agregada para 660 filas/grupos.
+- Benchmark del motor determinista de asignación: 10.000 costos, 10 reglas y 5 iteraciones; mediana de
+  66,98 ms con invariantes de suma conservadas. Es una medición del cálculo en memoria, no un SLA completo
+  de la transacción de cierre contra la base de datos.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
   desarrollo; Supabase se valida mediante migraciones Prisma antes de cambios de esquema.
 
 ## Pendientes principales
 
-- Asignación de costos: reglas persistentes por tenant y showback determinístico ya están disponibles; la distribución porcentual de costos compartidos y el chargeback contable siguen fuera de alcance.
+- Asignación de costos: DIRECT/SPLIT, preview, distribución por moneda y cierres versionados ya están disponibles; chargeback contable continúa fuera de alcance.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
 - Completar la cobertura histórica de costos OCI: requiere que el inventario real exponga los mismos identificadores de recurso; los registros sin coincidencia quedan visibles con razón, no se enlazan por nombre.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Mantener un canary periódico de IA real con fixtures controlados; no persistir datos de prueba en tenants normales.
 - Activar permanentemente el enforcement runtime RLS solo al desplegar, usando el procedimiento de
   `docs/RUNTIME_RLS_CANARY.md` y su rollback.
-- Limpieza de documentos antiguos que aun describen estados superados.
+- Limpieza de documentos antiguos que aún describen estados superados; las fuentes autoritativas son este archivo,
+  `docs/ROADMAP_PRODUCTO.md`, `PROGRESO_ROADMAP_FINOPS.md` y `docs/DEUDA_TECNICA.md`.
 
 ## Operación durante desarrollo
 

@@ -45,6 +45,8 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
   identidad canónica (`cloudResourceId` con `cloudConnectionId + externalResourceId`); las corridas durables
   también persisten `cloudResourceId`.
 - **Canales:** notificaciones in-app; Telegram MVP; base outbound con correo SMTP y scheduler opcional.
+- **Gobernanza financiera:** reglas DIRECT/SPLIT, preview determinista, cierres por tenant/período/moneda,
+  versiones correctivas, snapshot de líneas y distribución por destino para presupuestos y valor realizado.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de
   recomendación, chat, historial, agente IA, ingesta/calidad, métricas técnicas, perfil, login).
 
@@ -147,6 +149,18 @@ con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales,
 - Notificaciones in-app con dedupe específico por medición/estado y canales email/Telegram opcionales mediante el servicio outbound existente. Ver `docs/VALUE_REALIZATION_CENTER.md`.
 - Migración aplicada en Supabase, integración PostgreSQL aislada y benchmark con 5 tenants/10.000 recomendaciones/20.000 mediciones verificados. La validación visual E2E autenticada queda como actividad manual de interfaz, no como requisito para habilitar la operación backend.
 
+### Fase 5.2 — Asignación compartida auditable · IMPLEMENTADA · 2026-08-04
+- El mismo módulo `CostAllocation` soporta `DIRECT` y `SPLIT`, con porcentajes `Decimal` exactos,
+  primera coincidencia determinista, separación por moneda y destino `UNALLOCATED` explícito.
+- El cierre es reproducible e idempotente por tenant/período/moneda. Una corrección crea una versión
+  nueva y conserva la anterior como `REPLACED`; un cierre `CLOSED` no se edita.
+- El preview y la UI exponen fuente, asignado, compartido, no asignado, reglas, período anterior e impacto
+  financiero. Las líneas del cierre preservan recurso canónico, hash de métrica y montos para auditoría.
+- Presupuesto y valor realizado por destino reutilizan cierres cerrados y no duplican cálculos. La atribución
+  de ahorro requiere evidencia exacta; cuando falta, el sistema no inventa ni distribuye el ahorro.
+- Las migraciones `202608040001` a `202608040005` están aplicadas en Supabase; los cierres antiguos sin
+  snapshot de líneas conservan sus agregados, pero no habilitan atribución histórica por línea.
+
 ---
 
 ## 4. Criterio de "versión terminada"
@@ -156,6 +170,25 @@ al menos un proveedor real (Fase 2); existen métricas técnicas reales que enri
 recomendaciones (Fase 4); el aislamiento multi-tenant está aplicado y verificado también en la BD
 principal (Fase 1); y el sistema tiene hardening de producción (Fase 0/1). Todo manteniendo las
 decisiones firmes de la §1.
+
+## Actualización 2026-08-04 — Distribución compartida y cierre financiero
+
+- Se cerró la fase de asignación compartida sobre el módulo existente: `DIRECT` conserva el comportamiento
+  actual y `SPLIT` distribuye exactamente el 100 % con aritmética monetaria Decimal.
+- El cierre valida fuente, reglas, consistencia de tenant, moneda, período y estado de ingesta; persiste
+  hashes, responsable, versión y líneas de evidencia. El flujo no permite mutar cierres cerrados.
+- La página `Asignación de costos` incorpora construcción de reglas, preview, historial/comparación, resumen
+  financiero y valor realizado por destino. Presupuestos por destino consultan el mismo cierre cerrado.
+- Se sustituyó el limitador de dependencia vulnerable por una ventana fija en memoria; `npm audit --omit=dev`
+  quedó en cero vulnerabilidades. El store compartido para varias instancias sigue siendo requisito de despliegue.
+- Supabase quedó al día con 41 migraciones. Las validaciones locales dirigidas, unitarias, typecheck, build,
+  frontend TypeScript y auditoría de dependencias están verdes; no se declara AWS real ni OCI Usage API sin
+  prerrequisitos externos.
+- El benchmark del cálculo determinista con 10.000 costos y 10 reglas tuvo mediana de 66,98 ms en cinco
+  iteraciones; la medición de cierre end-to-end contra una base de datos productiva queda para cuando exista
+  un volumen/entorno de despliegue representativo.
+- La integración desde schema vacío pasó 5/5 con las 41 migraciones y el hardening de RLS; readiness tuvo
+  mediana de 206,86 ms en cinco lecturas, con un outlier de 702,22 ms que debe reevaluarse con volumen estable.
 
 ## Actualización 2026-08-03 — Canaries internos cerrados
 
@@ -309,3 +342,13 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
   la confirmación.
 - Migraciones aplicadas en Supabase: `202607250001_verified_savings_measurements` y
   `202607250002_savings_unit_normalization`. No se insertaron fixtures productivos.
+
+## 13. Actualización 2026-08-04 - Distribución compartida y cierres reproducibles
+
+- La asignación existente evolucionó sin crear un segundo módulo: las reglas conservan DIRECT y agregan SPLIT con múltiples destinos y porcentajes que suman exactamente 100 %.
+- La clasificación sigue siendo determinística: primera regla coincidente, `UNALLOCATED` cuando no existe coincidencia, separación por moneda, `Decimal` interno y residuo de redondeo en el último destino.
+- Se añadieron `cost_allocation_rule_targets` y `cost_allocation_closures`. Las reglas históricas se convierten en destinos DIRECT explícitos de 100 %; no se convierten automáticamente cierres históricos.
+- El cierre se registra por tenant/período/moneda con hash de costos y reglas, resultados por destino, responsable, versión y estado. La repetición idéntica es idempotente; costos tardíos o correcciones generan una versión reemplazante con motivo y conservan historia.
+- La sección actual `Asignación de costos` incorpora constructor DIRECT/SPLIT, suma visible, preview con reglas usadas y comparación mensual, costos compartidos, confirmación de `UNALLOCATED` e historial de cierres. Se añadieron endpoints de cierre, consulta histórica y comparación de versiones.
+- Supabase está actualizado y `prisma migrate status` reporta 38 migraciones al día. Docker no está instalado localmente, por lo que la validación desde cero se mantiene en CI; el esquema actual sí fue verificado contra Supabase.
+- Pendiente consecuente: modelar y validar presupuestos por dimensión de negocio y exponer ahorro potencial/aprobado/verificado por destino reutilizando la trazabilidad de valor existente. No se implementará contabilidad ni chargeback.

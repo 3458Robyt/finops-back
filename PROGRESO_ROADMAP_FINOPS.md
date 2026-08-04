@@ -1,10 +1,31 @@
 # Progreso — FinOps Inteligente (Backend)
 
-> **Estado vigente 2026-08-03:** las entradas inferiores son bitácora histórica. La beta se integró en
-> `main` mediante PR #19 frontend y PR #16 backend; el cierre posterior de trazabilidad continúa en
-> la rama `feat/resource-lineage-readiness` con PR #18 backend y PR #20 frontend; los canaries SEC-001 y AI-001 están cerrados
-> técnicamente. Los bloqueos externos AWS-001/OCI-001 y la activación productiva permanente permanecen
-> abiertos o diferidos según `docs/DEUDA_TECNICA.md`.
+> **Estado vigente 2026-08-04:** las entradas inferiores son bitácora histórica. La fase de distribución
+> compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
+> la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
+> permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
+
+### 2026-08-04 — Distribución compartida auditable y cierre financiero
+
+- Se extendió `CostAllocation` sin crear un segundo módulo: `DIRECT` conserva la asignación unitaria y
+  `SPLIT` distribuye con porcentajes Decimal exactos, primera coincidencia determinista, separación por
+  moneda y `UNALLOCATED` explícito.
+- El cierre financiero es reproducible por tenant/período/moneda: valida fuente y reglas dentro de una
+  transacción serializable, persiste hashes, versión, responsable y conserva versiones reemplazadas sin
+  mutar cierres cerrados.
+- La migración `202608040004_cost_allocation_line_snapshots` guarda evidencia por línea: recurso canónico,
+  hash de métrica, moneda, fuente, monto asignado, destino, regla y motivo de enlace. Los cierres antiguos
+  sin líneas siguen siendo visibles, pero no permiten atribución histórica por línea.
+- Presupuestos por destino y `Value Realization` consultan el cierre cerrado; el ahorro solo aparece por destino
+  cuando la evidencia exacta coincide. El frontend muestra preview, historial/comparación e impacto financiero.
+- Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
+  vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
+- Verificación de esta fase: Supabase con 41 migraciones al día, 59 archivos unitarios, 250 pruebas pasadas,
+  6 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
+- Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
+  de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
+- Integración final desde schema vacío: 5/5 pruebas con las 41 migraciones y permisos RLS de asignación;
+  readiness mediana 206,86 ms en cinco lecturas, con un outlier de 702,22 ms documentado.
 
 ### 2026-08-03 — Cierre de canaries runtime RLS e IA
 
@@ -682,3 +703,13 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Supabase: aplicada la migración `202607260001_value_realization_notification_dedupe` con índices para ejecuciones y mediciones; `prisma migrate status` quedó al día.
 - Evidencia de rendimiento en esquema aislado Supabase: 5 tenants, 10.000 recomendaciones y 20.000 mediciones; `summary=459 ms`, página de 100=`447 ms`, exportación de 10.000=`994 ms`, `EXPLAIN ANALYZE=131.263 ms`. Sin fixtures en el esquema principal.
 - Verificación: typecheck backend, 227 pruebas unitarias, integración PostgreSQL tenant-scoped, smoke HTTP autenticado de login/summary/items/trend/export, lint/build frontend y benchmark de lectura aprobados.
+
+### 2026-08-04 - Distribución compartida y cierre financiero reproducible
+
+- Se mantuvo el módulo actual de asignación y se añadieron reglas `DIRECT`/`SPLIT`, destinos porcentuales, hash/versionado de configuración y backfill explícito de reglas DIRECT existentes a 100 %.
+- El motor ahora calcula con Decimal, conserva primera coincidencia, separa monedas, mantiene `UNALLOCATED` y asigna el residuo al último destino sin duplicar líneas.
+- Se implementaron cierres por tenant/período/moneda con fuente y reglas hasheadas, resultados por destino, versiones inmutables, reemplazo con motivo e idempotencia.
+- Se extendió la API con cierre, historial, detalle y comparación de versiones. La UI actual de `Asignación de costos` muestra suma SPLIT, preview con período anterior/reglas usadas, costo compartido, confirmación de cierre e historial.
+- Migraciones aplicadas en Supabase: `202608040001_shared_cost_allocation_closures` y `202608040002_backfill_direct_allocation_targets`; `prisma migrate status` quedó al día.
+- Evidencia de verificación: backend 57 archivos/253 pruebas unitarias pasadas, typecheck y build; frontend lint, typecheck y build; Docker local no disponible para repetir migración desde cero.
+- Pendiente: presupuesto y realización de valor consultables por destino de negocio, sin duplicar cálculos ni mezclar ahorro potencial con ahorro realizado. Chargeback contable continúa fuera del alcance.

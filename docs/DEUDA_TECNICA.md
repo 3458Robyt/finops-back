@@ -1,12 +1,12 @@
 # Deuda técnica y faltantes — FinOps Inteligente
 
-> Registro autoritativo al 2026-08-03. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
+> Registro autoritativo al 2026-08-04. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO` y evidencia asociada. Los ítems de desarrollo manual no son incidentes.
 
 | ID | Prioridad | Tipo | Estado | Hallazgo / criterio de cierre | Evidencia o siguiente acción |
 |---|---|---|---|---|---|
 | SEC-001 | Alta | Producción | CERRADO | Verificar técnicamente el enforcement runtime RLS y dejar activación permanente condicionada al despliegue. | Canary 2026-08-03 contra Supabase principal: `finops_runtime`, dos tenants, worker context y cross-tenant cero. Activación permanente/rollback operativo quedan documentados y diferidos hasta tener destino de despliegue. |
-| DB-001 | Alta | Supabase | CERRADO | Hardening de funciones y cobertura de índices FK. | 36 migraciones al día; Advisors seguridad sin lints; 27 índices FK presentes. |
+| DB-001 | Alta | Supabase | CERRADO | Hardening de funciones y cobertura de índices FK. | 41 migraciones al día; Advisors seguridad sin lints; 27 índices FK presentes; tablas de asignación sin acceso API directo. |
 | ING-001 | Media | Datos | CERRADO | Scheduler no debe encolar conexiones sin validación/capacidades vigentes. | Validación e invalidación implementadas; se conservaron 5 fallos no asociados a prueba. |
 | DEP-001 | Media | Dependencias | CERRADO | Reducir carga OCI y eliminar vulnerabilidades de producción. | Módulos OCI específicos 2.138.0; mediana fría ~2,13 s; audit productivo sin vulnerabilidades. |
 | AI-001 | Media | Validación de proveedor | CERRADO | Verificar el flujo real de chat y recomendaciones sin persistir datos de prueba. | Canary 2026-08-03 en schema aislado con `gpt-5.4-mini`: chat/recomendaciones en español, auditor, snapshot canónico, rúbrica, trazas, 3 recomendaciones y ahorros no negativos; 54.662 s y 4.093 tokens estimados. |
@@ -15,7 +15,9 @@
 | OPS-001 | Media | Operación | DIFERIDO | Workers, healthchecks, alertas 24/7 y scheduler productivo. | Desarrollo manual aceptado hasta definir despliegue. |
 | OPS-002 | Baja | Presupuestos | DIFERIDO | Conectar evaluación periódica de presupuestos a worker/scheduler desplegado. | La evaluación manual funciona durante desarrollo. |
 | OPS-003 | Media | Secretos/observabilidad | DIFERIDO | Secret manager externo, rotación formal, logs/alertas centralizados. | Requerido antes de producción pública. |
-| FIN-001 | Baja | Alcance FinOps | DIFERIDO | Distribución porcentual de costos compartidos y chargeback contable. | Showback determinístico actual queda fuera de la beta. |
+| FIN-001 | Media | Alcance FinOps | CERRADO | Distribución porcentual auditable, separación por moneda y cierre reproducible sin contabilidad. | Migraciones `202608040001_shared_cost_allocation_closures` a `202608040004_cost_allocation_line_snapshots`; API/UI DIRECT/SPLIT, Decimal, idempotencia, versiones correctivas y snapshot de líneas verificados. Chargeback contable sigue fuera de alcance. |
+| FIN-002 | Media | Integración FinOps | CERRADO | Consultar presupuesto, impacto y ahorro por destino sin duplicar cálculos ni atribuir evidencia inexistente. | Presupuesto y Value Realization reutilizan cierres cerrados. La atribución exige evidencia exacta de tenant, moneda, recurso canónico, hash de métrica y período; si falta, no se atribuye. Cierres previos a `202608040004` pueden no tener snapshot de líneas. |
+| SEC-002 | Media | Escalabilidad | DIFERIDO | Usar un store compartido para rate limiting cuando el backend se despliegue en más de una instancia. | El limitador actual es fijo, seguro y en memoria para desarrollo/instancia única; migrar a Redis o store equivalente antes de escalar horizontalmente. |
 | QA-001 | Baja | Entorno | CERRADO | Integración y E2E reproducibles sin Docker local. | Schema Supabase aislado migrado, probado y eliminado. |
 | QA-002 | Media | Validación UI | CERRADO | Smoke autenticado reproducible sin depender de una contraseña real compartida. | Fixtures E2E generan credenciales controladas y cleanup automático. |
 | VAL-001 | Media | Rendimiento | CERRADO | Medir realización de valor con 10.000 recomendaciones y 20.000 mediciones. | Benchmark aislado: resumen 459 ms, página 447 ms, exportación 994 ms, EXPLAIN 131 ms. |
