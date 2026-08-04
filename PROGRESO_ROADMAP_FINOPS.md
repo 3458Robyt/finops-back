@@ -728,3 +728,10 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Migraciones aplicadas en Supabase: `202608040001` a `202608040007`; el estado reporta 43 migraciones al día.
 - Evidencia de verificación: backend 59 archivos, 253 pruebas unitarias pasadas y 8 omitidas, typecheck, build, integración aislada 2/2 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
 - Pendiente: validación productiva AWS/OCI Usage API cuando existan prerrequisitos externos. Chargeback contable continúa fuera del alcance.
+
+### 2026-08-04 - Auditoría frontend del cierre
+
+- Se corrigió la compuerta de `Previsualizar`: el formulario identifica el botón que originó el envío y ya no crea una regla cuando el usuario solo solicita un preview.
+- El historial de cierres ahora permite abrir el detalle y comparar una versión seleccionada bajo demanda, mostrando hashes de fuente/reglas, responsable, totales, resultados por destino y razón de reemplazo sin duplicar cálculos financieros.
+- Se añadió `e2e/cost-allocation.spec.ts` para cubrir el flujo SPLIT, validación 100 %, preview sin persistencia, guardado, cierre, detalle, comparación y exportación CSV.
+- Verificación vigente: frontend typecheck, lint y build; E2E de asignación 1/1 y smoke E2E 1/1. No se modificó el contrato HTTP.

@@ -116,6 +116,14 @@ por destino y ahorros potenciales, aprobados y verificados que ya tengan
 evidencia cerrada. Estos ahorros se muestran como históricos y no se proyectan
 por la nueva regla; una atribución nueva requiere cierre, ejecución y evidencia.
 
+La interfaz de `Asignación de costos` expone el historial de cierres y carga
+bajo demanda el detalle o la comparación de una versión seleccionada. El
+detalle muestra los hashes de fuente y reglas, responsables, totales, estado y
+resultados por destino; la comparación identifica la versión anterior y la
+razón de reemplazo. La acción `Previsualizar` se distingue del envío de la
+regla mediante el botón que originó el formulario, por lo que nunca persiste
+una regla accidentalmente.
+
 ## Presupuestos y valor realizado
 
 `ALLOCATION_DESTINATION` usa el cierre cerrado como fuente de costo actual y

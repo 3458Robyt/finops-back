@@ -45,6 +45,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El motor mantiene primera coincidencia, separa monedas y calcula con `Prisma.Decimal`; el residuo se asigna al último destino y las líneas sin regla permanecen como `UNALLOCATED`.
 - Los cierres son independientes por tenant, período y moneda. Guardan totales, resultados por destino, hashes de costos y reglas, versión, responsable y fecha. Una entrada idéntica es idempotente; una corrección crea una versión nueva y conserva la anterior.
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
+- El historial de cierres permite cargar bajo demanda el detalle y comparar versiones, incluyendo hashes, responsable, totales y resultados por destino. El botón `Previsualizar` no persiste reglas: el frontend distingue explícitamente la acción del formulario antes de llamar a la API.
 - Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040007_cost_allocation_immutability`; el historial contiene 43 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. Antes del cierre, el actual queda explícitamente no disponible y el preview conserva el valor como proyectado. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
@@ -79,7 +80,7 @@ Estado de cierre:
   memoria; la persistencia mantiene inserción idempotente por hash.
 - Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 253 pruebas pasadas y 8 omitidas),
   `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
-- Frontend: lint y build aprobados; el CI de la beta ejecutó el smoke E2E con éxito.
+- Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
   ahorros no negativos, trazabilidad y `persist=false` aprobados con el modelo `gpt-5.4-mini`.
   Latencia de generación: 54.662 s; estimación de contexto/trazas: 4.093 tokens; recomendaciones: 3.
