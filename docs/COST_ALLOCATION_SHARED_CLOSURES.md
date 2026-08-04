@@ -119,7 +119,10 @@ por la nueva regla; una atribución nueva requiere cierre, ejecución y evidenci
 ## Presupuestos y valor realizado
 
 `ALLOCATION_DESTINATION` usa el cierre cerrado como fuente de costo actual y
-no vuelve a calcular una distribución diferente. `Value Realization` enlaza
+no vuelve a calcular una distribución diferente. Mientras no exista un cierre
+para el período, el costo actual del presupuesto queda explícitamente no
+disponible (el preview muestra el costo proyectado, pero no lo convierte en
+actual). `Value Realization` enlaza
 las líneas cerradas con recomendaciones por tenant, moneda, recurso canónico,
 hash de métrica y período exactos. Si falta uno de esos elementos no atribuye
 ahorro; el ahorro potencial nunca se presenta como ahorro verificado.

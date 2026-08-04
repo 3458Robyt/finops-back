@@ -347,12 +347,15 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - Migraciones aplicadas en Supabase: `202607250001_verified_savings_measurements` y
   `202607250002_savings_unit_normalization`. No se insertaron fixtures productivos.
 
-## 13. Actualización 2026-08-04 - Distribución compartida y cierres reproducibles
+## 13. Actualización 2026-08-04 - Distribución compartida y cierres reproducibles (snapshot superseded)
+
+> **Histórico superseded:** el detalle vigente está en `Fase 5.2`, en la actualización
+> 2026-08-04 de la sección anterior y en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
 
 - La asignación existente evolucionó sin crear un segundo módulo: las reglas conservan DIRECT y agregan SPLIT con múltiples destinos y porcentajes que suman exactamente 100 %.
 - La clasificación sigue siendo determinística: primera regla coincidente, `UNALLOCATED` cuando no existe coincidencia, separación por moneda, `Decimal` interno y residuo de redondeo en el último destino.
 - Se añadieron `cost_allocation_rule_targets` y `cost_allocation_closures`. Las reglas históricas se convierten en destinos DIRECT explícitos de 100 %; no se convierten automáticamente cierres históricos.
 - El cierre se registra por tenant/período/moneda con hash de costos y reglas, resultados por destino, responsable, versión y estado. La repetición idéntica es idempotente; costos tardíos o correcciones generan una versión reemplazante con motivo y conservan historia.
 - La sección actual `Asignación de costos` incorpora constructor DIRECT/SPLIT, suma visible, preview con reglas usadas y comparación mensual, costos compartidos, confirmación de `UNALLOCATED` e historial de cierres. Se añadieron endpoints de cierre, consulta histórica y comparación de versiones.
-- Supabase está actualizado y `prisma migrate status` reporta 38 migraciones al día. Docker no está instalado localmente, por lo que la validación desde cero se mantiene en CI; el esquema actual sí fue verificado contra Supabase.
-- Pendiente consecuente: modelar y validar presupuestos por dimensión de negocio y exponer ahorro potencial/aprobado/verificado por destino reutilizando la trazabilidad de valor existente. No se implementará contabilidad ni chargeback.
+- Supabase reportaba 38 migraciones en este snapshot; actualmente el estado vigente es 43 migraciones y el detalle de validación está en la actualización 2026-08-04 superior.
+- En este snapshot quedaba pendiente integrar presupuestos y valor por destino; ese trabajo está implementado y verificado en Fase 5.2. No se implementará contabilidad ni chargeback.

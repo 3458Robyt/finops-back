@@ -721,9 +721,10 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 ### 2026-08-04 - Distribución compartida y cierre financiero reproducible
 
 - Se mantuvo el módulo actual de asignación y se añadieron reglas `DIRECT`/`SPLIT`, destinos porcentuales, hash/versionado de configuración y backfill explícito de reglas DIRECT existentes a 100 %.
-- El motor ahora calcula con Decimal, conserva primera coincidencia, separa monedas, mantiene `UNALLOCATED` y asigna el residuo al último destino sin duplicar líneas.
+- El motor calcula con Decimal, conserva primera coincidencia, separa monedas, mantiene `UNALLOCATED` y asigna el residuo al último destino sin duplicar líneas.
 - Se implementaron cierres por tenant/período/moneda con fuente y reglas hasheadas, resultados por destino, versiones inmutables, reemplazo con motivo e idempotencia.
-- Se extendió la API con cierre, historial, detalle y comparación de versiones. La UI actual de `Asignación de costos` muestra suma SPLIT, preview con período anterior/reglas usadas, costo compartido, confirmación de cierre e historial.
-- Migraciones aplicadas en Supabase: `202608040001_shared_cost_allocation_closures` y `202608040002_backfill_direct_allocation_targets`; `prisma migrate status` quedó al día.
-- Evidencia de verificación: backend 57 archivos/253 pruebas unitarias pasadas, typecheck y build; frontend lint, typecheck y build; Docker local no disponible para repetir migración desde cero.
-- Pendiente: presupuesto y realización de valor consultables por destino de negocio, sin duplicar cálculos ni mezclar ahorro potencial con ahorro realizado. Chargeback contable continúa fuera del alcance.
+- Se extendió la API con cierre, historial, detalle y comparación de versiones. La UI actual de `Asignación de costos` muestra suma SPLIT, preview con período anterior/reglas usadas, impacto presupuestal, costo compartido, confirmación de cierre e historial.
+- Los presupuestos por destino reutilizan únicamente cierres CLOSED; antes del cierre el actual se reporta explícitamente como no disponible y el preview conserva el valor como proyectado. Valor realizado solo atribuye ahorro con evidencia exacta.
+- Migraciones aplicadas en Supabase: `202608040001` a `202608040007`; el estado reporta 43 migraciones al día.
+- Evidencia de verificación: backend 59 archivos, 253 pruebas unitarias pasadas y 8 omitidas, typecheck, build, integración aislada 2/2 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
+- Pendiente: validación productiva AWS/OCI Usage API cuando existan prerrequisitos externos. Chargeback contable continúa fuera del alcance.
