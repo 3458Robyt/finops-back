@@ -25,6 +25,11 @@
 - Se redujo `finops-app/src/views/Dashboard.tsx` de 466 a 231 líneas. La carga paralela, fallback de analítica, presupuesto y KPIs viven en `useDashboardController.ts` (194 líneas), mientras los transformadores y formateadores viven en `dashboardPresentation.ts` (161 líneas).
 - Frontend typecheck, lint y build pasaron; no se ejecutó E2E en esta sesión porque el runner exige `TEST_DATABASE_URL` aislada y `ALLOW_DESTRUCTIVE_TEST_DATABASE=true`, variables que no estaban disponibles. Commit `92954f9`; no se hizo push.
 
+### 2026-08-11 — Administración MSP frontend modularizada
+
+- Se redujo `finops-app/src/views/MasterAdmin.tsx` de 426 a 225 líneas. El hook `useMasterAdminController.ts` concentra cargas y mutaciones de tenants, usuarios y asignaciones en 197 líneas; la vista conserva el selector, creación, suspensión, asignación y revocación.
+- Frontend typecheck, lint y build pasaron. Commit `54cb0d0`; no se hizo push.
+
 ### 2026-08-11 — Detalle de recomendación modular y E2E desde migraciones cero
 
 - Se dividió `ResourceDetail.tsx` de 1.609 a 348 líneas, extrayendo el controlador de carga/acciones,
