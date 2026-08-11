@@ -20,7 +20,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
-- Verificación vigente: backend `test:all` con 76 archivos, 312 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación vigente: backend `test:all` con 81 archivos, 321 pruebas pasadas y 9 omitidas; escenarios IA
   offline 19/19; typecheck y build aprobados. AWS real y OCI Usage API continúan bloqueados externamente.
 
 ## Ingesta e inventario cloud
@@ -28,11 +28,12 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - OCI FOCUS real esta conectado hasta `focus_cost_line_items` y `cost_metrics`.
 - OCI Monitoring ya alimenta `resource_metric_samples`.
 - AWS tiene base SDK para EC2, CloudWatch y Data Exports, pendiente de credencial/rol real para validacion productiva.
-- `cloud_resources` se pobla desde inventario declarativo (`ociInventoryResources` / `awsInventoryResources`) y desde definiciones/muestras de metricas cuando aun no hay inventario completo.
+- `cloud_resources` se pobla desde inventario declarativo, OCI Compute, OCI Resource Search y definiciones/muestras de métricas cuando aún no hay inventario completo. Resource Search pagina únicamente tipos OCI observados y soportados (`instance`, `bootvolume`, `bootvolumebackup`, `vnic`) y respeta los compartimentos accesibles e incluidos/excluidos por configuración.
 - Las muestras tecnicas nuevas se enlazan a `cloudResourceId` y se reconcilian muestras anteriores por conexion/recurso.
 - Costos, muestras y recomendaciones tienen `cloudResourceId`/`resourceLinkReason`; el enlace canónico exige `cloudConnectionId + externalResourceId` exactos, sin fuzzy matching.
 - La ingesta persiste el orden inventario → costos/métricas, el resumen de linkage en cada job y el endpoint `/api/v1/ingestion/resource-linkage` muestra cobertura por tabla y por recurso en `Ingesta`.
-- El backfill idempotente `npm run db:reconcile:resource-links` ya se aplicó en Supabase. En la cuenta OCI actual: 36 costos enlazados, 9.124 sin enlace por inventario/conexión y 19.367/19.367 muestras técnicas enlazadas. Los costos sin inventario no se presentan como evidencia técnica.
+- El backfill exacto e idempotente de referencias OCI históricas se aplicó en Supabase: creó 11 identidades derivadas de OCID (4 boot volumes, 2 backups, 2 instancias y 3 VNIC) sin sobrescribir inventario vivo. En la cuenta OCI actual quedaron 8.173/8.173 costos elegibles enlazados (100 %): 36 a recursos vivos y 8.137 a referencias históricas; 555 identificadores de telemetría no soportados y 432 registros sin conexión se conservan como costos financieros, pero quedan fuera del denominador técnico. Las 19.367/19.367 muestras técnicas continúan enlazadas.
+- La UI de Ingesta distingue recursos vivos, referencias históricas, costos de servicio/cuenta, falta de conexión, identificadores no soportados, recursos válidos pendientes y ambigüedades. Una referencia histórica exacta no se presenta como recurso actualmente activo.
 - El job controlado de inventario OCI más reciente terminó correctamente en 3,4 s: 2 llamadas SDK,
   1 recurso descubierto y 1 recurso persistido. El scheduler ahora encola INVENTORY antes de costos/métricas,
   exige validación de capacidades vigente y respeta un cooldown configurable de 24 h.
@@ -156,8 +157,7 @@ Estado de cierre:
 ## Pendientes principales
 
 - Asignación de costos: DIRECT/SPLIT, preview, distribución por moneda y cierres versionados ya están disponibles; chargeback contable continúa fuera de alcance.
-- Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
-- Completar la cobertura histórica de costos OCI: requiere que el inventario real exponga los mismos identificadores de recurso; los registros sin coincidencia quedan visibles con razón, no se enlazan por nombre.
+- Mantener canaries periódicos de OCI Compute/Resource Search y validar frecuencia/volumen del inventario cuando exista operación continua. AWS EC2 sigue bloqueado por falta de cuenta real.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Mantener un canary periódico de IA real con fixtures controlados; no persistir datos de prueba en tenants normales.
 - Activar permanentemente el enforcement runtime RLS solo al desplegar, usando el procedimiento de

@@ -145,12 +145,16 @@ Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_r
 costos, métricas y recomendaciones: vínculo exacto por conexión + identificador externo, razones de no
 vínculo, backfill paginado/idempotente, cobertura visible en Ingesta y guardrail IA que exige
 `cloudResourceId` para evidencia técnica. El análisis por recurso persiste el vínculo canónico y sus
-índices ya están aplicados en Supabase. Falta completar cobertura histórica cuando el inventario real
-no contiene los IDs de los reportes FOCUS y validar frecuencia/volumen productivo. Habilita recomendaciones
+índices ya están aplicados en Supabase. La cobertura histórica OCI se cerró mediante Resource Search y
+referencias históricas exactas derivadas de OCID: 8.173/8.173 costos elegibles quedaron enlazados, mientras
+555 identificadores de telemetría no soportados y 432 costos sin conexión se excluyen explícitamente del
+denominador técnico. Falta validar frecuencia/volumen productivo. Habilita recomendaciones
 con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales, no inferido de FOCUS).
 - El job de inventario OCI controlado más reciente persistió 1 recurso en 3,4 s con 2 llamadas SDK.
   El scheduler no encola conexiones cuya validación o capacidades estén vencidas. La gobernanza de tags
   requerida (`environment`, `owner`, `application`, `cost_center`) ya se calcula y se visualiza por tenant.
+- La UI de Ingesta explica el denominador elegible, diferencia recursos vivos de referencias históricas y
+  muestra clasificación por servicio y conexión sin usar coincidencias fuzzy.
 
 ### Fase 5 — Expansión y gobernanza avanzada · LARGO
 - Proveedores Azure y GCP (la arquitectura ya los soporta como capacidad de catálogo).

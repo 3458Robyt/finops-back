@@ -806,3 +806,20 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Se corrigió la expiración del cierre por el timeout interactivo predeterminado de Prisma y se redujo el payload de líneas grandes a un `INSERT` parametrizado con `jsonb_to_recordset`; los lotes pequeños mantienen `createMany`.
 - La migración `202608040008_cost_metrics_tenant_period_index` se aplicó en Supabase; el plan usa `cost_metrics_tenant_period_idx` y ejecuta en 9,597 ms para 10.000 filas.
 - Resultado de la última ejecución en Supabase: preview `1.466,65 ms`, cierre `5.108,36 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada como `PERF-001` para una medición con infraestructura de despliegue representativa.
+
+### 2026-08-11 - Inventario OCI ampliado y cobertura elegible de linaje
+
+- Se integró OCI Resource Search con paginación, filtros include/exclude de compartimentos y normalización de
+  `instance`, `bootvolume`, `bootvolumebackup` y `vnic`, sin ampliar permisos ni inventar cobertura.
+- FOCUS puede producir referencias históricas exactas para OCID soportados que ya no existen en el inventario
+  vivo. Esas referencias quedan marcadas como `OCI_FOCUS_HISTORICAL_REFERENCE`, estado `UNKNOWN` y nunca
+  sobrescriben un recurso vivo.
+- El backfill controlado en Supabase creó 11 referencias históricas y enlazó 8.137 costos adicionales. Resultado:
+  8.173/8.173 costos elegibles enlazados (100 %), 36 vivos, 8.137 históricos, 555 IDs no soportados y 432 costos
+  sin conexión fuera del denominador técnico. La repetición fue idempotente: cero candidatos y cero cambios.
+- Readiness clasifica cada costo en siete categorías y expone agregación global, por servicio y por conexión.
+  La UI explica el denominador y diferencia evidencia viva, histórica, no elegible y pendiente.
+- Se dividieron `PrismaResourceLinkageReadinessRepository` (360 líneas) y `Ingesta.tsx` (363 líneas) en queries y
+  paneles cohesivos. El contrato HTTP solo se amplió con campos compatibles de clasificación.
+- Evidencia: backend `test:all` 81 archivos/321 pruebas y 19 escenarios IA offline; integración de linaje 5/5
+  con mediana de readiness de 352,34 ms; frontend typecheck, lint y build; audit productivo backend sin vulnerabilidades.

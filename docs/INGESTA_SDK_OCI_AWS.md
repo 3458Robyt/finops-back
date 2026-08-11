@@ -46,6 +46,29 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
 - Hallazgo de diseno corregido: los FOCUS reales ya no quedan solo como tabla cruda; se proyectan tambien a `cost_metrics`, que alimenta dashboard, analitica, contexto IA y recomendaciones.
 - Hallazgo de rendimiento: con Supabase remoto, la persistencia sigue siendo el costo principal del job. Mantener `maxObjects` bajo hasta implementar persistencia por lotes/staging SQL.
 
+#### Resource Search y referencias históricas (2026-08-11)
+
+- El inventario combina fuentes con prioridad explícita: metadata declarativa, Compute, Resource Search y,
+  por último, definiciones de Monitoring. Las fuentes posteriores complementan campos, pero no degradan una
+  identidad ya observada por una fuente más fuerte.
+- Resource Search usa consultas estructuradas paginadas y solo busca tipos presentes en el FOCUS OCI actual:
+  `instance`, `bootvolume`, `bootvolumebackup` y `vnic`. La lista puede reducirse mediante
+  `metadata.ociInventoryResourceTypes`; no se amplía automáticamente a tipos no normalizados.
+- Los compartimentos respetan `metadata.ociInventoryIncludeCompartments` y
+  `metadata.ociInventoryExcludeCompartments`. Search no concede visibilidad adicional: devuelve únicamente
+  recursos que el principal puede inspeccionar o leer.
+- Cuando FOCUS contiene un OCID válido soportado que ya no aparece como recurso vivo, se crea una referencia
+  `OCI_FOCUS_HISTORICAL_REFERENCE` con estado `UNKNOWN`, período de evidencia y normalizador versionado. La
+  inserción usa `skipDuplicates`, por lo que nunca sobrescribe inventario vivo ni afirma que el recurso siga activo.
+- El backfill real creó 11 referencias históricas y enlazó 8.137 filas adicionales. La cobertura resultante es
+  8.173/8.173 costos elegibles (100 %). Otros 987 registros se conservan fuera del denominador: 555 IDs de
+  telemetría no soportados y 432 filas sin conexión cloud identificable.
+- La segunda ejecución del backfill reportó cero candidatos y cero actualizaciones, demostrando idempotencia.
+- Fuentes oficiales:
+  - https://docs.oracle.com/en-us/iaas/tools/typescript/latest/classes/_resourcesearch_lib_client_.resourcesearchclient.html
+  - https://docs.oracle.com/en-us/iaas/Content/Search/Concepts/queryoverview.htm
+  - https://docs.oracle.com/en-us/iaas/Content/Identity/policyreference/searchpolicyreference.htm
+
 ### AWS
 
 - Credencial operativa: rol `AssumeRole` registrable cifrado con `npm run aws:register-role`.
