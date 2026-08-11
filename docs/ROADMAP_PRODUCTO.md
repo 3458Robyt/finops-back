@@ -21,12 +21,13 @@
 
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
-> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 275 pruebas pasadas y 9
+> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 287 pruebas pasadas y 9
 > omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
-> Las actualizaciones fechadas antes del 2026-08-03 son snapshots históricos. Para el estado vigente
-> prevalecen la sección 1, la sección 3, la actualización 2026-08-03 y `docs/DEUDA_TECNICA.md`.
+> Las secciones con fecha conservan snapshots históricos y no deben usarse para inferir conteos actuales.
+> Para el estado vigente prevalecen la sección 1, la sección 3, `docs/ESTADO_ACTUAL_FINOPS.md` y
+> `docs/DEUDA_TECNICA.md`.
 
 ---
 
@@ -55,18 +56,23 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
   versiones correctivas, snapshot de líneas y distribución por destino para presupuestos y valor realizado.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de
   recomendación, chat, historial, agente IA, ingesta/calidad, métricas técnicas, perfil, login).
+- **Operación del agente:** el feedback humano y el resultado de la auditoría se observan por tenant;
+  el resumen no confunde decisión aprobada con memoria aprobada y conserva los estados `PENDING`, `APPROVED`,
+  `REJECTED`, `SKIPPED` y `ERROR`.
 
 ### Base estructural lista, con validaciones productivas aún pendientes
 - **Ingesta:** existen workers persistentes, scheduler, lectura S3/OCI, parser FOCUS streaming y
   persistencia idempotente hacia `focus_cost_line_items`/`cost_metrics`. AWS y OCI tienen adaptadores
   SDK; falta validar con cuentas reales, volumen y credenciales de producción.
 - **Métricas técnicas:** OCI Monitoring y AWS CloudWatch ya alimentan `resource_metric_samples`; el
-  inventario OCI Compute/AWS EC2 puede poblar `cloud_resources`. Falta validar cobertura real,
-  frecuencia operativa y cruces completos por recurso.
+  inventario OCI Compute puede poblar `cloud_resources` y el scheduler ya programa su refresco con validación
+  vigente. Falta validar cobertura real histórica, frecuencia operativa y cruces completos por recurso.
 - **Onboarding cloud:** flujo reanudable integrado en Ingesta para OCI/AWS, con credenciales
   operativas cifradas, validación por capacidad, FOCUS/API directa, métricas, activación y jobs.
   El stub `provisionWithTemporaryAdmin` fue retirado; FinOps no aprovisiona IAM ni recibe admins
   temporales.
+- **Gobierno de datos:** el readiness de lineage muestra cobertura de etiquetas obligatorias por recurso;
+  la falta de tags reduce la confiabilidad de asignación y no se oculta como éxito.
 
 ### Decisiones firmes (no reabrir sin motivo)
 Texto de usuario en español; en UI se dice "oportunidades", no "anomalías"; **sin remediación
@@ -104,6 +110,8 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
 - **Verificación en vivo** del stack local cuando Docker esté disponible; CI ya valida PostgreSQL/API de forma aislada.
 - **Endurecimiento de prompts medido** contra la rúbrica y los golden scenarios ya construidos.
+- **Aprendizaje observable:** el resumen IA por tenant muestra decisiones humanas, estados de auditoría y
+  memorias activas; el agente no aprende cuando el auditor falla o la evidencia es insuficiente.
 - Mantener `REFACTOR_PLAN.md` como referencia histórica; no abrir nuevas tareas allí.
 
 ### Fase 1 — Robustez y confianza (sin credenciales) · CORTO/MEDIO
@@ -127,7 +135,7 @@ OCI real está validado para identidad, Compute, Monitoring y Object Storage/FOC
 OCI se redujo a módulos específicos y una mediana aproximada de 2,13 s. Usage API permanece como
 redundancia requerida, bloqueada hasta aplicar la policy mínima oficial; AUTO opera con FOCUS.
 
-### Fase 4 — Métricas técnicas reales (requiere credenciales) · MEDIO/LARGO
+### Fase 4 — Métricas técnicas reales (requiere credenciales) · MEDIO/LARGO · EN CIERRE
 Colector de inventario y métricas cada 30 min (SDK/API de AWS/OCI) → `cloud_resources` /
 `resource_metric_samples`; agentes opcionales. La trazabilidad normalizada ya está implementada para
 costos, métricas y recomendaciones: vínculo exacto por conexión + identificador externo, razones de no
@@ -136,6 +144,9 @@ vínculo, backfill paginado/idempotente, cobertura visible en Ingesta y guardrai
 índices ya están aplicados en Supabase. Falta completar cobertura histórica cuando el inventario real
 no contiene los IDs de los reportes FOCUS y validar frecuencia/volumen productivo. Habilita recomendaciones
 con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales, no inferido de FOCUS).
+- El job de inventario OCI controlado más reciente persistió 1 recurso en 3,4 s con 2 llamadas SDK.
+  El scheduler no encola conexiones cuya validación o capacidades estén vencidas. La gobernanza de tags
+  requerida (`environment`, `owner`, `application`, `cost_center`) ya se calcula y se visualiza por tenant.
 
 ### Fase 5 — Expansión y gobernanza avanzada · LARGO
 - Proveedores Azure y GCP (la arquitectura ya los soporta como capacidad de catálogo).
@@ -370,5 +381,7 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - Se añadieron `cost_allocation_rule_targets` y `cost_allocation_closures`. Las reglas históricas se convierten en destinos DIRECT explícitos de 100 %; no se convierten automáticamente cierres históricos.
 - El cierre se registra por tenant/período/moneda con hash de costos y reglas, resultados por destino, responsable, versión y estado. La repetición idéntica es idempotente; costos tardíos o correcciones generan una versión reemplazante con motivo y conservan historia.
 - La sección actual `Asignación de costos` incorpora constructor DIRECT/SPLIT, suma visible, preview con reglas usadas y comparación mensual, costos compartidos, confirmación de `UNALLOCATED` e historial de cierres. Se añadieron endpoints de cierre, consulta histórica y comparación de versiones.
-- Supabase reportaba 38 migraciones en este snapshot; esa cifra es histórica. El estado vigente es 44 migraciones y el detalle de validación está en la actualización 2026-08-04 superior.
+- Supabase reportaba 38 migraciones en este snapshot; esa cifra es histórica. El propio snapshot de
+  2026-08-04 registraba 44; el estado vigente al 2026-08-11 es 49 migraciones y está documentado en
+  `docs/ESTADO_ACTUAL_FINOPS.md` y `docs/DEUDA_TECNICA.md`.
 - En este snapshot quedaba pendiente integrar presupuestos y valor por destino; ese trabajo está implementado y verificado en Fase 5.2. No se implementará contabilidad ni chargeback.

@@ -20,7 +20,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
-- Verificación vigente: backend `test:all` con 66 archivos, 275 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación vigente: backend `test:all` con 68 archivos, 287 pruebas pasadas y 9 omitidas; escenarios IA
   offline 19/19; typecheck y build aprobados. AWS real y OCI Usage API continúan bloqueados externamente.
 
 ## Ingesta e inventario cloud
@@ -33,6 +33,12 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Costos, muestras y recomendaciones tienen `cloudResourceId`/`resourceLinkReason`; el enlace canónico exige `cloudConnectionId + externalResourceId` exactos, sin fuzzy matching.
 - La ingesta persiste el orden inventario → costos/métricas, el resumen de linkage en cada job y el endpoint `/api/v1/ingestion/resource-linkage` muestra cobertura por tabla y por recurso en `Ingesta`.
 - El backfill idempotente `npm run db:reconcile:resource-links` ya se aplicó en Supabase. En la cuenta OCI actual: 36 costos enlazados, 9.124 sin enlace por inventario/conexión y 19.367/19.367 muestras técnicas enlazadas. Los costos sin inventario no se presentan como evidencia técnica.
+- El job controlado de inventario OCI más reciente terminó correctamente en 3,4 s: 2 llamadas SDK,
+  1 recurso descubierto y 1 recurso persistido. El scheduler ahora encola INVENTORY antes de costos/métricas,
+  exige validación de capacidades vigente y respeta un cooldown configurable de 24 h.
+- La preparación de lineage expone gobierno determinista de etiquetas. En la cuenta OCI actual hay 1 recurso,
+  pero 0 % de cobertura de las claves requeridas (`environment`, `owner`, `application`, `cost_center`);
+  la interfaz lo muestra como incumplimiento, no como dato faltante silencioso.
 - Las corridas de análisis por recurso también persisten `cloudResourceId` (`202608030004_analysis_run_canonical_resource`), por lo que el alcance durable no depende solo de `externalResourceId`.
 
 ## IA y recomendaciones
@@ -44,6 +50,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Las recomendaciones aisladas por recurso también consumen aprendizaje auditado relevante del tenant, sin ampliar los hechos técnicos fuera del recurso solicitado.
 - Si la evidencia tecnica es debil, la recomendacion debe marcar validacion tecnica pendiente.
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
+- El resumen de aprendizaje expone por tenant el feedback humano, los estados del auditor, las memorias activas
+  y las memorias globales. La tasa de aprobación humana no se mezcla con el veredicto del auditor.
 - El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
 - El detalle 360 comunica el nivel de evidencia y los bloqueos de las reglas técnicas; una evidencia limitada solo habilita recomendaciones de validación técnica.
 - Las oportunidades persistidas tienen deduplicación por tenant, cuenta, recurso/candidato, tipo y período factual. Un plan rechazado por el auditor no se guarda ni se muestra como plan reutilizable.
@@ -65,7 +73,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación auditada de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
 - La interfaz añade un resumen financiero por destino que combina costo cerrado vigente (o costo live identificado como no cerrado), período anterior, variación, presupuesto consumido y ahorro potencial/aprobado/verificado/acumulado sin duplicar el motor financiero.
 - El historial de cierres permite cargar bajo demanda el detalle y comparar versiones, incluyendo hashes, responsable, totales y resultados por destino. El botón `Previsualizar` no persiste reglas: el frontend distingue explícitamente la acción del formulario antes de llamar a la API.
-- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index`; el historial contiene 44 migraciones y las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
+- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index` y las cinco migraciones de ciclo de vida de autenticación; el historial vigente contiene 49 migraciones. Las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. Antes del cierre, el actual queda explícitamente no disponible y el preview conserva el valor como proyectado. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
@@ -97,7 +105,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (66 archivos aprobados, 275 pruebas pasadas y 9 omitidas),
+- Backend: `npm run test:all` (68 archivos aprobados, 287 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (19/19), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.
@@ -122,7 +130,7 @@ Estado de cierre:
   canónica de la fuente además de conteo y total; el guardado masivo usa JSONB
   parametrizado y la transacción no expira por el timeout genérico de Prisma; los objetivos orientativos de
   500 ms/2 s quedan abiertos para reevaluación con un entorno de despliegue representativo.
-- Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 3/3 con 44
+- Integración aislada de asignación: `npm run test:integration:cost-allocation` pasó 3/3 con 49
   migraciones; validó costos → regla → preview → activación → cierre, idempotencia, FK tenant-aware
   e inmutabilidad de cierres.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para

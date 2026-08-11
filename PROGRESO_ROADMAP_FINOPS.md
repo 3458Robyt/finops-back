@@ -5,6 +5,10 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 68 archivos de prueba,
+> 287 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
+> fechadas son snapshots históricos y no representan regresiones.
+
 ### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
 
 - Se consolidó la revocación persistida de sesiones: logout individual/global, revocación de dispositivos,
@@ -19,9 +23,18 @@
 - La compuerta IA ahora distingue métricas porcentuales de métricas absolutas, verifica el alcance exacto del plan
   y limita el ahorro estimado al techo derivado de la evidencia determinística. Los golden scenarios offline
   quedaron en 19/19.
-- Verificación final del bloque: `npm run test:all` pasó con 66 archivos, 275 pruebas pasadas y 9 omitidas;
+- El scheduler ahora encola INVENTORY antes de costos/métricas, exige validación/capacidades vigentes y aplica
+  cooldown configurable. Un job OCI controlado persistió 1 recurso en 3,4 s con 2 llamadas SDK.
+- Readiness de lineage incorpora gobierno de etiquetas requerido y la UI muestra cobertura, recursos cumplidos
+  y claves faltantes. La cuenta OCI actual tiene 1 recurso y 0 % de cobertura de las cuatro claves por defecto.
+- El resumen IA agrega feedback humano, estados del auditor y memorias activas por tenant; las métricas se
+  calculan en PostgreSQL y no se limitan a los últimos 20 eventos.
+- Se aisló el procesador de eventos de aprendizaje para que el coordinador quede en 130 líneas efectivas sin
+  alterar timeout, reintentos, estados `SKIPPED`/`ERROR` ni promoción global.
+- Verificación final del bloque: `npm run test:all` pasó con 68 archivos, 287 pruebas pasadas y 9 omitidas;
   typecheck, build y pruebas dirigidas de seguridad/OCI/scheduler/golden también pasaron. Se creó el commit
-  `e96097d` para logs seguros; no se hizo push.
+  `e96097d` para logs seguros, `d638269` para inventario/gobierno de tags, `347d175` para métricas de
+  aprendizaje y `4e74693` para modularización del procesador; no se hizo push.
 
 
 ### 2026-08-04 — Distribución compartida auditable y cierre financiero
