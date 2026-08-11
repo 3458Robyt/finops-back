@@ -20,7 +20,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
-- Verificación vigente: backend `test:all` con 84 archivos, 334 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación vigente: backend `test:all` con 85 archivos, 336 pruebas pasadas y 9 omitidas; escenarios IA
   offline 21/21; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
   queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.
@@ -129,7 +129,7 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (84 archivos aprobados, 334 pruebas pasadas y 9 omitidas),
+- Backend: `npm run test:all` (85 archivos aprobados, 336 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (21/21), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados. `test:e2e:full` aplica las 52 migraciones desde cero en un

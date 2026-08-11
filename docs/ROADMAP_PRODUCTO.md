@@ -21,7 +21,7 @@
 
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
-> adicionales para utilización, alcance de planes, idioma y ahorro máximo. La suite vigente es 334 pruebas pasadas y 9
+> adicionales para utilización, alcance de planes, idioma y ahorro máximo. La suite vigente es 336 pruebas pasadas y 9
 > omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
