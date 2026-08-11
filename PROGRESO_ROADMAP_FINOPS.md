@@ -5,8 +5,8 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 85 archivos de prueba,
-> 336 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 21/21. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 86 archivos de prueba,
+> 338 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 21/21. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
@@ -25,9 +25,12 @@
 - `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
   de métricas, la clasificación de namespace y la precedencia inventario-proveedor en
   `ingestionResourceNormalizer.ts`; se agregaron pruebas de normalización y no se modificó el contrato de ingesta.
+- El mapeo de errores HTTP de presupuestos, asignación y valor realizado reutiliza `finOpsErrorResponse.ts`, con
+  diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida y la suite completa cubren
+  el contrato sin exponer el status interno en el JSON.
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
-- Evidencia de validación: backend 85 archivos/336 pruebas/9 omitidas, IA offline 21/21, audit de producción
+- Evidencia de validación: backend 86 archivos/338 pruebas/9 omitidas, IA offline 21/21, audit de producción
   sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
