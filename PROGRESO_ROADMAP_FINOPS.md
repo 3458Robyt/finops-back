@@ -22,6 +22,9 @@
   líneas y conserva el contrato, streaming FOCUS, Usage API e identidad exacta. Las pruebas dirigidas OCI
   pasaron 22/22 y la suite final pasó con 76 archivos, 312 pruebas y 9 omitidas;
   IA offline 19/19, typecheck y build aprobados.
+- Se dividió `CloudConnectionService` (979 líneas) en una fachada estable de 148 líneas y módulos
+  profundos para onboarding/configuración (400), orquestación de ingesta (361), contratos (133) y políticas
+  de entrada/credenciales (138). Se preservó el contrato de controladores y los 23 escenarios de caracterización.
 - Se completó recuperación MFA con diez códigos aleatorios de 80 bits: solo hashes persistidos, consumo único,
   revocación del lote anterior al regenerar y presentación una sola vez en login/perfil.
 - El canary runtime RLS se amplió a sesiones, refresh, reset, TOTP, challenges y recovery codes. La ampliación

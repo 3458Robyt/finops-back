@@ -39,6 +39,9 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El adaptador OCI separa contratos SDK, validación, Monitoring, descubrimiento de compartimentos, inventario,
   fuentes FOCUS y retries en módulos cohesivos de hasta 219 líneas. El coordinador principal bajó de 1.140 a
   393 líneas sin cambiar el contrato; las pruebas OCI dirigidas pasan 22/22.
+- La gestión de conexiones cloud también está separada: la fachada pública conserva el contrato de la API,
+  mientras onboarding/configuración, orquestación de jobs, contratos y validación de entradas viven en módulos
+  independientes de máximo 400 líneas; los 23 escenarios de caracterización continúan aprobados.
 - La preparación de lineage expone gobierno determinista de etiquetas. En la cuenta OCI actual hay 1 recurso,
   pero 0 % de cobertura de las claves requeridas (`environment`, `owner`, `application`, `cost_center`);
   la interfaz lo muestra como incumplimiento, no como dato faltante silencioso.
