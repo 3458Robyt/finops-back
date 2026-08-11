@@ -120,7 +120,8 @@ Estado de cierre:
 ## Rendimiento y pruebas recientes
 
 - Las series de métricas técnicas usan agregación SQL, cursor y carga progresiva; la UI conserva el raw
-  bajo demanda y renderiza la serie principal con uPlot.
+  bajo demanda y renderiza la serie principal con uPlot. La vista separa coordinación asíncrona, cache LRU,
+  cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
 - Backend: `npm run test:all` (76 archivos aprobados, 312 pruebas pasadas y 9 omitidas),

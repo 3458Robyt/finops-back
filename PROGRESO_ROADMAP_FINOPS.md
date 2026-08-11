@@ -19,6 +19,12 @@
 - La validación completa aplicó 52 migraciones desde cero y aprobó 5/5 escenarios Playwright: login, cambio de
   tenant, detalle técnico, recomendación, plan/decisión, aislamiento, análisis y asignación de costos. El schema
   `finops_e2e_resource_detail_refactor` y sus dos tenants fixture se eliminaron al finalizar.
+- Se redujo `MetricasTecnicas.tsx` de 876 a 216 líneas: estado/requests/cancelación/cache LRU quedaron en un hook
+  de 222 líneas, mientras modelo de rango/cache, formatters, tarjetas y paneles viven en módulos de 68 a 121
+  líneas. Se conservaron uPlot, granularidad raw, drilldown, paginación exacta y cancelación con AbortController.
+- La suite E2E reveló una carrera preexistente: dos archivos ejecutaban análisis durable sobre el mismo tenant
+  fixture en paralelo. El runner completo ahora usa un worker para ese fixture compartido; la repetición aprobó
+  5/5 y eliminó el schema `finops_e2e_metrics_refactor_serial`.
 
 ### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
 
