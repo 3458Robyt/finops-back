@@ -20,6 +20,11 @@
 - Se aisló el grafo de repositorios/servicios en `src/bootstrap/applicationComposition.ts`; `src/index.ts` quedó en 353 líneas y conserva los roles `api`, `worker`, `scheduler` y `all`, además de health/readiness, cierre ordenado y loops de fondo.
 - No se modificaron contratos HTTP ni la semántica de workers/schedulers. `npm run test:all` continúa en 81 archivos, 321 pruebas pasadas y 9 omitidas; typecheck y build permanecen verdes. Commit `296d7cb`.
 
+### 2026-08-11 — Dashboard frontend modularizado
+
+- Se redujo `finops-app/src/views/Dashboard.tsx` de 466 a 231 líneas. La carga paralela, fallback de analítica, presupuesto y KPIs viven en `useDashboardController.ts` (194 líneas), mientras los transformadores y formateadores viven en `dashboardPresentation.ts` (161 líneas).
+- Frontend typecheck, lint y build pasaron; no se ejecutó E2E en esta sesión porque el runner exige `TEST_DATABASE_URL` aislada y `ALLOW_DESTRUCTIVE_TEST_DATABASE=true`, variables que no estaban disponibles. Commit `92954f9`; no se hizo push.
+
 ### 2026-08-11 — Detalle de recomendación modular y E2E desde migraciones cero
 
 - Se dividió `ResourceDetail.tsx` de 1.609 a 348 líneas, extrayendo el controlador de carga/acciones,
