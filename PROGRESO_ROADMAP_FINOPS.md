@@ -5,11 +5,19 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 68 archivos de prueba,
-> 287 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 70 archivos de prueba,
+> 292 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
+
+- Se completó recuperación MFA con diez códigos aleatorios de 80 bits: solo hashes persistidos, consumo único,
+  revocación del lote anterior al regenerar y presentación una sola vez en login/perfil.
+- El canary runtime RLS se amplió a sesiones, refresh, reset, TOTP, challenges y recovery codes. La ampliación
+  detectó recursión en políticas pre-auth; se reemplazaron subconsultas cruzadas por helpers SECURITY DEFINER
+  acotados y el canary final pasó con dos tenants y cero visibilidad cruzada.
+- Supabase quedó al día con 52 migraciones. La suite vigente subió a 70 archivos, 292 pruebas pasadas y 9
+  omitidas; frontend lint/build continúa verde.
 
 - Se consolidó la revocación persistida de sesiones: logout individual/global, revocación de dispositivos,
   cambio de tenant y validación de cada request protegido. El frontend separó `authApi`/`authTypes` del facade

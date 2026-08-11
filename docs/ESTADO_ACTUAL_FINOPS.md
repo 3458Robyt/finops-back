@@ -20,7 +20,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
-- Verificación vigente: backend `test:all` con 68 archivos, 287 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación vigente: backend `test:all` con 70 archivos, 292 pruebas pasadas y 9 omitidas; escenarios IA
   offline 19/19; typecheck y build aprobados. AWS real y OCI Usage API continúan bloqueados externamente.
 
 ## Ingesta e inventario cloud
@@ -73,12 +73,17 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación auditada de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
 - La interfaz añade un resumen financiero por destino que combina costo cerrado vigente (o costo live identificado como no cerrado), período anterior, variación, presupuesto consumido y ahorro potencial/aprobado/verificado/acumulado sin duplicar el motor financiero.
 - El historial de cierres permite cargar bajo demanda el detalle y comparar versiones, incluyendo hashes, responsable, totales y resultados por destino. El botón `Previsualizar` no persiste reglas: el frontend distingue explícitamente la acción del formulario antes de llamar a la API.
-- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index` y las cinco migraciones de ciclo de vida de autenticación; el historial vigente contiene 49 migraciones. Las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
+- Supabase tiene aplicadas las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index` y ocho migraciones de ciclo de vida de autenticación; el historial vigente contiene 52 migraciones. Las tablas nuevas tienen RLS, índices de tenant/período/estado, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. Antes del cierre, el actual queda explícitamente no disponible y el preview conserva el valor como proyectado. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
 
 ## Seguridad y produccion
+
+- MFA privilegiado incluye diez códigos de recuperación aleatorios de un solo uso: solo se persisten hashes,
+  se muestran una vez, la regeneración revoca el lote anterior y el consumo es atómico con el challenge de login.
+- El canary runtime RLS cubre ahora las seis tablas de credenciales. Se eliminó una recursión entre políticas
+  pre-auth mediante helpers SECURITY DEFINER acotados; dos tenants pasaron con cero acceso cruzado.
 
 Implementado:
 
@@ -105,7 +110,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (68 archivos aprobados, 287 pruebas pasadas y 9 omitidas),
+- Backend: `npm run test:all` (70 archivos aprobados, 292 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (19/19), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.

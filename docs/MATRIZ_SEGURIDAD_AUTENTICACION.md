@@ -29,7 +29,7 @@ penetración externa.
 | CSRF sobre refresh/logout/cambio de tenant | Endpoints con cookie | `trustedOrigin` + CORS explícito + `SameSite` | `trustedOrigin.test.ts` | Clientes sin `Origin` son permitidos; protegerlos con TLS y no exponer cookie fuera del navegador |
 | Enumeración de cuentas | Recuperación de contraseña | Respuesta genérica y mismo código HTTP para correos existentes/desconocidos | `PasswordRecoveryService.test.ts` | Timing no es perfectamente constante |
 | Abuso de recuperación | `/auth/password-reset/*` | Token aleatorio, hash persistido, TTL 5–60 min, consumo atómico, política fuerte de contraseña, revocación de sesiones | servicio y repositorio Prisma | Email/SMTP debe estar correctamente protegido |
-| Compromiso de cuenta privilegiada | Login de administradores | TOTP MFA obligatorio en producción para roles privilegiados; enrolamiento previo al primer acceso | `MfaService`, RFC 6238 tests, `MFA_REQUIRED_FOR_PRIVILEGED=true` | Falta política de recuperación MFA operativa y almacenamiento seguro de códigos de recuperación |
+| Compromiso de cuenta privilegiada | Login de administradores | TOTP MFA obligatorio en producción, códigos de recuperación de un solo uso y enrolamiento previo al primer acceso | `MfaService`, `MfaRecoveryCode`, RFC 6238/recovery tests, `MFA_REQUIRED_FOR_PRIVILEGED=true` | Custodia segura de los códigos en texto plano corresponde al usuario; solo se muestran al generarlos |
 | Reutilización de código TOTP | `/auth/mfa/*` | `lastUsedStep` atómico y challenge de un solo uso/TTL | `PrismaMfaRepository.consumeChallenge` | Dependencia de sincronización temporal razonable |
 | Lectura cross-tenant | PostgreSQL y API | `finops_runtime`, contexto de sesión, RLS tenant-aware, RLS específico de tablas auth | migraciones `202607280001`, `202608110001`–`005`, canary RLS | Activación productiva debe mantenerse obligatoria |
 | Inyección de secretos en logs | errores, auditoría y SDK | `safeErrorMessage`, redacción de JWT/API keys/PEM/URLs con credenciales | pruebas de safe errors | Un logger externo debe aplicar redacción adicional |
@@ -59,8 +59,8 @@ para desarrollo local y nunca debe versionarse.
 
 ## Acciones pendientes antes de producción
 
-- incorporar MFA de recuperación administrada (códigos de recuperación o proceso
-  presencial auditado) sin permitir bypass por correo;
+- revisar periódicamente el número de códigos MFA disponibles y regenerarlos con
+  un TOTP vigente; cada regeneración revoca atómicamente los anteriores;
 - migrar rate limiting a Redis/servicio equivalente si hay más de una instancia;
 - activar agregador de logs, alertas para replay MFA/refresh y métricas de fallos;
 - ejecutar SAST, DAST, dependencia completa y prueba de penetración externa;

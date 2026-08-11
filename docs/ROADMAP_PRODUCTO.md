@@ -21,7 +21,7 @@
 
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
-> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 287 pruebas pasadas y 9
+> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 292 pruebas pasadas y 9
 > omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
@@ -112,6 +112,8 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 - **Endurecimiento de prompts medido** contra la rúbrica y los golden scenarios ya construidos.
 - **Aprendizaje observable:** el resumen IA por tenant muestra decisiones humanas, estados de auditoría y
   memorias activas; el agente no aprende cuando el auditor falla o la evidencia es insuficiente.
+- **Recuperación MFA:** códigos aleatorios de un solo uso, almacenados como hash, rotables y consumidos
+  atómicamente con el challenge; las políticas pre-auth ya no contienen recursión RLS.
 - Mantener `REFACTOR_PLAN.md` como referencia histórica; no abrir nuevas tareas allí.
 
 ### Fase 1 — Robustez y confianza (sin credenciales) · CORTO/MEDIO
@@ -382,6 +384,6 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - El cierre se registra por tenant/período/moneda con hash de costos y reglas, resultados por destino, responsable, versión y estado. La repetición idéntica es idempotente; costos tardíos o correcciones generan una versión reemplazante con motivo y conservan historia.
 - La sección actual `Asignación de costos` incorpora constructor DIRECT/SPLIT, suma visible, preview con reglas usadas y comparación mensual, costos compartidos, confirmación de `UNALLOCATED` e historial de cierres. Se añadieron endpoints de cierre, consulta histórica y comparación de versiones.
 - Supabase reportaba 38 migraciones en este snapshot; esa cifra es histórica. El propio snapshot de
-  2026-08-04 registraba 44; el estado vigente al 2026-08-11 es 49 migraciones y está documentado en
+  2026-08-04 registraba 44; el estado vigente al 2026-08-11 es 52 migraciones y está documentado en
   `docs/ESTADO_ACTUAL_FINOPS.md` y `docs/DEUDA_TECNICA.md`.
 - En este snapshot quedaba pendiente integrar presupuestos y valor por destino; ese trabajo está implementado y verificado en Fase 5.2. No se implementará contabilidad ni chargeback.
