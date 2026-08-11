@@ -20,6 +20,9 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
+- El frontend mantiene la sesión autenticada en `AuthSessionProvider`; las vistas y controladores consumen el
+  access token mediante `useAccessToken` en lugar de propagarlo desde `App.tsx`. El transporte de API sigue
+  recibiendo el token explícitamente para conservar pruebas y contratos aislados.
 - Verificación vigente: backend `test:all` con 86 archivos, 338 pruebas pasadas y 9 omitidas; escenarios IA
   offline 21/21; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
