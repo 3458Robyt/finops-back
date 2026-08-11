@@ -1,9 +1,28 @@
 # Progreso — FinOps Inteligente (Backend)
 
-> **Estado vigente 2026-08-04:** las entradas inferiores son bitácora histórica. La fase de distribución
+> **Estado vigente 2026-08-11:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
+
+### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
+
+- Se consolidó la revocación persistida de sesiones: logout individual/global, revocación de dispositivos,
+  cambio de tenant y validación de cada request protegido. El frontend separó `authApi`/`authTypes` del facade
+  general y no usa almacenamiento web para tokens.
+- Se endureció el ciclo HTTP con rate limiting acotado, trust proxy explícito y timeouts de request, headers y
+  keep-alive. Se añadió `safeErrorMessage` para que errores de SDK/HTTP no filtren credenciales, JWT, API keys,
+  claves AWS, PEM o URLs autenticadas en logs.
+- La ingesta OCI descubre compartimentos accesibles de forma recursiva y conserva conteos y estado de cobertura
+  (`COMPLETE`, `FALLBACK`, `CONFIGURED_ONLY`, `FAILED`). El scheduler ya no encola conexiones con validación
+  de capacidades ausente o vencida; el TTL por defecto es 24 horas.
+- La compuerta IA ahora distingue métricas porcentuales de métricas absolutas, verifica el alcance exacto del plan
+  y limita el ahorro estimado al techo derivado de la evidencia determinística. Los golden scenarios offline
+  quedaron en 19/19.
+- Verificación final del bloque: `npm run test:all` pasó con 66 archivos, 270 pruebas pasadas y 9 omitidas;
+  typecheck, build y pruebas dirigidas de seguridad/OCI/scheduler/golden también pasaron. Se creó el commit
+  `e96097d` para logs seguros; no se hizo push.
+
 
 ### 2026-08-04 — Distribución compartida auditable y cierre financiero
 

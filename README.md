@@ -1,6 +1,6 @@
 # ☁️ FinOps Inteligente: Core Backend & API RESTful
 
-![Node.js](https://img.shields.io/badge/Node.js-18.x-green) ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-blue) ![Tests](https://img.shields.io/badge/Tests-Vitest-success)
+![Node.js](https://img.shields.io/badge/Node.js-22.x-green) ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-blue) ![Tests](https://img.shields.io/badge/Tests-Vitest-success)
 
 Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps Inteligente**, desarrollada para **TAK Colombia**. El sistema centraliza la ingesta de facturación multicloud, orquesta el análisis predictivo mediante Agentes de Inteligencia Artificial (LLMs) y expone una API RESTful segura para el consumo de interfaces web y chatbots.
 
@@ -63,9 +63,12 @@ src/
    DATABASE_URL=postgresql://finops:finops@localhost:5432/finops
    JWT_SECRET=al_menos_32_caracteres_aleatorios
    CREDENTIAL_ENCRYPTION_KEY=base64_de_32_bytes
-AI_API_KEY=tu_api_key_openai_compatible
-AI_BASE_URL=https://api.example.com/v1
-AI_MODEL=gpt-5.4-mini
+   AI_API_KEY=tu_api_key_openai_compatible
+   AI_BASE_URL=https://api.example.com/v1
+   AI_MODEL=gpt-5.4-mini
+   AI_AUDITOR_MODEL=gpt-5.4-mini
+   DB_RUNTIME_ENFORCE=false
+   DB_RUNTIME_ROLE=finops_runtime
    CORS_ORIGIN=http://localhost:5173
    \`\`\`
    El archivo `.env.example` documenta el conjunto completo (AWS, OCI, Telegram, ajustes de IA y analítica). El `.env` está en `.gitignore` y nunca debe commitearse.
@@ -94,24 +97,26 @@ El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La 
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local mínima es `npm run typecheck && npm test`; el workflow de CI repite además el build y las pruebas de integración aisladas.
+La verificación local recomendada es `npm run test:all`: actualmente cubre 66 archivos, 270 pruebas pasadas y
+9 omitidas, además de typecheck, escenarios IA offline y build. El workflow de CI repite el build, la auditoría
+de producción y las pruebas de integración aisladas.
 
 ## Manejo de Errores y Seguridad
 
 Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántico: `NOT_FOUND`, `VALIDATION_ERROR`, `AUTHENTICATION_REQUIRED`, `AUTHORIZATION_FAILED`, `AI_AUDIT_REJECTED`, etc.) y cada controlador los traduce al código HTTP correspondiente sin exponer trazas de pila al cliente.
 
 ### Postura de seguridad actual
-- **Autenticación:** JWT (`jsonwebtoken`) validado por middleware en todas las rutas salvo `/api/v1/auth/login` y el webhook de Telegram (que usa un secreto propio). Las consultas filtran por `tenantId` para aislamiento multi-tenant.
+- **Autenticación:** JWT (`jsonwebtoken`) validado por middleware en todas las rutas salvo `/api/v1/auth/login` y el webhook de Telegram (que usa un secreto propio). Las sesiones se persisten para revocación inmediata, y las consultas filtran por `tenantId` para aislamiento multi-tenant.
 - **Contraseñas:** hashing con Argon2.
 - **Credenciales cloud:** accesos operativos read-only cifrados en reposo (`CredentialCipher`, clave en `CREDENTIAL_ENCRYPTION_KEY`); el flujo no recibe ni persiste administradores temporales.
 - **CORS:** origen configurable vía `CORS_ORIGIN` (por defecto `http://localhost:5173`).
 - **Cabeceras y abuso:** Helmet y rate limiting global/específico para autenticación, IA y Telegram están configurados en el servidor.
-- **Observabilidad:** logging estructurado por request con `x-request-id`; los errores de proveedor no deben exponer secretos.
+- **Observabilidad:** logging estructurado por request con `x-request-id`; `safeErrorMessage` acota y redacta credenciales, tokens, claves y PEM de errores de proveedor.
 - **Secretos:** `.env` está en `.gitignore`; usar `.env.example` como plantilla. No commitear claves.
 
 ### Pendientes de hardening antes de producción
-- Activar `DB_RUNTIME_ENFORCE=true` mediante canary y documentar rollback; las migraciones RLS,
-  el hardening de funciones y los índices FK ya están aplicados y verificados en Supabase.
+- Activar `DB_RUNTIME_ENFORCE=true` solo al desplegar el backend con el rol `finops_runtime`; el canary,
+  las migraciones RLS, el hardening de funciones y los índices FK ya están aplicados y verificados en Supabase.
 - Rotación de claves JWT/cifrado y gestión de secretos vía un gestor externo; `.env` es solo para desarrollo.
 - Observabilidad centralizada con retención, alertas y métricas de latencia.
 - Las pruebas de integración contra schema efímero y el cleanup automático ya están verificados;

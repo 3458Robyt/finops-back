@@ -1,6 +1,6 @@
 # Roadmap de Producto — FinOps Inteligente
 
-> **Consolidación técnica 2026-08-04:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
+> **Consolidación técnica 2026-08-11:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
 > gobernada, métricas técnicas, presupuestos, asignación, realización de valor y RLS verificados.
 > Los pendientes se gestionan en `docs/DEUDA_TECNICA.md` con estados `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO`. FOCUS sigue como fuente operativa primaria; OCI Usage API es
@@ -17,8 +17,14 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-08-04.
+> Última revisión: 2026-08-11.
 
+> **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
+> la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
+> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 270 pruebas pasadas y 9
+> omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
+> bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
+>
 > Las actualizaciones fechadas antes del 2026-08-03 son snapshots históricos. Para el estado vigente
 > prevalecen la sección 1, la sección 3, la actualización 2026-08-03 y `docs/DEUDA_TECNICA.md`.
 

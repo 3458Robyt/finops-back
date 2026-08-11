@@ -1,10 +1,27 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-04
+Fecha: 2026-08-11
 
 ## Resumen
 
 La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/PostgreSQL como base principal, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas.
+
+## Cierre incremental 2026-08-11
+
+- Las sesiones autenticadas ahora tienen ciclo de vida persistido: logout, revocación individual/global y
+  cambio de tenant invalidan el acceso sin esperar a que expire el JWT. El frontend separa el transporte de
+  autenticación y no guarda tokens en `localStorage` ni `sessionStorage`.
+- El límite HTTP en memoria está acotado, el trust proxy es explícito y el servidor configura timeouts de
+  request, headers y keep-alive. El store distribuido sigue diferido hasta desplegar varias instancias.
+- Los logs operativos ahora son estructurados y sanitizados mediante `safeErrorMessage`; se eliminan de los
+  eventos URLs con credenciales, API keys, JWT, claves AWS y PEM. Esto no sustituye un agregador/secret manager
+  de producción.
+- El scheduler rechaza validaciones de capacidades expiradas (por defecto 24 h), y la ingesta OCI reporta
+  explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
+- La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
+  alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
+- Verificación vigente: backend `test:all` con 66 archivos, 270 pruebas pasadas y 9 omitidas; escenarios IA
+  offline 19/19; typecheck y build aprobados. AWS real y OCI Usage API continúan bloqueados externamente.
 
 ## Ingesta e inventario cloud
 
@@ -80,8 +97,9 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run typecheck`, `npm run test:unit` (59 archivos aprobados, 255 pruebas pasadas y 9 omitidas),
-  `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
+- Backend: `npm run test:all` (66 archivos aprobados, 270 pruebas pasadas y 9 omitidas),
+  `npm run test:ai:offline` (19/19), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
+  vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
   ahorros no negativos, trazabilidad y `persist=false` aprobados con el modelo `gpt-5.4-mini`.

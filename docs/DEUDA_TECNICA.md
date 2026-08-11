@@ -1,6 +1,6 @@
 # Deuda técnica y faltantes — FinOps Inteligente
 
-> Registro autoritativo al 2026-08-04. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
+> Registro autoritativo al 2026-08-11. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO` y evidencia asociada. Los ítems de desarrollo manual no son incidentes.
 
 | ID | Prioridad | Tipo | Estado | Hallazgo / criterio de cierre | Evidencia o siguiente acción |
@@ -25,6 +25,11 @@
 | PERF-001 | Media | Rendimiento | DIFERIDO | Llevar preview y cierre de asignación a los objetivos orientativos de 500 ms y 2 s con 10.000 costos persistidos, cuando exista un entorno representativo de despliegue. | Supabase actual: preview 1.647,36 ms y cierre 6.604,64 ms; 10.000 líneas persistidas sin pérdida ni descuadre. La compuerta revalida además la huella canónica de la fuente. `EXPLAIN (ANALYZE, BUFFERS)` usa `cost_metrics_tenant_period_idx` y tarda 10,35 ms en el plan; insert masivo JSONB y timeout ampliado ya aplicados. Falta ajustar transferencia/infraestructura sin degradar la trazabilidad. |
 | LINEAGE-001 | Alta | Datos/IA | CERRADO | Mantener una identidad normalizada y auditable entre inventario, costos, métricas, recomendaciones y corridas de análisis. | Migraciones `202608030001_resource_lineage_normalization`, `202608030002_recommendation_resource_guard`, `202608030003_resource_lineage_readiness_indexes` y `202608030004_analysis_run_canonical_resource`; backfill paginado aplicado; endpoint `/ingestion/resource-linkage`; evidencia y análisis técnico exigen `cloudResourceId` canónico cuando existe ambigüedad. |
 | LINEAGE-002 | Alta | Cobertura OCI | ABIERTO | Aumentar la cobertura histórica de costos enlazados cuando el inventario OCI no contiene el mismo identificador que FOCUS. | Supabase 2026-08-03: 36/9.160 costos enlazados; 8.692 `INVENTORY_RESOURCE_NOT_FOUND` y 432 `CONNECTION_NOT_AVAILABLE`. Requiere inventario OCI real compatible y nueva ingesta; no se permite fuzzy matching. |
+| AUTH-001 | Alta | Sesiones | CERRADO | El logout y la revocación deben invalidar sesiones JWT persistidas sin esperar la expiración natural del token. | Validación de sesión persistida en cada request protegido, logout individual/global, cambio de tenant y revocación de dispositivos; frontend sin localStorage/sessionStorage. Commits `483ff02`, `71381ef`, `5995ef5`. |
+| SEC-004 | Alta | Logs | CERRADO | Los errores externos no deben escribir credenciales, tokens, URLs autenticadas ni PEM en logs. | `safeErrorMessage` acota y redacta esos materiales; bootstrap, workers, schedulers, controladores y notificaciones usan eventos estructurados sanitizados. Commit `e96097d`; pruebas 5/5. |
+| ING-002 | Media | Inventario OCI | CERRADO | La ingesta OCI debe descubrir compartimentos accesibles recursivamente o declarar la cobertura real, sin presentar inventario parcial como completo. | Identity paginado con cobertura `COMPLETE`/`FALLBACK`/`CONFIGURED_ONLY`/`FAILED`, conteos de compartimentos y recursos en el resultado del job; pruebas del provider 7/7. Commit `5990b87`. |
+| AI-002 | Alta | IA/gobernanza | CERRADO | La compuerta determinística debe evitar falsos bloqueos de métricas absolutas y planes/ahorros fuera del recurso o evidencia analizada. | Utilización solo para métricas porcentuales, alcance exacto de cuenta/recurso y techo de ahorro derivado antes del LLM; golden scenarios 19/19 offline. Commits `bc1072f`, `4c12d5f`, `ca2b634`. |
+| MOD-001 | Media | Mantenibilidad | DIFERIDO | Continuar dividiendo hotspots mayores de 200 líneas sin introducir duplicación ni cambios de contrato. | Auth API, políticas cloud, rate limit y observabilidad ya están aislados. OciSdkIngestionProvider, CloudConnectionService y repositorios grandes requieren extracción incremental con pruebas de regresión; no se hará una reescritura riesgosa en esta beta. |
 
 ## Componentes permanentes del roadmap
 
