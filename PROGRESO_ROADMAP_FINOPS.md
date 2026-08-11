@@ -9,6 +9,17 @@
 > 312 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
+### 2026-08-11 — Detalle de recomendación modular y E2E desde migraciones cero
+
+- Se dividió `ResourceDetail.tsx` de 1.609 a 348 líneas, extrayendo el controlador de carga/acciones,
+  normalización de evidencia, presentación compartida, plan auditado, ejecución manual, ahorro verificado,
+  timeline y decisión. Los módulos resultantes tienen entre 38 y 310 líneas y preservan el contrato visual.
+- El runner `test:e2e:full` ahora aplica todas las migraciones al schema aislado antes de crear fixtures y el
+  cleanup tolera una preparación incompleta para poder eliminar el schema sin ocultar el error original.
+- La validación completa aplicó 52 migraciones desde cero y aprobó 5/5 escenarios Playwright: login, cambio de
+  tenant, detalle técnico, recomendación, plan/decisión, aislamiento, análisis y asignación de costos. El schema
+  `finops_e2e_resource_detail_refactor` y sus dos tenants fixture se eliminaron al finalizar.
+
 ### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
 
 - Se centralizó la autorización backend en una matriz explícita de siete roles y dieciséis capacidades. Las
