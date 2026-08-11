@@ -30,6 +30,9 @@
 - Evidencia de validación: backend 84 archivos/334 pruebas/9 omitidas, IA offline 21/21, audit de producción
   sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
   sintácticamente con PyYAML. No se hizo push ni merge.
+- Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
+  archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
+  Las excepciones no se declaran resueltas; se revisarán conforme avance MOD-001.
 
 ### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
 
