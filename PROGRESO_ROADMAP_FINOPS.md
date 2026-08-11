@@ -25,9 +25,10 @@
 - `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
   de métricas, la clasificación de namespace y la precedencia inventario-proveedor en
   `ingestionResourceNormalizer.ts`; se agregaron pruebas de normalización y no se modificó el contrato de ingesta.
-- El mapeo de errores HTTP de presupuestos, asignación y valor realizado reutiliza `finOpsErrorResponse.ts`, con
-  diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida y la suite completa cubren
-  el contrato sin exponer el status interno en el JSON.
+- El mapeo de errores HTTP de conexiones cloud, presupuestos, asignación y valor realizado reutiliza
+  `finOpsErrorResponse.ts`, con diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida
+  y la suite completa cubren el contrato sin exponer el status interno en el JSON. El controlador cloud conserva
+  sus códigos y estados públicos, pero dejó de tener una ruta de logging divergente (`c2c0699`).
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
 - El shell autenticado de `finops-app` ahora expone `AuthSessionProvider`, `useAuthSession` y `useAccessToken`;
