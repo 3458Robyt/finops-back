@@ -22,7 +22,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
 - Verificación vigente: backend `test:all` con 84 archivos, 334 pruebas pasadas y 9 omitidas; escenarios IA
   offline 21/21; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
-  producción también pasan. AWS real y OCI Usage API continúan bloqueados externamente.
+  producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
+  queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.
 
 ## Ingesta e inventario cloud
 

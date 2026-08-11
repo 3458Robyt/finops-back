@@ -33,6 +33,8 @@
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
   archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
   Las excepciones no se declaran resueltas; se revisarán conforme avance MOD-001.
+- El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
+  queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
 
 ### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
 
