@@ -25,6 +25,9 @@
 - Se dividió `CloudConnectionService` (979 líneas) en una fachada estable de 148 líneas y módulos
   profundos para onboarding/configuración (400), orquestación de ingesta (361), contratos (133) y políticas
   de entrada/credenciales (138). Se preservó el contrato de controladores y los 23 escenarios de caracterización.
+- Se redujo `TechnicalMetricsService` de 843 a 202 líneas: contratos, construcción de overview,
+  cobertura diaria/agregada y utilidades matemáticas quedaron en módulos de 108 a 252 líneas. Se preservaron
+  las granularidades exactas, el enlace canónico y los 12 escenarios de métricas.
 - Se completó recuperación MFA con diez códigos aleatorios de 80 bits: solo hashes persistidos, consumo único,
   revocación del lote anterior al regenerar y presentación una sola vez en login/perfil.
 - El canary runtime RLS se amplió a sesiones, refresh, reset, TOTP, challenges y recovery codes. La ampliación
