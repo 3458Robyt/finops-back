@@ -6,7 +6,7 @@
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
 > **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 84 archivos de prueba,
-> 331 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
+> 334 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 21/21. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
@@ -24,7 +24,7 @@
   de 562 a 340 líneas al extraer la normalización determinística de borradores contra evidencia canónica.
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
-- Evidencia de validación: backend 84 archivos/331 pruebas/9 omitidas, IA offline 19/19, audit de producción
+- Evidencia de validación: backend 84 archivos/334 pruebas/9 omitidas, IA offline 21/21, audit de producción
   sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
   sintácticamente con PyYAML. No se hizo push ni merge.
 
