@@ -22,6 +22,9 @@
 - `PrismaResourceMetricRepository` pasó de 882 a 656 líneas al extraer cursores, filtros SQL, buckets y mapeo
   a `technicalMetricQueryHelpers.ts`, con pruebas de compatibilidad de cursor. `FinOpsArtifactGenerator` pasó
   de 562 a 340 líneas al extraer la normalización determinística de borradores contra evidencia canónica.
+- `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
+  de métricas, la clasificación de namespace y la precedencia inventario-proveedor en
+  `ingestionResourceNormalizer.ts`; se agregaron pruebas de normalización y no se modificó el contrato de ingesta.
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
 - Evidencia de validación: backend 84 archivos/334 pruebas/9 omitidas, IA offline 21/21, audit de producción

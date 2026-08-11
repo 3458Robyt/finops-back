@@ -46,6 +46,9 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   independientes de máximo 400 líneas; los 23 escenarios de caracterización continúan aprobados.
 - La analítica técnica separa consulta, contratos, overview, cobertura y utilidades matemáticas; el servicio
   coordinador quedó en 202 líneas y conserva los 12 escenarios de series, cobertura, recursos duplicados y raw.
+- La persistencia de ingesta mantiene una fachada estable y ahora delega la normalización de recursos derivados de
+  métricas a `ingestionResourceNormalizer.ts`; inventario del proveedor conserva precedencia sobre recursos
+  inferidos, y la regla está cubierta por pruebas unitarias de caracterización.
 - La preparación de lineage expone gobierno determinista de etiquetas. En la cuenta OCI actual hay 1 recurso,
   pero 0 % de cobertura de las claves requeridas (`environment`, `owner`, `application`, `cost_center`);
   la interfaz lo muestra como incumplimiento, no como dato faltante silencioso.
