@@ -19,10 +19,10 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
 
 ### OCI
 
-- Estructura del adaptador: `OciSdkIngestionProvider` coordina las fuentes; `oci/OciCapabilityValidator`
-  valida identidad, inventario, Usage, Monitoring y Storage; `oci/OciMonitoringCollector` normaliza series;
-  `oci/OciSdkContracts` encapsula las formas mínimas del SDK. Esta separación permite probar cada frontera sin
-  cargar lógica de Monitoring o validación dentro del coordinador.
+- Estructura del adaptador: `OciSdkIngestionProvider` coordina las fuentes; módulos `oci/` separados encapsulan
+  contratos SDK, validación de capacidades, Monitoring, descubrimiento de compartimentos, inventario, FOCUS y
+  retries. Ninguno supera 219 líneas y el coordinador queda en 393; esta separación permite probar cada frontera
+  sin mezclar normalización, discovery y orquestación.
 - Credencial operativa: perfil OCI CLI registrado cifrado con `npm run oci:register-profile`.
 - Worker: `npm run ingestion:worker:once`.
 - Job manual: `npm run ingestion:create-job`.

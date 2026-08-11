@@ -20,7 +20,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
-- Verificación vigente: backend `test:all` con 74 archivos, 307 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación vigente: backend `test:all` con 76 archivos, 312 pruebas pasadas y 9 omitidas; escenarios IA
   offline 19/19; typecheck y build aprobados. AWS real y OCI Usage API continúan bloqueados externamente.
 
 ## Ingesta e inventario cloud
@@ -36,9 +36,9 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El job controlado de inventario OCI más reciente terminó correctamente en 3,4 s: 2 llamadas SDK,
   1 recurso descubierto y 1 recurso persistido. El scheduler ahora encola INVENTORY antes de costos/métricas,
   exige validación de capacidades vigente y respeta un cooldown configurable de 24 h.
-- El adaptador OCI separa contratos SDK, validación de capacidades y colección de Monitoring en módulos
-  cohesivos de 111, 219 y 133 líneas; el coordinador principal bajó de 1.140 a 779 líneas sin cambiar el
-  contrato ni el resultado de sus siete pruebas de caracterización.
+- El adaptador OCI separa contratos SDK, validación, Monitoring, descubrimiento de compartimentos, inventario,
+  fuentes FOCUS y retries en módulos cohesivos de hasta 219 líneas. El coordinador principal bajó de 1.140 a
+  393 líneas sin cambiar el contrato; las pruebas OCI dirigidas pasan 22/22.
 - La preparación de lineage expone gobierno determinista de etiquetas. En la cuenta OCI actual hay 1 recurso,
   pero 0 % de cobertura de las claves requeridas (`environment`, `owner`, `application`, `cost_center`);
   la interfaz lo muestra como incumplimiento, no como dato faltante silencioso.
@@ -117,7 +117,7 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (74 archivos aprobados, 307 pruebas pasadas y 9 omitidas),
+- Backend: `npm run test:all` (76 archivos aprobados, 312 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (19/19), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados; el smoke E2E y el E2E específico de asignación de costos pasaron 1/1 cada uno.
