@@ -5,9 +5,15 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 76 archivos de prueba,
-> 312 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 81 archivos de prueba,
+> 321 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
+
+### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
+
+- Se redujo `AwsSdkIngestionProvider.ts` de 1.032 a 363 líneas, manteniendo la fachada pública, la validación de capacidades y los dobles de prueba compatibles.
+- Se extrajeron contratos/configuración (`awsContracts.ts`, `awsConfiguration.ts`), métricas CloudWatch (`AwsMetricCollector.ts`), inventario EC2 (`AwsInventoryCollector.ts`) y facturación/FOCUS (`AwsBillingCollector.ts`). Los módulos quedan entre 88 y 300 líneas y conservan AssumeRole, streaming FOCUS, Cost Explorer, inventario y métricas.
+- La suite dirigida del proveedor AWS pasó 4/4 y `npm run test:all` pasó 81 archivos, 321 pruebas y 9 omitidas; no se ejecutó validación AWS real porque la cuenta/rol externo continúa bloqueado (`AWS-001`).
 
 ### 2026-08-11 — Detalle de recomendación modular y E2E desde migraciones cero
 
