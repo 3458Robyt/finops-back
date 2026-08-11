@@ -7,6 +7,9 @@ Este documento es la referencia operativa para revisar el ciclo de identidad.
 No sustituye la configuración del proveedor de despliegue ni una prueba de
 penetración externa.
 
+La asignación de capacidades a roles y sus puntos de enforcement se documentan
+por separado en `docs/MATRIZ_AUTORIZACION.md`.
+
 ## Principios
 
 1. El JWT de acceso es corto y solo vive en memoria del navegador.

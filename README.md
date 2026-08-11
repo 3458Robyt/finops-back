@@ -97,7 +97,7 @@ El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La 
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local recomendada es `npm run test:all`: actualmente cubre 70 archivos, 292 pruebas pasadas y
+La verificación local recomendada es `npm run test:all`: actualmente cubre 72 archivos, 301 pruebas pasadas y
 9 omitidas, además de typecheck, escenarios IA offline y build. El workflow de CI repite el build, la auditoría
 de producción y las pruebas de integración aisladas.
 
@@ -111,6 +111,7 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 - **Credenciales cloud:** accesos operativos read-only cifrados en reposo (`CredentialCipher`, clave en `CREDENTIAL_ENCRYPTION_KEY`); el flujo no recibe ni persiste administradores temporales.
 - **CORS:** origen configurable vía `CORS_ORIGIN` (por defecto `http://localhost:5173`).
 - **Cabeceras y abuso:** Helmet y rate limiting global/específico para autenticación, IA y Telegram están configurados en el servidor.
+- **Autorización:** la matriz central de capacidades por rol está en [`docs/MATRIZ_AUTORIZACION.md`](docs/MATRIZ_AUTORIZACION.md) y se aplica en rutas y servicios; los controles del frontend no son una barrera de seguridad.
 - **Observabilidad:** logging estructurado por request con `x-request-id`; `safeErrorMessage` acota y redacta credenciales, tokens, claves y PEM de errores de proveedor.
 - **Secretos:** `.env` está en `.gitignore`; usar `.env.example` como plantilla. No commitear claves.
 

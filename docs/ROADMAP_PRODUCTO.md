@@ -21,7 +21,7 @@
 
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
-> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 292 pruebas pasadas y 9
+> adicionales para utilización, alcance de planes y ahorro máximo. La suite vigente es 301 pruebas pasadas y 9
 > omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
@@ -124,6 +124,8 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
   verificados en Supabase principal. El canary de aislamiento, workers y rollback está documentado;
   la activación operativa productiva se difiere hasta existir despliegue.
 - Permisos multi-cliente reales con `tenant_access_assignments` (técnicos FinOps multi-tenant).
+- Autorización backend central para siete roles y dieciséis capacidades, con matriz exhaustiva y guardas
+  separadas para decisión, ejecución y ahorro; el frontend permanece como control de experiencia, no de seguridad.
 - Gestión/rotación de secretos fuera de `.env` plano y observabilidad centralizada.
 
 ### Fase 2 — Validación AWS productiva (requiere credenciales) · MEDIO

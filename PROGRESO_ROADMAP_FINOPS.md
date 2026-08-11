@@ -5,18 +5,25 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 70 archivos de prueba,
-> 292 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 72 archivos de prueba,
+> 301 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
 
+- Se centralizó la autorización backend en una matriz explícita de siete roles y dieciséis capacidades. Las
+  guardas de cloud, ingesta, agente, recomendaciones, ahorro, presupuestos, asignación, valor, mensajería, MFA
+  y administración MSP ya no mantienen listas independientes. Decisión, ejecución, creación y verificación de
+  mediciones tienen permisos separados; `CLIENT_APPROVER` no puede ejecutar ni calcular ahorros.
+- Se agregó `docs/MATRIZ_AUTORIZACION.md`, una prueba exhaustiva de la matriz y pruebas de adaptadores para las
+  cuatro guardas de recomendaciones. La verificación final pasó con 72 archivos, 301 pruebas y 9 omitidas;
+  IA offline 19/19, typecheck y build aprobados.
 - Se completó recuperación MFA con diez códigos aleatorios de 80 bits: solo hashes persistidos, consumo único,
   revocación del lote anterior al regenerar y presentación una sola vez en login/perfil.
 - El canary runtime RLS se amplió a sesiones, refresh, reset, TOTP, challenges y recovery codes. La ampliación
   detectó recursión en políticas pre-auth; se reemplazaron subconsultas cruzadas por helpers SECURITY DEFINER
   acotados y el canary final pasó con dos tenants y cero visibilidad cruzada.
-- Supabase quedó al día con 52 migraciones. La suite vigente subió a 70 archivos, 292 pruebas pasadas y 9
+- Supabase quedó al día con 52 migraciones. La suite vigente subió a 72 archivos, 301 pruebas pasadas y 9
   omitidas; frontend lint/build continúa verde.
 
 - Se consolidó la revocación persistida de sesiones: logout individual/global, revocación de dispositivos,
