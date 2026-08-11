@@ -15,6 +15,11 @@
 - Se extrajeron contratos/configuración (`awsContracts.ts`, `awsConfiguration.ts`), métricas CloudWatch (`AwsMetricCollector.ts`), inventario EC2 (`AwsInventoryCollector.ts`) y facturación/FOCUS (`AwsBillingCollector.ts`). Los módulos quedan entre 88 y 300 líneas y conservan AssumeRole, streaming FOCUS, Cost Explorer, inventario y métricas.
 - La suite dirigida del proveedor AWS pasó 4/4 y `npm run test:all` pasó 81 archivos, 321 pruebas y 9 omitidas; no se ejecutó validación AWS real porque la cuenta/rol externo continúa bloqueado (`AWS-001`).
 
+### 2026-08-11 — Composición de runtime y entrypoint operativo
+
+- Se aisló el grafo de repositorios/servicios en `src/bootstrap/applicationComposition.ts`; `src/index.ts` quedó en 353 líneas y conserva los roles `api`, `worker`, `scheduler` y `all`, además de health/readiness, cierre ordenado y loops de fondo.
+- No se modificaron contratos HTTP ni la semántica de workers/schedulers. `npm run test:all` continúa en 81 archivos, 321 pruebas pasadas y 9 omitidas; typecheck y build permanecen verdes. Commit `296d7cb`.
+
 ### 2026-08-11 — Detalle de recomendación modular y E2E desde migraciones cero
 
 - Se dividió `ResourceDetail.tsx` de 1.609 a 348 líneas, extrayendo el controlador de carga/acciones,
