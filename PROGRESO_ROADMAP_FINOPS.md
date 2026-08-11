@@ -31,6 +31,8 @@
   calculan en PostgreSQL y no se limitan a los últimos 20 eventos.
 - Se aisló el procesador de eventos de aprendizaje para que el coordinador quede en 130 líneas efectivas sin
   alterar timeout, reintentos, estados `SKIPPED`/`ERROR` ni promoción global.
+- El frontend separó Agent Settings en módulos de gobierno, evidencia/aprendizaje, canales y UI compartida;
+  la vista principal quedó en 396 líneas efectivas sin cambiar contratos ni comportamiento visible.
 - Verificación final del bloque: `npm run test:all` pasó con 68 archivos, 287 pruebas pasadas y 9 omitidas;
   typecheck, build y pruebas dirigidas de seguridad/OCI/scheduler/golden también pasaron. Se creó el commit
   `e96097d` para logs seguros, `d638269` para inventario/gobierno de tags, `347d175` para métricas de
