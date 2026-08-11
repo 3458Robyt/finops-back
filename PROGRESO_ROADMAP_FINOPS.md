@@ -5,9 +5,28 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 81 archivos de prueba,
-> 321 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 84 archivos de prueba,
+> 331 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 19/19. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
+
+### 2026-08-11 — Cierre estructural, operación y validación reproducible
+
+- La configuración de MFA, TTL de sesiones, cookies, orígenes confiables, ingesta, analítica, recuperación de
+  contraseña y cifrado de credenciales queda inyectada desde el composition root; los adaptadores ya no leen
+  valores de entorno directamente. La revocación individual de una sesión también revoca sus refresh tokens.
+- El shutdown de `api`, `worker` y `scheduler` detiene los loops y espera a que termine la iteración activa antes
+  de desconectar Prisma. `GET /live`, `/health` y `/ready` distinguen liveness, readiness, rol de proceso y
+  enforcement runtime RLS; se agregó una prueba de drenaje.
+- El runtime Compose activa `init`, `no-new-privileges`, capabilities reducidas, healthcheck de API y ventana
+  de apagado de 20 segundos. La imagen no aplica migraciones automáticamente; la operación queda documentada.
+- `PrismaResourceMetricRepository` pasó de 882 a 656 líneas al extraer cursores, filtros SQL, buckets y mapeo
+  a `technicalMetricQueryHelpers.ts`, con pruebas de compatibilidad de cursor. `FinOpsArtifactGenerator` pasó
+  de 562 a 340 líneas al extraer la normalización determinística de borradores contra evidencia canónica.
+- `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
+  no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
+- Evidencia de validación: backend 84 archivos/331 pruebas/9 omitidas, IA offline 19/19, audit de producción
+  sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
+  sintácticamente con PyYAML. No se hizo push ni merge.
 
 ### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
 
