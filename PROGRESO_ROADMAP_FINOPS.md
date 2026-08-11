@@ -19,7 +19,7 @@
 - La compuerta IA ahora distingue métricas porcentuales de métricas absolutas, verifica el alcance exacto del plan
   y limita el ahorro estimado al techo derivado de la evidencia determinística. Los golden scenarios offline
   quedaron en 19/19.
-- Verificación final del bloque: `npm run test:all` pasó con 66 archivos, 270 pruebas pasadas y 9 omitidas;
+- Verificación final del bloque: `npm run test:all` pasó con 66 archivos, 275 pruebas pasadas y 9 omitidas;
   typecheck, build y pruebas dirigidas de seguridad/OCI/scheduler/golden también pasaron. Se creó el commit
   `e96097d` para logs seguros; no se hizo push.
 
