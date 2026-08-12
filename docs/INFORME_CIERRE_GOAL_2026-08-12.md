@@ -82,6 +82,8 @@ El registro autoritativo contiene **30 cerrados**, **1 abierto**, **2 bloqueados
 - `6dbccd5` — `docs(roadmap): update validation counts`.
 - `a0fabcb` — `docs(state): reconcile current validation evidence`.
 - `1261735` — `docs(architecture): close critical modularity debt`.
+- `1de6664` — `docs(analytics): clarify deprecated endpoint contract`: la ruta legacy conserva su payload
+  histórico y `/opportunities` queda documentado como la forma canónica.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
@@ -103,4 +105,3 @@ se deben cerrar con mocks o afirmaciones aspiracionales.
 5. Incorporar una cuenta/rol AWS reales y validar STS, EC2, CloudWatch, Cost Explorer y FOCUS; no usar los mocks
    como evidencia productiva.
 6. Repetir el benchmark de asignación en el destino elegido antes de establecer un SLA definitivo.
-
