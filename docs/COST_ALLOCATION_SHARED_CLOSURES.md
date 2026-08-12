@@ -171,11 +171,11 @@ las filas dentro de la misma transacción; valida conteo, total Decimal y hash
 antes de persistir el cierre.
 
 La integración aislada con 10.000 costos persistidos se ejecutó contra el
-Supabase actual: preview `1.647,36 ms` y cierre `6.604,64 ms`, con 10.000
+Supabase actual: preview `1.694,86 ms` y cierre `8.712,79 ms`, con 10.000
 líneas de evidencia y las tres pruebas de la suite aprobadas. El objetivo
 orientativo de 500 ms para preview y 2 s para cierre no se alcanza en esta
 ruta directa/remota. `EXPLAIN (ANALYZE, BUFFERS)` confirmó el uso de
-`cost_metrics_tenant_period_idx` con 10,35 ms de ejecución del plan para
+`cost_metrics_tenant_period_idx` con 17,27 ms de ejecución del plan para
 10.000 filas; la latencia restante está fuera del plan SQL (transferencia y
 snapshot de líneas). Debe reevaluarse con un entorno de despliegue
 representativo antes de convertirlo en un SLA. El resultado no evidenció

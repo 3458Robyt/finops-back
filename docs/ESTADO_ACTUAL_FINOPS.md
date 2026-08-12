@@ -257,9 +257,9 @@ Estado de cierre:
 - Benchmark del motor determinista de asignación: 10.000 costos, 10 reglas y 5 iteraciones; mediana de
   66,98 ms con invariantes de suma conservadas. Es una medición del cálculo en memoria, no un SLA completo
   de la transacción de cierre contra la base de datos.
-- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.647,36 ms,
-  cierre 6.604,64 ms y 10.000 líneas de evidencia en el Supabase actual. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
-  el uso de `cost_metrics_tenant_period_idx` con 10,35 ms de ejecución SQL. La compuerta revalida la huella
+- La integración de asignación ahora mide también el flujo persistido con 10.000 costos: preview 1.694,86 ms,
+  cierre 8.712,79 ms y 10.000 líneas de evidencia en el Supabase actual. `EXPLAIN (ANALYZE, BUFFERS)` confirmó
+  el uso de `cost_metrics_tenant_period_idx` con 17,27 ms de ejecución SQL en la última corrida. La compuerta revalida la huella
   canónica de la fuente además de conteo y total; el guardado masivo usa JSONB
   parametrizado y la transacción no expira por el timeout genérico de Prisma; los objetivos orientativos de
   500 ms/2 s quedan abiertos para reevaluación con un entorno de despliegue representativo.

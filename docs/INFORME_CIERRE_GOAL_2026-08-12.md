@@ -119,6 +119,9 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
   contadores y duración acotados por rol/proceso y resultado para detectar atascos sin cardinalidad peligrosa.
 - `c07ac97` — integración opt-in de `budget-scheduler` con actor técnico, configuración tenant-scoped y alertas
   idempotentes sobre la cola outbound; la operación continua permanece diferida por falta de destino.
+- `19bbdfc` y `fb26035` — runners de integración acotados con timeout, terminación del árbol de procesos,
+  allowlist de schemas y prueba del guard de timeout; se evitó dejar procesos o schemas E2E residuales.
+- `9ba1a1f` — reconciliación final de los conteos de pruebas y release hygiene con la evidencia vigente.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
@@ -129,7 +132,23 @@ declararse productivo al 100 %** mientras permanezcan sin ejecutar los canaries 
 publicación mediante PR. Estos puntos están correctamente clasificados como abiertos, bloqueados o diferidos y no
 se deben cerrar con mocks o afirmaciones aspiracionales.
 
-## 7. Próxima secuencia recomendada
+## 7. Entregables estructurales y evidencia complementaria
+
+- **Modularidad:** no quedan archivos de producción backend o frontend por encima de 400 líneas sin una
+  justificación vigente; los fixtures declarativos y las pruebas grandes quedan excluidos del fitness check.
+  Los hotspots actuales más grandes son cohesivos: `PrismaResourceMetricRepository.ts` (372 líneas),
+  `PrismaResourceLinkageReadinessRepository.ts` (366), `AnalyticsController.ts` (363),
+  `AwsSdkIngestionProvider.ts` (363), `applicationComposition.ts` (359) y `ResourceDetail.tsx` (347).
+- **Migraciones:** Prisma mantiene 61 migraciones; las últimas aplicadas cubren índices de calidad IA,
+  ciclo de vida auth, grants de funciones, índices FK, resumen ejecutivo y heartbeats durables. `npx prisma
+  migrate status` reporta la base de Supabase actualizada.
+- **Rendimiento:** la última integración de asignación con 10.000 costos midió preview de 1.694,86 ms,
+  cierre de 8.712,79 ms y plan SQL de 17,27 ms. La diferencia entre el plan y el tiempo total mantiene
+  `PERF-001` diferido; no se declara cumplimiento del objetivo sin un entorno representativo.
+- **Runners seguros:** las integraciones aisladas tienen timeout y terminación de árbol de procesos, y la
+  verificación posterior no encontró schemas `finops_e2e_*` residuales.
+
+## 8. Próxima secuencia recomendada
 
 1. Autorizar y ejecutar publicación mediante PR backend/frontend con CI remoto y revisión de migraciones.
 2. Cuando existan credenciales de prueba, ejecutar canaries SMTP/Telegram y cerrar `MSG-001` si los proveedores
