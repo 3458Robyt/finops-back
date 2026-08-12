@@ -53,9 +53,9 @@
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
-- `PrismaCloudIngestionJobRepository` quedó en 434 líneas al extraer la persistencia de filas FOCUS, muestras
-  técnicas, batching y reconciliación exacta a `PrismaIngestionSamplePersistence.ts`; los contratos de ingesta,
-  deduplicación y linkage permanecen sin cambios. Typecheck y 38 pruebas focalizadas de ingesta pasaron.
+- `PrismaCloudIngestionJobRepository` quedó en 300 líneas al extraer el resumen de ejecución, watermark y
+  controles de calidad a `PrismaIngestionJobCompletionSupport` (139 líneas); las pruebas focalizadas de worker,
+  scheduler, provider OCI y rutas de ingesta pasaron 21/21.
 - `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
   conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
   `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
@@ -82,7 +82,7 @@
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
   archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
-  La última verificación pasó con 282 archivos backend/16 excepciones y 89 archivos frontend/2 excepciones;
+  La última verificación pasó con 313 archivos backend/7 excepciones y 93 archivos frontend/0 excepciones;
   las excepciones no se declaran resueltas y se revisarán conforme avance MOD-001.
 - El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
