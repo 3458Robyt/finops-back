@@ -7,7 +7,7 @@
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante endpoint protegido; la operación registra auditoría y no elimina el evento de aprendizaje original.
 - La trazabilidad genera `finops-opportunity-rules-v1` antes de la IA para detectar vínculos pendientes, datos desactualizados, evidencia técnica débil y brechas de etiquetas. El catálogo no emite ahorros.
 - Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó 92 archivos, 359 pruebas y 9 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
-- Pendiente: suite de integración/E2E con base aislada, canaries SMTP/Telegram, revisión de seguridad operativa, Graphify y commits separados. AWS real y OCI Usage API permanecen bloqueados externamente.
+- Pendiente: E2E completo con el entorno de aplicación aislado, canaries SMTP/Telegram y revisión de seguridad operativa productiva. La integración PostgreSQL desde migraciones cero ya pasó 5 archivos/6 pruebas en schema efímero y el schema fue eliminado. Graphify y commits separados quedaron completados; AWS real y OCI Usage API permanecen bloqueados externamente.
 
 > **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
