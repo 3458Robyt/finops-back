@@ -45,6 +45,11 @@
   `RecommendationExecutionController` (118), ahorro verificado en `RecommendationSavingsController` (270) y
   consultas tenant-aware en `RecommendationReadController` (92). El contrato de rutas y las pruebas de
   caracterización del controlador permanecen sin cambios (8/8).
+- `PrismaAgentLearningRepository` quedó en 92 líneas como puerto estable; los eventos y transiciones atómicas
+  viven en `PrismaAgentLearningEventRepository` (261), las memorias auditadas en
+  `PrismaAgentLearningMemoryRepository` (64) y las lecturas de contexto/resumen en
+  `PrismaAgentLearningQueryRepository` (146). Se mantiene la persistencia atómica de memorias aprobadas y
+  decisión; typecheck, arquitectura y 3 pruebas focalizadas del servicio de aprendizaje pasaron.
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
