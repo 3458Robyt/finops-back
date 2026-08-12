@@ -392,6 +392,7 @@ Estos puntos sustituyen las afirmaciones antiguas del documento que decian que n
 - El cierre se registra por tenant/período/moneda con hash de costos y reglas, resultados por destino, responsable, versión y estado. La repetición idéntica es idempotente; costos tardíos o correcciones generan una versión reemplazante con motivo y conservan historia.
 - La sección actual `Asignación de costos` incorpora constructor DIRECT/SPLIT, suma visible, preview con reglas usadas y comparación mensual, costos compartidos, confirmación de `UNALLOCATED` e historial de cierres. Se añadieron endpoints de cierre, consulta histórica y comparación de versiones.
 - Supabase reportaba 38 migraciones en este snapshot; esa cifra es histórica. El propio snapshot de
-  2026-08-04 registraba 44; el estado vigente al 2026-08-11 es 52 migraciones y está documentado en
+2026-08-04 registraba 44; el repositorio local contiene 55 migraciones al 2026-08-11 y las tres últimas
+(`202608110009` a `202608110011`) están aplicadas/verificadas en Supabase principal. Este estado está documentado en
   `docs/ESTADO_ACTUAL_FINOPS.md` y `docs/DEUDA_TECNICA.md`.
 - En este snapshot quedaba pendiente integrar presupuestos y valor por destino; ese trabajo está implementado y verificado en Fase 5.2. No se implementará contabilidad ni chargeback.

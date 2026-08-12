@@ -72,7 +72,8 @@
   entregas outbound con cuerpo completo, lease `FOR UPDATE SKIP LOCKED`, estado `PROCESSING`, reintentos con backoff,
   recuperación de leases vencidos y estados finales `SENT`, `FAILED` o `SKIPPED`. El scheduler procesa lotes
   acotados antes de los recordatorios de ahorro y el frontend distingue “En proceso”. La migración
-  `202608110009_outbound_delivery_queue` ya fue aplicada y verificada en Supabase; todavía requiere validarse con
+`202608110009_outbound_delivery_queue`, `202608110010_revoke_api_function_grants` y
+`202608110011_add_missing_foreign_key_indexes` ya fueron aplicadas y verificadas en Supabase; todavía requiere validarse con
   SMTP/Telegram reales.
 - La frontera de contexto IA marca nombres, etiquetas, identificadores y texto externo como no confiables para
   reducir prompt injection; chat, recomendaciones y planes rechazan respuestas que contengan PEM, JWT, API keys,
