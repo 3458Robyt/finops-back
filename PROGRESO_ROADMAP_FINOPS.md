@@ -1,5 +1,25 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Orquestación de backfill técnico modularizada
+
+- Se extrajo la generación idempotente de ventanas de métricas técnicas a `CloudIngestionBackfillService`; el
+  orquestador conserva activación, jobs manuales, cancelación, reintentos, salud e historial, y sigue exponiendo la
+  misma fachada pública.
+- La lógica conserva el límite histórico de 90 días, ventanas de 1–24 horas, omisión de ventanas cubiertas y
+  `maxAttempts=1` para backfills controlados. La validación dirigida y el typecheck pasan.
+- Graphify quedó actualizado a 4.256 nodos, 11.584 relaciones y 240 comunidades.
+
+### 2026-08-12 — Separación de facturación OCI
+
+- Se extrajo la recolección de facturación OCI (FOCUS por Object Storage y OCI Usage API) a
+  `OciBillingCollector`, manteniendo en `OciSdkIngestionProvider` la composición de clientes y la fachada del
+  proveedor. La lectura sigue siendo streaming, con cierre de clientes, retry y normalización hash de costos.
+- Se agregó caracterización del camino `PROVIDER_API` sin afirmar disponibilidad productiva de Usage API; el bloqueo
+  real de IAM continúa documentado en `OCI-001` y FOCUS permanece como fuente primaria.
+- La suite vigente quedó en 95 archivos aprobados, 4 omitidos, 376 pruebas pasadas y 10 omitidas; IA offline 24/24,
+  typecheck, arquitectura y build pasan. Graphify quedó actualizado a 4.250 nodos, 11.557 relaciones y 234
+  comunidades.
+
 ### 2026-08-12 — Sanitización durable y error HTTP unificado
 
 - Los mensajes de proveedores ya se sanitizan en la frontera de persistencia antes de guardarse en eventos de
@@ -11,7 +31,7 @@
 - La configuración de fuentes de conexión cloud se extrajo a `CloudConnectionSourceConfiguration`, dejando el
   onboarding concentrado en registro, credenciales, validación y previsualización sin cambiar el contrato público.
 - Se reemplazaron mensajes visibles en inglés de estas rutas por mensajes en español. La suite vigente quedó en
-  95 archivos aprobados, 4 omitidos, 375 pruebas pasadas y 10 omitidas; IA offline 24/24, typecheck, arquitectura
+  95 archivos aprobados, 4 omitidos, 376 pruebas pasadas y 10 omitidas; IA offline 24/24, typecheck, arquitectura
   y build pasan. Graphify quedó actualizado a 4.242 nodos, 11.525 relaciones y 231 comunidades.
 
 ### 2026-08-12 — Redacción de headers sensibles en errores
@@ -110,7 +130,7 @@
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
 > **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 95 archivos aprobados, 4 omitidos,
-> 375 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> 376 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
