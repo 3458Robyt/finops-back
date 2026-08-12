@@ -17,7 +17,7 @@
 - Se revalidó el estado actual contra el goal y las cuatro fuentes autoritativas. Los repositorios quedaron
   limpios en `feat/shared-cost-allocation`; no se hizo push, merge ni PR.
 - La validación vigente conserva 104 archivos de pruebas aprobados, 433 pruebas pasadas y 10 omitidas,
-  IA offline 24/24, arquitectura 357/1 excepción, release hygiene backend 615 y frontend 134.
+  IA offline 24/24, arquitectura 357/1 excepción, release hygiene backend 616 y frontend 134.
 - Supabase reportó 61 migraciones aplicadas; `db:verify:quality-indexes`, integración de heartbeat/RLS,
   typecheck, build, frontend lint/build y `npm audit --omit=dev --audit-level=high` pasaron.
 - Se corrigieron conteos obsoletos en `README.md`, `docs/DEUDA_TECNICA.md` y `docs/ESTADO_ACTUAL_FINOPS.md`.
@@ -70,7 +70,7 @@
   restore queda diferido porque todavía no existe destino operativo autorizado.
 - La validación completa posterior pasó con 104 archivos de test aprobados, 4
   omitidos, 433 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
-  release hygiene 615 rutas.
+  release hygiene 616 rutas.
 
 ### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
 
