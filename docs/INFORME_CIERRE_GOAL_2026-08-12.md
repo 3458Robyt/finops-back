@@ -24,13 +24,13 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 103 archivos aprobados, 4 omitidos, 403 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 104 archivos aprobados, 4 omitidos, 429 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
-- `npm run check:architecture`: 356 archivos de producción, una excepción declarada para el fixture
+- `npm run check:architecture`: 357 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
 - Typecheck y build: aprobados.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
-- `npm run check:release-hygiene`: 607 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run check:release-hygiene`: 613 rutas rastreadas sin secretos ni artefactos prohibidos.
 - `npm run test:integration:auth-cleanup`: integración aislada aprobada; migraciones desde cero, RLS de mantenimiento,
   borrado bounded, bloqueo de sesiones contra carreras de refresh, preservación de refresh vigente con TTL inconsistente
   y limpieza del schema en `finally`.
@@ -60,7 +60,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 |---|---|---|---|
 | Gobernanza de entrega | Parcial local | Ramas limpias, commits convencionales, documentación y Graphify actualizados | Publicar ramas y abrir PR coordinados cuando exista autorización de release y CI remoto verde |
 | Seguridad e identidad | Cerrado para beta | Sesiones persistidas y revocables, logout, refresh rotation, recuperación, MFA, autorización central, RLS, sanitización, Helmet, CORS y rate limits | Activación permanente de runtime RLS, rotación formal y observabilidad externa dependen del despliegue |
-| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 356/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
+| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 357/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
 | Inventario y linaje OCI | Cerrado dentro de la cobertura disponible | Inventario OCI/Resource Search, identidades históricas exactas, backfill idempotente, cruces canónicos y sin fuzzy matching; 8.173/8.173 costos elegibles enlazados en la cuenta validada | OCI Usage API requiere policy; AWS requiere cuenta/rol reales |
 | Operación e infraestructura | Base implementada | Roles `api`/`worker`/`scheduler`/`all`, contenedores, health/readiness detallado, migración esperada, advisory lease, heartbeat durable por proceso, graceful shutdown, logs y métricas | OPS-001/002/003/006: destino 24/7, scheduler permanente, secret manager, alertas centralizadas y rehearsal formal de backup/restore |
 | IA y auditoría | Cerrado para el pipeline gobernado | Evidencia determinística antes del LLM, auditoría independiente, salida segura, planes persistidos, aprendizaje auditable, golden scenarios y canary IA aislado | Mantener canaries periódicos; no declarar precisión ML o coste LLM sin ground truth/precios |
@@ -110,6 +110,8 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
   migración esperada, lease advisory, heartbeat y configuración de IA; `/ready` responde según el estado real.
 - `48525aa` — `docs(ops): document readiness and recovery`: runbook de backup/restore, rollback RLS y pérdida de
   jobs; la prueba formal de recuperación permanece diferida hasta contar con un destino productivo.
+- `5f8ed44` — `feat(ops): isolate process responsibilities`: `APP_PROCESS_ROLE` resuelve capacidades granulares
+  para cada worker y scheduler sin iniciar responsabilidades ajenas; los alias de beta se conservan.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

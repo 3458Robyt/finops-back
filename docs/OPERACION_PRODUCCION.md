@@ -3,8 +3,12 @@
 Fecha de revisión: 2026-08-12.
 
 La configuración se valida antes de construir la composición: en producción
-`APP_PROCESS_ROLE` es obligatorio y debe ser `api`, `worker`, `scheduler` o
-`all`; un valor inválido no puede caer silenciosamente en `all`. Si se habilita
+`APP_PROCESS_ROLE` es obligatorio y puede ser un alias (`api`, `worker`,
+`scheduler`, `all`) o un rol granular (`ingestion-worker`, `learning-worker`,
+`recommendation-analysis-worker`, `savings-reconciliation-worker`,
+`ingestion-scheduler`,
+`recommendation-analysis-scheduler`,
+`notification-scheduler`, `auth-cleanup-scheduler`). Un valor inválido no puede caer silenciosamente en `all`. Si se habilita
 correo, Telegram o el scheduler de mensajes/reconciliación, también son
 obligatorios sus secretos y destinos explícitos. En desarrollo estas mismas
 integraciones permanecen apagadas por defecto.
@@ -13,26 +17,47 @@ integraciones permanecen apagadas por defecto.
 
 El mismo artefacto backend puede ejecutarse con responsabilidades separadas:
 
-| `APP_PROCESS_ROLE` | Escucha HTTP | Workers | Schedulers |
-|---|---:|---:|---:|
-| `api` | Sí | No | No |
-| `worker` | No | Sí, si cada `*_WORKER_ENABLED=true` | No |
-| `scheduler` | No | No | Sí, si cada `*_SCHEDULER_ENABLED=true` |
-| `all` | Sí | Sí | Sí |
+| `APP_PROCESS_ROLE` | Escucha HTTP | Responsabilidades activas |
+|---|---:|---|
+| `api` | Sí | HTTP |
+| `worker` | No | Los cuatro workers (`ingestion`, `learning`, `recommendation-analysis`, `savings-reconciliation`) |
+| `scheduler` | No | Todos los schedulers habilitados |
+| `ingestion-worker` | No | Solo worker de ingesta |
+| `learning-worker` | No | Solo worker de aprendizaje |
+| `recommendation-analysis-worker` | No | Solo worker de análisis |
+| `ingestion-scheduler` | No | Solo scheduler de ingesta |
+| `recommendation-analysis-scheduler` | No | Solo scheduler de análisis |
+| `savings-reconciliation-worker` | No | Solo reconciliación de valor |
+| `notification-scheduler` | No | Solo cola de mensajes |
+| `auth-cleanup-scheduler` | No | Solo limpieza de autenticación |
+| `all` | Sí | Todas las responsabilidades |
 
-`all` mantiene compatibilidad con el desarrollo local. En un despliegue real se
-recomienda separar al menos `api`, `worker` y `scheduler` para que una llamada
-externa lenta no bloquee la atención HTTP y para poder escalar cada rol de forma
-independiente. Los jobs usan `FOR UPDATE SKIP LOCKED`, leases y contexto de
-tenant; no se debe ejecutar el mismo scheduler con una configuración diferente
-sin revisar sus cooldowns.
+`all` mantiene compatibilidad con el desarrollo local; `worker` y `scheduler`
+mantienen compatibilidad con la primera topología de beta. En un despliegue real
+se puede aislar cada responsabilidad con un rol granular, evitando que una
+llamada externa lenta bloquee otros workers y permitiendo escalar únicamente el
+backlog que lo necesita. Los jobs usan `FOR UPDATE SKIP LOCKED`, leases y
+contexto de tenant; no se debe ejecutar el mismo scheduler con una configuración
+diferente sin revisar sus cooldowns.
+
+Ejemplos de procesos independientes con el mismo artefacto:
+
+```powershell
+$env:APP_PROCESS_ROLE='api'; node dist/index.js
+$env:APP_PROCESS_ROLE='ingestion-worker'; node dist/index.js
+$env:APP_PROCESS_ROLE='learning-worker'; node dist/index.js
+$env:APP_PROCESS_ROLE='recommendation-analysis-worker'; node dist/index.js
+$env:APP_PROCESS_ROLE='savings-reconciliation-worker'; node dist/index.js
+$env:APP_PROCESS_ROLE='ingestion-scheduler'; node dist/index.js
+$env:APP_PROCESS_ROLE='notification-scheduler'; node dist/index.js
+```
 
 Los envíos SMTP y Telegram están limitados por `OUTBOUND_PROVIDER_TIMEOUT_MS`
 (15 segundos por defecto; entre 5 y 60 segundos en producción). Un timeout se
 persiste como resultado de entrega fallida y no debe detener el loop del scheduler.
 
 La limpieza de autenticación se activa con `AUTH_CLEANUP_SCHEDULER_ENABLED=true`
-en el proceso `scheduler`. Solo elimina filas cuyo `expiresAt` ya pasó y ejecuta
+en el proceso `scheduler` o `auth-cleanup-scheduler`. Solo elimina filas cuyo `expiresAt` ya pasó y ejecuta
 con el contexto RLS `finops-maintenance:auth-lifecycle`; conserva registros no
 expirados para no debilitar la detección de replay de refresh tokens.
 
@@ -128,8 +153,8 @@ backend de métricas durable.
    `npm run db:verify:quality-indexes` cuando la entrega incluya el reporte de
    calidad IA; la verificación solo consulta metadatos y planes.
 4. Arrancar un proceso `api`, comprobar `/health` y `/ready`.
-5. Arrancar `worker` y `scheduler` con identidades separadas y revisar logs de
-   claim/lease.
+5. Arrancar `worker` y `scheduler` con identidades separadas, o sus roles
+   granulares, y revisar logs de claim/lease.
 6. Ejecutar el canary de autenticación, RLS, ingesta y proveedor IA antes de
    habilitar tráfico general.
 7. Si se habilita mensajería, ejecutar `npm run test:canary:messaging` con un

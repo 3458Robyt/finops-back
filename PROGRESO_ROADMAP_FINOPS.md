@@ -1,5 +1,19 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Roles de proceso granulares para operación separable
+
+- `APP_PROCESS_ROLE` ahora admite roles específicos para cada worker y
+  scheduler: ingesta, aprendizaje, análisis de recomendaciones, scheduler de
+  ingesta, análisis, reconciliación de valor, notificaciones y limpieza auth.
+- Se conserva la compatibilidad con `api`, `worker`, `scheduler` y `all`; una
+  resolución tipada de capacidades evita que un proceso granular arranque
+  responsabilidades ajenas.
+- Se añadieron pruebas para alias legacy, aislamiento de cada rol granular y
+  modo `all`, además de validación de configuración de desarrollo/producción.
+- La separación operativa queda implementada en el artefacto; el despliegue
+  24/7, alertas y rehearsal de recuperación siguen diferidos por falta de
+  destino productivo.
+
 ### 2026-08-12 — Readiness operativo, métricas de heartbeat y recuperación documentada
 
 - `GET /ready` dejó de comprobar únicamente la conexión de base: ahora devuelve
@@ -14,9 +28,9 @@
   contra migraciones desde cero, RLS runtime, lease y heartbeat. Se documentó el
   runbook `docs/OPERACION_RECUPERACION.md`; el rehearsal productivo de backup y
   restore queda diferido porque todavía no existe destino operativo autorizado.
-- La validación completa posterior pasó con 103 archivos de test aprobados, 4
-  omitidos, 403 pruebas pasadas y 10 omitidas; arquitectura 356/1 excepción y
-  release hygiene 607 rutas.
+- La validación completa posterior pasó con 104 archivos de test aprobados, 4
+  omitidos, 429 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
+  release hygiene 613 rutas.
 
 ### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
 
