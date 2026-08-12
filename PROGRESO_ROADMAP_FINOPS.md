@@ -59,6 +59,10 @@
   y candidatos de conciliación viven en `PrismaValueRealizationAllocationRepository` (101). El SQL compartido
   y el mapeo/cursor quedaron aislados en soportes pequeños; el puerto `IValueRealizationRepository` y las pruebas
   de valor realizado permanecen sin cambios.
+- `RecommendationAnalysisService` quedó en 104 líneas como coordinador de autorización y consultas; el procesamiento
+  de corridas, compuerta de evidencia, auditoría, publicación y reintentos vive en
+  `RecommendationAnalysisRunProcessor` (201), con soporte de candidatos/periodos y notificación separados. Se
+  preservan el contrato del servicio, los estados de corrida y las 9 pruebas focalizadas de análisis/controlador.
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
