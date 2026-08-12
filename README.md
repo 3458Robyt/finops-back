@@ -1,5 +1,13 @@
 # ☁️ FinOps Inteligente: Core Backend & API RESTful
 
+> **Estado vigente (2026-08-12):** beta funcional avanzada con OCI real, FOCUS,
+> métricas técnicas, IA gobernada, auditoría, aprendizaje reversible, presupuestos,
+> asignación y realización de valor. AWS real y OCI Usage API permanecen en standby
+> por dependencias externas; la operación 24/7 se activa únicamente al definir un
+> destino de despliegue. Para conocer el estado verificable, consulta
+> [`docs/ESTADO_ACTUAL_FINOPS.md`](docs/ESTADO_ACTUAL_FINOPS.md) y
+> [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md).
+
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-green) ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-blue) ![Tests](https://img.shields.io/badge/Tests-Vitest-success)
 
 Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps Inteligente**, desarrollada para **TAK Colombia**. El sistema centraliza la ingesta de facturación multicloud, orquesta el análisis predictivo mediante Agentes de Inteligencia Artificial (LLMs) y expone una API RESTful segura para el consumo de interfaces web y chatbots.
@@ -97,9 +105,10 @@ El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La 
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local recomendada es `npm run test:all`: actualmente cubre 76 archivos, 312 pruebas pasadas y
-9 omitidas, además de typecheck, escenarios IA offline y build. El workflow de CI repite el build, la auditoría
-de producción y las pruebas de integración aisladas.
+La verificación local recomendada es `npm run test:all`: el corte vigente cubre 94 archivos aprobados,
+4 omitidos, 363 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
+24/24 y build. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración
+aisladas cuando existe un `TEST_DATABASE_URL` dedicado.
 
 ## Manejo de Errores y Seguridad
 
@@ -122,6 +131,10 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 - Observabilidad centralizada con retención, alertas y métricas de latencia.
 - Las pruebas de integración contra schema efímero y el cleanup automático ya están verificados;
   no usar `DATABASE_URL` productiva para fixtures.
+
+Los canaries reales de SMTP/Telegram requieren proveedores habilitados y no se ejecutan durante la suite
+offline. Las credenciales AWS bootstrap solo permiten asumir un rol externo; no representan una cuenta AWS
+de tenant ni prueban la integración productiva.
 
 ## Flujo de Trabajo (Water-Scrum-Fall)
 
