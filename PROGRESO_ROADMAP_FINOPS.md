@@ -13,6 +13,10 @@
 - La separación operativa queda implementada en el artefacto; el despliegue
   24/7, alertas y rehearsal de recuperación siguen diferidos por falta de
   destino productivo.
+- Los loops no solapables ahora registran `started`, `completed`, `failed`,
+  `skipped` y duración en Prometheus, etiquetados únicamente por rol de proceso
+  y resultado. Esto hace observable el backlog/atasco sin introducir IDs de alta
+  cardinalidad; el scheduler outbound usa el mismo mecanismo.
 
 ### 2026-08-12 — Readiness operativo, métricas de heartbeat y recuperación documentada
 
@@ -29,8 +33,8 @@
   runbook `docs/OPERACION_RECUPERACION.md`; el rehearsal productivo de backup y
   restore queda diferido porque todavía no existe destino operativo autorizado.
 - La validación completa posterior pasó con 104 archivos de test aprobados, 4
-  omitidos, 429 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
-  release hygiene 613 rutas.
+  omitidos, 430 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
+  release hygiene 615 rutas.
 
 ### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
 
