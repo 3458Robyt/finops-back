@@ -30,6 +30,9 @@
 > Para el estado vigente prevalecen la sección 1, la sección 3, `docs/ESTADO_ACTUAL_FINOPS.md` y
 > `docs/DEUDA_TECNICA.md`.
 
+> **Modularización vigente:** los últimos refactors separaron valor realizado, procesamiento de análisis IA y
+> motor determinístico de asignación sin cambiar contratos HTTP, puertos de dominio ni invariantes financieras.
+
 ---
 
 ## 1. Estado actual (qué está hecho de verdad)

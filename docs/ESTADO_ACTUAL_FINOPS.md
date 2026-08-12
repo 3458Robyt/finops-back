@@ -34,6 +34,11 @@ siguen explicitamente diferenciados de los controles ya verificados.
   offline 24/24; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
   queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.
+- La modularización estructural más reciente mantiene contratos públicos y redujo tres hotspots del backend:
+  `PrismaValueRealizationRepository` quedó en 47 líneas con portfolio y atribución separados;
+  `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
+  `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. El fitness check
+  backend pasa con 324 archivos de producción y 3 excepciones justificadas; frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 
