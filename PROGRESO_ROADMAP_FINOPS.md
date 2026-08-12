@@ -37,6 +37,8 @@
   `finOpsErrorResponse.ts`, con diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida
   y la suite completa cubren el contrato sin exponer el status interno en el JSON. El controlador cloud conserva
   sus códigos y estados públicos, pero dejó de tener una ruta de logging divergente (`c2c0699`).
+- La higiene del repositorio excluye la metadata de fuentes de datos de IntelliJ (`.idea/dataSources.xml`), además
+  de `.env`, claves y artefactos de pruebas; la conexión local queda disponible solo fuera del índice Git (`a7ed749`).
 - Costos, administración MSP, trazabilidad, análisis de recomendaciones y métricas técnicas también usan el
   responder compartido. Se agregó una regresión para dobles de respuesta sin `res.locals`; la suite queda en
   86 archivos, 339 pruebas pasadas y 9 omitidas.
