@@ -24,7 +24,9 @@ sin revisar sus cooldowns.
 
 - `finops-backend/Dockerfile` construye TypeScript en una etapa y ejecuta la
   imagen final como usuario no root `node`.
-- `finops-app/Dockerfile` genera el bundle estático y lo sirve con Nginx.
+- `finops-app/Dockerfile` genera el bundle estático y lo sirve con la imagen
+  `nginxinc/nginx-unprivileged` en el puerto 8080, sin ejecutar el contenedor
+  como root.
 - Los `.dockerignore` excluyen `.env`, logs, artefactos E2E y credenciales.
 - Las migraciones se aplican como paso explícito (`npx prisma migrate deploy`)
   desde un job de release; la imagen no ejecuta migraciones automáticamente al
