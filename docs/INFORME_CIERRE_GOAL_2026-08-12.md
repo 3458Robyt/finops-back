@@ -100,6 +100,10 @@ El registro autoritativo contiene **33 cerrados**, **1 abierto**, **2 bloqueados
 - `AUTH-004` — limpieza bounded de artefactos de autenticación expirados, con RLS de mantenimiento indexado y prueba aislada.
 - `OPS-004` — heartbeat durable por proceso, con migración Supabase aplicada, política RLS por worker y runner de
   integración aislado.
+- `8bd14e9` — `feat(ops): add durable process heartbeats`: servicio, repositorio, runtime de background, migración,
+  configuración y pruebas unitarias/integración.
+- `33eee08` — `docs(roadmap): record operational heartbeat`: estado, deuda, operación y roadmap reconciliados con
+  la evidencia del corte.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
