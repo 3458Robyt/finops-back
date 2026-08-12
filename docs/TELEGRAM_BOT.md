@@ -15,7 +15,12 @@ TELEGRAM_ENABLED=true
 TELEGRAM_BOT_TOKEN=token_entregado_por_botfather
 TELEGRAM_WEBHOOK_SECRET=secreto_largo_aleatorio
 TELEGRAM_BOT_USERNAME=nombre_del_bot_sin_arroba
+OUTBOUND_PROVIDER_TIMEOUT_MS=15000
 ```
+
+`OUTBOUND_PROVIDER_TIMEOUT_MS` limita cada envío hacia Telegram y SMTP. En producción se acepta un valor entre
+5.000 y 60.000 milisegundos; el valor por defecto es 15.000. Un timeout se registra como entrega fallida sin
+bloquear indefinidamente el worker.
 
 ## Configurar Webhook
 

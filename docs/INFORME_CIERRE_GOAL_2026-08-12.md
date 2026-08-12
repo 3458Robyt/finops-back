@@ -84,8 +84,8 @@ El registro autoritativo contiene **30 cerrados**, **1 abierto**, **2 bloqueados
 - `1261735` — `docs(architecture): close critical modularity debt`.
 - `1de6664` — `docs(analytics): clarify deprecated endpoint contract`: la ruta legacy conserva su payload
   histórico y `/opportunities` queda documentado como la forma canónica.
-- `pending` — hardening de mensajería externa: timeouts SMTP/Telegram configurables y regresiones sin llamadas
-  reales a proveedores.
+- `e521af0` — `fix(messaging): bound provider request duration`: timeouts SMTP/Telegram configurables y
+  regresiones sin llamadas reales a proveedores.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
