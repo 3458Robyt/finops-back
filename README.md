@@ -106,7 +106,7 @@ credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
 La verificación local recomendada es `npm run test:all`: el corte vigente cubre 94 archivos aprobados,
-4 omitidos, 363 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
+4 omitidos, 364 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
 24/24 y build. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración
 aisladas cuando existe un `TEST_DATABASE_URL` dedicado.
 

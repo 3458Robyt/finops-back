@@ -6,7 +6,7 @@
 - El resumen ejecutivo tenant-scoped se encola como entrega `PENDING` para correo/Telegram, con deduplicación diaria y procesamiento posterior por la cola outbound existente.
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante endpoint protegido; la operación registra auditoría y no elimina el evento de aprendizaje original.
 - La trazabilidad genera `finops-opportunity-rules-v1` antes de la IA para detectar vínculos pendientes, datos desactualizados, evidencia técnica débil y brechas de etiquetas. El catálogo no emite ahorros.
-- Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó `test:unit` con 94 archivos aprobados, 4 omitidos, 363 pruebas y 10 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
+- Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó `test:unit` con 94 archivos aprobados, 4 omitidos, 364 pruebas y 10 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
 - Pendiente: E2E completo con el entorno de aplicación aislado, canaries SMTP/Telegram y revisión de seguridad operativa productiva. La integración PostgreSQL desde migraciones cero ya pasó 5 archivos/6 pruebas en schema efímero y el schema fue eliminado. Graphify y commits separados quedaron completados; AWS real y OCI Usage API permanecen bloqueados externamente.
 
 ### 2026-08-12 — Calibración observable del agente IA
@@ -27,7 +27,7 @@
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
 > **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 94 archivos aprobados, 4 omitidos,
-> 363 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> 364 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
