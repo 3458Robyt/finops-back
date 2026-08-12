@@ -19,8 +19,8 @@
   enforcement runtime RLS; se agregó una prueba de drenaje.
 - El runtime Compose activa `init`, `no-new-privileges`, capabilities reducidas, healthcheck de API y ventana
   de apagado de 20 segundos. La imagen no aplica migraciones automáticamente; la operación queda documentada.
-- `PrismaResourceMetricRepository` quedó en 527 líneas al extraer además la lectura paginada de series raw/agregadas
-  y el conteo a `PrismaResourceMetricSeriesReader.ts`; se conserva el contrato público y las pruebas de compatibilidad
+- `PrismaResourceMetricRepository` quedó en 372 líneas al extraer además la lectura paginada de series raw/agregadas,
+  cobertura y contexto de costos a lectores cohesivos; se conserva el contrato público y las pruebas de compatibilidad
   de cursor. `FinOpsArtifactGenerator` pasó
   de 562 a 340 líneas al extraer la normalización determinística de borradores contra evidencia canónica.
 - `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
