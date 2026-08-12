@@ -11,10 +11,10 @@
 - Evidencia de esta revalidación: heartbeat `PASSED`, auth cleanup `PASSED`, agent quality 1/1, resource lineage
   5/5 y cost allocation 3/3. El benchmark de asignación quedó documentado con preview 1.694,86 ms y cierre
   8.712,79 ms en Supabase remoto; no se redefine el SLA representativo hasta contar con destino de despliegue.
-- El E2E completo se revalidó después de corregir la espera del selector de tenant: `test:e2e:full` pasó 6/6
+- El E2E completo se revalidó después de corregir la espera del selector de tenant: `test:e2e:full` pasó 7/7
   escenarios contra 61 migraciones en un schema aislado de Supabase y eliminó sus dos tenants y el schema al finalizar.
   La cobertura nueva `e2e/auth-lifecycle.spec.ts` verificó login, refresh rotativo, detección de reuse, cambio de tenant,
-  revocación individual/global y logout contra la API real.
+  revocación individual/global, logout y recuperación de contraseña sin enumeración contra la API real.
 - El runner también elimina el manifiesto local de fixtures, que contiene la contraseña temporal, únicamente dentro
   de `finops-backend/.test-artifacts`; la validación posterior confirmó que no quedó el archivo.
 

@@ -49,10 +49,10 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - Bundle: 23 chunks JavaScript; el mayor es `226.18 kB`, dentro del límite de `500 kB`.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
 - `npm run check:release-hygiene`: 134 rutas rastreadas sin secretos ni artefactos prohibidos.
-- `npm run test:e2e:full`: 6/6 escenarios Playwright aprobados después de esperar explícitamente la rotación de sesión
+- `npm run test:e2e:full`: 7/7 escenarios Playwright aprobados después de esperar explícitamente la rotación de sesión
   al cambiar de tenant; la corrida aplicó 61 migraciones en un schema aislado y eliminó fixtures y schema al finalizar.
   La prueba `e2e/auth-lifecycle.spec.ts` cubre login, refresh rotativo, reuse detection, cambio de tenant,
-  revocación individual/global y logout contra la API real.
+  revocación individual/global, logout y privacidad de recuperación de contraseña contra la API real.
 
 ### Higiene del repositorio
 
@@ -132,6 +132,8 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
   con una guardia que impide borrar fuera de `finops-backend/.test-artifacts`.
 - `18eb1f2` — se añadió `e2e/auth-lifecycle.spec.ts` y la suite completa quedó revalidada en 6/6, incluyendo
   la rotación y revocación de sesiones vía API.
+- `852d8c4` — se añadió la regresión E2E de recuperación de contraseña para verificar respuesta indistinguible
+  entre correos existentes y desconocidos; la suite actual quedó en 7/7.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
