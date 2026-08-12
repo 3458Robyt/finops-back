@@ -27,6 +27,10 @@ independiente. Los jobs usan `FOR UPDATE SKIP LOCKED`, leases y contexto de
 tenant; no se debe ejecutar el mismo scheduler con una configuración diferente
 sin revisar sus cooldowns.
 
+Los envíos SMTP y Telegram están limitados por `OUTBOUND_PROVIDER_TIMEOUT_MS`
+(15 segundos por defecto; entre 5 y 60 segundos en producción). Un timeout se
+persiste como resultado de entrega fallida y no debe detener el loop del scheduler.
+
 ## Imagen y usuario
 
 - `finops-backend/Dockerfile` construye TypeScript en una etapa y ejecuta la
