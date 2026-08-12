@@ -1,5 +1,12 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Verificación remota de paginación del reporte IA
+
+- Se aplicó en Supabase la migración `202608120001_quality_report_keyset_indexes` mediante `npx prisma migrate deploy`; `prisma migrate status` quedó al día.
+- Se añadió `npm run db:verify:quality-indexes`, una comprobación read-only que valida los dos índices y ejecuta `EXPLAIN (COSTS OFF)` sin imprimir credenciales ni datos de tenant.
+- La verificación encontró `recommendations_tenant_id_created_at_id_idx` y `ai_context_traces_tenant_id_created_at_id_idx`; ambos planes usan `Index Only Scan Backward` con filtro por tenant/fecha y límite de página.
+- `PERF-002` queda cerrado con evidencia remota. La integración aislada completa de calibración sigue condicionada a disponer de `TEST_DATABASE_URL` dedicado (`AI-007`).
+
 ### 2026-08-12 — Pronóstico, mensajería durable, aprendizaje reversible y oportunidades deterministas
 
 - La analítica incorpora escenarios comparables de base, tendencia, aprobado, ejecutado y verificado; el dashboard los presenta con separación explícita entre proyección, ahorro aprobado y valor realizado.
@@ -17,7 +24,7 @@
 - Verificación: `AgentQualityService.test.ts` 2/2, `AgentController.test.ts` 2/2, typecheck backend, arquitectura 338 archivos/3 excepciones, typecheck frontend, lint dirigido y build/bundle frontend aprobados. Se agregó `agentQuality.integration.test.ts` para la siguiente ejecución PostgreSQL aislada.
 - Pendiente: ejecutar la integración aislada con el nuevo caso, validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
 - El informe de calidad usa paginación keyset de 1.000 filas y agregación incremental para que ventanas históricas grandes no se materialicen en una única respuesta de PostgreSQL ni en un lote sin límite del repositorio.
-- Se preparó `202608120001_quality_report_keyset_indexes` para acelerar el filtro/orden por tenant, fecha e id; su aplicación en Supabase queda pendiente de una ejecución explícita de migraciones.
+- `202608120001_quality_report_keyset_indexes` quedó aplicada y verificada en Supabase; la consulta permanente `npm run db:verify:quality-indexes` confirma ambos índices y sus planes `Index Only Scan Backward`.
 - Se retiraron los fallbacks `NVIDIA_*`/`NIM_*` del lector de configuración y se añadió una regresión que falla cerrado cuando solo existen variables heredadas; el contrato vigente es `AI_*`.
 - Se alineó el timeout runtime del auditor de aprendizaje con el contrato de 15 segundos y se añadió validación productiva de límites para evitar bloqueos prolongados.
 

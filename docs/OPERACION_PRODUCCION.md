@@ -81,7 +81,9 @@ backend de métricas durable.
 1. Validar `npm run test:all`, `npm audit --omit=dev --audit-level=high` y el
    build del frontend.
 2. Construir imágenes con un tag inmutable basado en el commit.
-3. Aplicar migraciones Prisma desde un job con permisos de migración.
+3. Aplicar migraciones Prisma desde un job con permisos de migración y ejecutar
+   `npm run db:verify:quality-indexes` cuando la entrega incluya el reporte de
+   calidad IA; la verificación solo consulta metadatos y planes.
 4. Arrancar un proceso `api`, comprobar `/health` y `/ready`.
 5. Arrancar `worker` y `scheduler` con identidades separadas y revisar logs de
    claim/lease.
