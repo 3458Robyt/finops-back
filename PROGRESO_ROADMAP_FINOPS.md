@@ -95,7 +95,7 @@
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
   archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
-  La última verificación pasó con 320 archivos backend/6 excepciones y 93 archivos frontend/0 excepciones;
+  La última verificación pasó con 323 archivos backend/4 excepciones y 93 archivos frontend/0 excepciones;
   las excepciones no se declaran resueltas y se revisarán conforme avance MOD-001.
 - El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
