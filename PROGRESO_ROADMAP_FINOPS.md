@@ -25,6 +25,8 @@
 - `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
   de métricas, la clasificación de namespace y la precedencia inventario-proveedor en
   `ingestionResourceNormalizer.ts`; se agregaron pruebas de normalización y no se modificó el contrato de ingesta.
+- El proveedor de llamadas IA y auditoría de artefactos se aisló en `finOpsArtifactAiRunner.ts` (152 líneas);
+  `FinOpsArtifactGenerator` quedó en 234 líneas y conserva la orquestación de revisión, normalización y rúbrica.
 - El mapeo de errores HTTP de conexiones cloud, presupuestos, asignación y valor realizado reutiliza
   `finOpsErrorResponse.ts`, con diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida
   y la suite completa cubren el contrato sin exponer el status interno en el JSON. El controlador cloud conserva
