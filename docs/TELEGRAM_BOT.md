@@ -32,6 +32,22 @@ npm run telegram:set-webhook -- --url https://<backend-public-url>/api/v1/telegr
 
 El script registra el webhook en Telegram y configura `secret_token`. El endpoint valida el header `X-Telegram-Bot-Api-Secret-Token`.
 
+## Canary real controlado
+
+El canary de proveedores no usa la base de datos ni datos de tenants. Por defecto se omite; para ejecutarlo se debe
+definir explícitamente un destino de prueba y la confirmación de envío real:
+
+```powershell
+$env:MESSAGING_CANARY_CONFIRM='I_UNDERSTAND_THIS_SENDS_A_REAL_MESSAGE'
+$env:MESSAGING_CANARY_TELEGRAM_CHAT_ID='<chat-id-de-prueba>'
+# o: $env:MESSAGING_CANARY_EMAIL_TO='correo-de-prueba@example.com'
+npm run test:canary:messaging
+```
+
+El script imprime solo estados y errores sanitizados. Requiere que el canal correspondiente esté habilitado y que
+sus credenciales estén cargadas en el entorno; un resultado `PASSED` valida conectividad del proveedor, pero no
+cierra por sí solo el canary de la cola durable de producción.
+
 ## Vincular Usuario
 
 1. El usuario abre el bot en Telegram.

@@ -10,6 +10,15 @@
   build pasan. Graphify quedó actualizado a 4.279 nodos, 11.633 relaciones y 238 comunidades. El canary real
   SMTP/Telegram sigue abierto y no se simula.
 
+### 2026-08-12 — Canary seguro de proveedores de mensajería
+
+- Se agregó `npm run test:canary:messaging`, que envía únicamente a un destino de prueba explícito mediante
+  `MESSAGING_CANARY_EMAIL_TO` o `MESSAGING_CANARY_TELEGRAM_CHAT_ID` y exige una confirmación fuerte. Sin ella el
+  comando termina como `SKIPPED`; no usa la BD, no carga datos de tenants y sanitiza errores.
+- El canary prepara la validación externa de `MSG-001`, pero no la cierra: todavía requiere credenciales reales,
+  ejecución autorizada y validación adicional de la cola durable. Graphify quedó actualizado a 4.293 nodos,
+  11.657 relaciones y 242 comunidades.
+
 ### 2026-08-12 — Cierre de modularidad crítica y evidencia de la beta
 
 - `MOD-001` queda cerrado: los hotspots críticos ya están divididos por responsabilidad, los contratos públicos se

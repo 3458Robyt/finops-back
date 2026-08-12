@@ -86,6 +86,8 @@ El registro autoritativo contiene **30 cerrados**, **1 abierto**, **2 bloqueados
   histórico y `/opportunities` queda documentado como la forma canónica.
 - `e521af0` — `fix(messaging): bound provider request duration`: timeouts SMTP/Telegram configurables y
   regresiones sin llamadas reales a proveedores.
+- `pending` — `test:canary:messaging` preparado con confirmación fuerte, destino explícito y sin acceso a la BD;
+  su ejecución real sigue pendiente para `MSG-001`.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

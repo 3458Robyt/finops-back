@@ -100,7 +100,10 @@ backend de métricas durable.
    claim/lease.
 6. Ejecutar el canary de autenticación, RLS, ingesta y proveedor IA antes de
    habilitar tráfico general.
-7. Mantener rollback de aplicación separado del rollback de migración; nunca
+7. Si se habilita mensajería, ejecutar `npm run test:canary:messaging` con un
+   destino de prueba explícito; el comando se omite sin una confirmación fuerte
+   y no debe apuntar a destinatarios de clientes.
+8. Mantener rollback de aplicación separado del rollback de migración; nunca
    borrar datos para revertir una versión.
 
 ## Señales operativas
