@@ -30,6 +30,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
   `goldenScenarios.ts`.
 - Typecheck y build: aprobados.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
+- `npm run check:release-hygiene`: 588 rutas rastreadas sin secretos ni artefactos prohibidos.
 
 ### Frontend
 
@@ -39,6 +40,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - Typecheck, ESLint y build: aprobados.
 - Bundle: 23 chunks JavaScript; el mayor es `226.18 kB`, dentro del límite de `500 kB`.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
+- `npm run check:release-hygiene`: 133 rutas rastreadas sin secretos ni artefactos prohibidos.
 
 ### Higiene del repositorio
 
@@ -63,7 +65,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 ## 4. Deuda vigente
 
-El registro autoritativo contiene **30 cerrados**, **1 abierto**, **2 bloqueados** y **6 diferidos**:
+El registro autoritativo contiene **31 cerrados**, **1 abierto**, **2 bloqueados** y **6 diferidos**:
 
 - `MSG-001` — abierto: faltan canaries reales de SMTP/Telegram; la cola, leases, retries, estados y sanitización ya
   están implementados y los envíos externos siguen deshabilitados por defecto.
@@ -88,6 +90,7 @@ El registro autoritativo contiene **30 cerrados**, **1 abierto**, **2 bloqueados
   regresiones sin llamadas reales a proveedores.
 - `pending` — `test:canary:messaging` preparado con confirmación fuerte, destino explícito y sin acceso a la BD;
   su ejecución real sigue pendiente para `MSG-001`.
+- `REL-001` — compuerta reproducible de higiene de release añadida a ambos repositorios y a sus validaciones locales.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

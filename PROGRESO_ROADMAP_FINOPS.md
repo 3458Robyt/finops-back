@@ -1,5 +1,13 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Compuerta reproducible de higiene de release
+
+- Backend y frontend incorporan `npm run check:release-hygiene`, que inspecciona las rutas rastreadas por Git y
+  rechaza `.env` no permitido, certificados/claves, bases locales, logs y artefactos E2E; `.env.example` queda como
+  única excepción explícita. La validación pasó con 588 archivos backend y 133 frontend.
+- Se reforzaron ambos `.gitignore` con extensiones de credenciales y bases locales. La compuerta quedó integrada al
+  `test:all` backend y al `build` frontend; no sustituye la rotación de secretos ni el secret manager productivo.
+
 ### 2026-08-12 — Hardening de timeouts para mensajería externa
 
 - SMTP aplica `connectionTimeout`, `greetingTimeout` y `socketTimeout`; Telegram usa `AbortController` y transforma

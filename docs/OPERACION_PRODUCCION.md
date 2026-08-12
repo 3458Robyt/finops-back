@@ -89,7 +89,7 @@ backend de métricas durable.
 
 ## Secuencia de release
 
-1. Validar `npm run test:all`, `npm audit --omit=dev --audit-level=high` y el
+1. Validar `npm run check:release-hygiene`, `npm run test:all`, `npm audit --omit=dev --audit-level=high` y el
    build del frontend.
 2. Construir imágenes con un tag inmutable basado en el commit.
 3. Aplicar migraciones Prisma desde un job con permisos de migración y ejecutar
@@ -105,6 +105,10 @@ backend de métricas durable.
    y no debe apuntar a destinatarios de clientes.
 8. Mantener rollback de aplicación separado del rollback de migración; nunca
    borrar datos para revertir una versión.
+
+`check:release-hygiene` inspecciona únicamente rutas rastreadas por Git y falla
+si encuentra `.env` no permitido, claves/certificados, bases SQLite, logs o
+artefactos de pruebas. `.env.example` es la única excepción explícita.
 
 ## Señales operativas
 
