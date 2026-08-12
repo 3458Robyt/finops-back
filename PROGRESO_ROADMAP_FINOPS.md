@@ -14,7 +14,7 @@
 - Se añadió `GET /api/v1/agent/quality`, protegido por `AGENT_OBSERVE`, para medir por tenant la tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, resultado verificado y latencia/tokens de las trazas IA.
 - El reporte desglosa recomendaciones por tipo, regla determinística y proveedor. La extracción tolera las formas históricas de evidencia y agrupa explícitamente lo que no tiene regla como `SIN_REGLA_DETERMINISTICA`; no usa coincidencias fuzzy ni datos de otro tenant.
 - La UI de `Agente IA > Evidencia` muestra la ventana, indicadores, desglose y notas de interpretación. El costo de tokens solo aparece cuando existen `AI_INPUT_COST_PER_MILLION_TOKENS_USD` y `AI_OUTPUT_COST_PER_MILLION_TOKENS_USD`; de lo contrario se declara no configurado.
-- Verificación: `AgentQualityService.test.ts` 2/2, typecheck backend, arquitectura 338 archivos/3 excepciones, typecheck frontend, lint dirigido y build/bundle frontend aprobados. Se agregó `agentQuality.integration.test.ts` para la siguiente ejecución PostgreSQL aislada.
+- Verificación: `AgentQualityService.test.ts` 2/2, `AgentController.test.ts` 2/2, typecheck backend, arquitectura 338 archivos/3 excepciones, typecheck frontend, lint dirigido y build/bundle frontend aprobados. Se agregó `agentQuality.integration.test.ts` para la siguiente ejecución PostgreSQL aislada.
 - Pendiente: ejecutar la integración aislada con el nuevo caso, validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
 
 > **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
