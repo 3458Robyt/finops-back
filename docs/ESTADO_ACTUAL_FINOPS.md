@@ -41,7 +41,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
 - El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
 - La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011, 012 y `202608120005` sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `npm run test:unit` con 105 archivos aprobados, 4 omitidos, 436 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar; además, `npm run test:integration:process-heartbeat` comprobó liveness durable, readiness de migraciones/lease, RLS por proceso y transición a `STOPPED`. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- Validación posterior: backend `npm run test:unit` con 106 archivos aprobados, 4 omitidos, 440 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar; además, `npm run test:integration:process-heartbeat` comprobó liveness durable, readiness de migraciones/lease, RLS por proceso y transición a `STOPPED`. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
 - En la revalidación del corte también pasaron los runners aislados de auth cleanup, agent quality, resource lineage y cost allocation; todos usan allowlist de schemas, límites de ejecución y cleanup en `finally`. La inspección final no encontró schemas `finops_e2e_*` residuales.
 - La lógica de calibración tiene pruebas unitarias determinísticas y una integración aislada aprobada (`npm run test:integration:agent-quality`, 1/1) para comprobar consultas reales y aislamiento entre tenants con dos fixtures separados. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La analítica expone `/api/v1/analytics/opportunities` como ruta canónica. `/api/v1/analytics/anomalies` se conserva
@@ -110,7 +110,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
   `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
   `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. Además, los puertos
   de recomendaciones y conexiones cloud componen capacidades cohesivas sin superar 400 líneas. El fitness check
-  backend pasa con 357 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
+  backend pasa con 358 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 
@@ -160,7 +160,12 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - Si la evidencia tecnica es debil, la recomendacion debe marcar validacion tecnica pendiente.
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
 - El resumen de aprendizaje expone por tenant el feedback humano, los estados del auditor, las memorias activas
-  y las memorias globales. La tasa de aprobación humana no se mezcla con el veredicto del auditor.
+  y las memorias globales. También expone cuántos candidatos globales están en `shadow` y todavía no afectan el
+  contexto. La tasa de aprobación humana no se mezcla con el veredicto del auditor.
+- Las decisiones auditadas crean memorias LOCAL activas. Los patrones recurrentes que cumplen auditoría y muestra
+  mínima se guardan como candidatos GLOBAL inactivos (`learningLifecycle=SHADOW`); la compuerta ejecuta golden
+  scenarios y verifica que no haya referencias tenant-specific. No se activan automáticamente porque todavía falta
+  un canary live aislado que demuestre mejora frente a la línea base sin degradaciones.
 - El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
 - El detalle 360 comunica el nivel de evidencia y los bloqueos de las reglas técnicas; una evidencia limitada solo habilita recomendaciones de validación técnica.
 - Las oportunidades persistidas tienen deduplicación por tenant, cuenta, recurso/candidato, tipo y período factual. Un plan rechazado por el auditor no se guarda ni se muestra como plan reutilizable.
@@ -231,7 +236,7 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (105 archivos aprobados, 436 pruebas pasadas y 10 omitidas),
+- Backend: `npm run test:all` (106 archivos aprobados, 440 pruebas pasadas y 10 omitidas),
   `npm run test:ai:offline` (24/24), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Integración PostgreSQL aislada de limpieza auth: `npm run test:integration:auth-cleanup` pasó y eliminó su schema

@@ -24,9 +24,9 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 105 archivos aprobados, 4 omitidos, 436 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 106 archivos aprobados, 4 omitidos, 440 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
-- `npm run check:architecture`: 357 archivos de producción, una excepción declarada para el fixture
+- `npm run check:architecture`: 358 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
 - Typecheck y build: aprobados.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
@@ -48,7 +48,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - Typecheck, ESLint y build: aprobados.
 - Bundle: 23 chunks JavaScript; el mayor es `226.18 kB`, dentro del límite de `500 kB`.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
-- `npm run check:release-hygiene`: 134 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run check:release-hygiene`: 135 rutas rastreadas sin secretos ni artefactos prohibidos.
 - `npm run test:e2e:full`: 7/7 escenarios Playwright aprobados después de esperar explícitamente la rotación de sesión
   al cambiar de tenant; la corrida aplicó 61 migraciones en un schema aislado y eliminó fixtures y schema al finalizar.
   La prueba `e2e/auth-lifecycle.spec.ts` cubre login, refresh rotativo, reuse detection, cambio de tenant,
@@ -67,20 +67,22 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 |---|---|---|---|
 | Gobernanza de entrega | Parcial local | Ramas limpias, commits convencionales, documentación y Graphify actualizados | Publicar ramas y abrir PR coordinados cuando exista autorización de release y CI remoto verde |
 | Seguridad e identidad | Cerrado para beta | Sesiones persistidas y revocables, logout, refresh rotation, recuperación, MFA, autorización central, RLS, sanitización, Helmet, CORS y rate limits | Activación permanente de runtime RLS, rotación formal y observabilidad externa dependen del despliegue |
-| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 357/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
+| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 358/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
 | Inventario y linaje OCI | Cerrado dentro de la cobertura disponible | Inventario OCI/Resource Search, identidades históricas exactas, backfill idempotente, cruces canónicos y sin fuzzy matching; 8.173/8.173 costos elegibles enlazados en la cuenta validada | OCI Usage API requiere policy; AWS requiere cuenta/rol reales |
 | Operación e infraestructura | Base implementada | Roles `api`/`worker`/`scheduler`/`all`, contenedores, health/readiness detallado, migración esperada, advisory lease, heartbeat durable por proceso, graceful shutdown, logs y métricas | OPS-001/002/003/006: destino 24/7, scheduler permanente, secret manager, alertas centralizadas y rehearsal formal de backup/restore |
-| IA y auditoría | Cerrado para el pipeline gobernado | Evidencia determinística antes del LLM, auditoría independiente, salida segura, planes persistidos, aprendizaje auditable, golden scenarios y canary IA aislado | Mantener canaries periódicos; no declarar precisión ML o coste LLM sin ground truth/precios |
+| IA y auditoría | Cerrado para generación gobernada; promoción global en shadow | Evidencia determinística antes del LLM, auditoría independiente, salida segura, planes persistidos, aprendizaje local auditable, candidatos globales inactivos, compuerta golden y canary IA aislado | `AI-008`: ejecutar canary live aislado con/sin candidato y habilitar promoción solo si mejora sin degradación; no declarar precisión ML o coste LLM sin ground truth/precios |
 | FinOps avanzado | Cerrado en el alcance actual | Gobernanza de tags/readiness, catálogo de oportunidades, forecast por escenarios, presupuestos, asignación, valor realizado y resumen ejecutivo durable | Commitments/chargeback contable permanecen fuera de alcance hasta tener datos reales |
 | Rendimiento y calidad | Cerrado localmente con una deuda de entorno | Métricas con SQL/uPlot/cursor, índices y benchmarks existentes; suite, builds y audits verdes | PERF-001 requiere entorno representativo para alcanzar objetivos de preview/cierre |
 | Documentación | Cerrado como fuente vigente | README, estado, roadmap, progreso, deuda, testing y pipeline reconciliados con el corte actual | Conservar snapshots históricos sin usarlos como estado actual |
 
 ## 4. Deuda vigente
 
-El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados** y **7 diferidos**:
+El registro autoritativo contiene **34 cerrados**, **2 abiertos**, **2 bloqueados** y **7 diferidos**:
 
 - `MSG-001` — abierto: faltan canaries reales de SMTP/Telegram; la cola, leases, retries, estados y sanitización ya
   están implementados y los envíos externos siguen deshabilitados por defecto.
+- `AI-008` — abierto: los patrones globales recurrentes ya se conservan en shadow y no contaminan el contexto; falta
+  un canary live aislado que pruebe la mejora de calidad antes de activar promoción global.
 - `AWS-001` — bloqueado: falta cuenta y rol AWS reales.
 - `OCI-001` — bloqueado: falta aplicar `Allow group <group_name> to read usage-report in tenancy`.
 - `OPS-001`, `OPS-002`, `OPS-003` — diferidos por falta de destino productivo y gestión operacional externa.

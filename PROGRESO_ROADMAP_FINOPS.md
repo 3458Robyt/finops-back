@@ -1,5 +1,17 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Aprendizaje global en shadow y compuerta de promoción
+
+- Se corrigió el salto directo de patrones recurrentes a memorias GLOBAL activas. La memoria LOCAL auditada sigue
+  activa, pero el patrón transversal se persiste como candidato GLOBAL inactivo con `learningLifecycle=SHADOW`.
+- `learningPromotionEvaluator.ts` exige auditoría con score mínimo 90, al menos 5 eventos y 2 tenants, ausencia de
+  identificadores tenant-specific y todos los golden scenarios sin regresión. El resultado queda dentro del metadata
+  del candidato y el resumen expone `shadowMemories`.
+- Se añadió promoción explícita por `sourceLearningEventId`, aunque permanece deshabilitada para nuevos candidatos
+  porque aún no existe evidencia de un canary live comparando calidad con y sin la memoria. Esto queda registrado como
+  `AI-008`; no se afirma una mejora causal del LLM usando únicamente escenarios offline.
+- Backend `typecheck` y pruebas dirigidas de aprendizaje/promoción: 10/10; frontend lint/build: aprobados.
+
 ### 2026-08-12 — Runners de integración aislada acotados y revalidación PostgreSQL
 
 - Se centralizó la ejecución de `auth-cleanup`, `process-heartbeat`, `agent-quality`, `resource-lineage` y
@@ -22,8 +34,8 @@
 
 - Se revalidó el estado actual contra el goal y las cuatro fuentes autoritativas. Los repositorios quedaron
   limpios en `feat/shared-cost-allocation`; no se hizo push, merge ni PR.
-- La validación vigente conserva 105 archivos de pruebas aprobados, 436 pruebas pasadas y 10 omitidas,
-  IA offline 24/24, arquitectura 357/1 excepción, release hygiene backend 617 y frontend 134.
+- La validación vigente conserva 106 archivos de pruebas aprobados, 440 pruebas pasadas y 10 omitidas,
+  IA offline 24/24, arquitectura 358/1 excepción, release hygiene backend 617 y frontend 135.
 - Supabase reportó 61 migraciones aplicadas; `db:verify:quality-indexes`, integración de heartbeat/RLS,
   typecheck, build, frontend lint/build y `npm audit --omit=dev --audit-level=high` pasaron.
 - Se corrigieron conteos obsoletos en `README.md`, `docs/DEUDA_TECNICA.md` y `docs/ESTADO_ACTUAL_FINOPS.md`.

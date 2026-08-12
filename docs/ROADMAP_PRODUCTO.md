@@ -70,7 +70,7 @@
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
 > adicionales para utilización, alcance de planes, idioma, ahorro máximo, payloads ejecutables y salida sensible.
-> El corte vigente es `npm run test:unit`: 105 archivos aprobados, 4 omitidos, 436 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
+> El corte vigente es `npm run test:unit`: 106 archivos aprobados, 4 omitidos, 440 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
 > Las secciones con fecha conservan snapshots históricos y no deben usarse para inferir conteos actuales.
@@ -111,7 +111,8 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
   recomendación, chat, historial, agente IA, ingesta/calidad, métricas técnicas, perfil, login).
 - **Operación del agente:** el feedback humano y el resultado de la auditoría se observan por tenant;
   el resumen no confunde decisión aprobada con memoria aprobada y conserva los estados `PENDING`, `APPROVED`,
-  `REJECTED`, `SKIPPED` y `ERROR`.
+  `REJECTED`, `SKIPPED` y `ERROR`. Las memorias LOCAL auditadas pueden activarse; los patrones GLOBAL recurrentes
+  pasan primero por un candidato `SHADOW` con golden scenarios y esperan un canary live antes de afectar el contexto.
 
 ### Base estructural lista, con validaciones productivas aún pendientes
 - **Ingesta:** existen workers persistentes, scheduler, lectura S3/OCI, parser FOCUS streaming y
@@ -163,8 +164,9 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
   `resource_metric_samples` (claramente marcado como demo) para que las vistas nuevas muestren datos.
 - **Verificación en vivo** del stack local cuando Docker esté disponible; CI ya valida PostgreSQL/API de forma aislada.
 - **Endurecimiento de prompts medido** contra la rúbrica y los golden scenarios ya construidos.
-- **Aprendizaje observable:** el resumen IA por tenant muestra decisiones humanas, estados de auditoría y
-  memorias activas; el agente no aprende cuando el auditor falla o la evidencia es insuficiente.
+- **Aprendizaje observable:** el resumen IA por tenant muestra decisiones humanas, estados de auditoría, memorias
+  activas y candidatos globales en shadow; el agente no aprende cuando el auditor falla o la evidencia es insuficiente.
+  La promoción global requiere comparar calidad con y sin el candidato en un canary live aislado (`AI-008`).
 - **Recuperación MFA:** códigos aleatorios de un solo uso, almacenados como hash, rotables y consumidos
   atómicamente con el challenge; las políticas pre-auth ya no contienen recursión RLS.
 - Mantener `REFACTOR_PLAN.md` como referencia histórica; no abrir nuevas tareas allí.
