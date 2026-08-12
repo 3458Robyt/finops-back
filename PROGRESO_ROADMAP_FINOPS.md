@@ -38,6 +38,9 @@
 - `PrismaCloudConnectionRepository` quedó en 338 líneas al separar las operaciones de jobs, salud, readiness,
   historial y calidad en `PrismaCloudIngestionReadRepository`, y la creación idempotente en
   `PrismaCloudIngestionCommandRepository`; el puerto de conexiones cloud permanece sin cambios.
+- `CloudConnectionController` dejó de concentrar conexión e ingesta: el facade quedó en 58 líneas y delega
+  handlers de gestión (319), handlers de ingesta (228) y soporte común de parseo/error (71), manteniendo la
+  identidad de handlers que esperan los routers y sus 35 pruebas focalizadas.
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
