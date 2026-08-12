@@ -3,7 +3,7 @@
 ### 2026-08-12 — Validación del slice de higiene auth
 
 - La suite vigente pasa con 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas; arquitectura backend
-  348/1 excepción, typecheck, build e IA offline 24/24. El registro de higiene cubre 589 rutas backend y 134 frontend.
+  348/1 excepción, typecheck, build e IA offline 24/24. El registro de higiene cubre 598 rutas backend y 134 frontend.
 
 ### 2026-08-12 — Higiene acotada del ciclo de vida de autenticación
 
