@@ -1,5 +1,17 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Extracción del despacho de canales externos
+
+- `OutboundMessageService` dejó de mezclar la orquestación tenant-scoped con el detalle de entrega por canal.
+  `OutboundChannelDeliveryService` concentra Telegram/SMTP, estados `SENT`/`SKIPPED`/`FAILED`, persistencia
+  y previews; el servicio coordinador quedó en 268 líneas y el nuevo módulo en 114.
+- Los errores de proveedores se sanitizan antes de persistirse en el historial de entregas, sin cambiar el
+  contrato HTTP ni los estados de la cola. El envío externo continúa deshabilitado por defecto hasta contar
+  con canaries SMTP/Telegram reales.
+- Se añadieron tres pruebas de despacho y se conservaron las cuatro pruebas del procesador de cola: 7/7
+  focalizadas aprobadas. `npm run typecheck`, `npm run check:architecture` y Graphify pasaron; Graphify quedó
+  actualizado a 4.238 nodos y 11.426 relaciones.
+
 ### 2026-08-12 — Compatibilidad terminológica de oportunidades
 
 - La ruta canónica de analítica continúa siendo `/api/v1/analytics/opportunities`; la ruta histórica

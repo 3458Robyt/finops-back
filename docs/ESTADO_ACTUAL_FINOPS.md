@@ -22,6 +22,9 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La migración `202608120001_quality_report_keyset_indexes` está aplicada en Supabase. `npm run db:verify:quality-indexes` confirma los índices compuestos de recomendaciones y trazas y obtiene planes `Index Only Scan Backward` para el filtro tenant/fecha y la paginación keyset.
 - La configuración del proveedor IA ya no acepta fallbacks `NVIDIA_*`/`NIM_*`; únicamente se leen variables `AI_*`, evitando activar silenciosamente endpoints o credenciales heredadas.
 - La auditoría de aprendizaje usa por defecto un timeout de 15 segundos y producción rechaza valores fuera de 5–60 segundos; un proveedor lento no debe bloquear la decisión humana.
+- La entrega de correo y Telegram está separada del orquestador en `OutboundChannelDeliveryService`, que persiste
+  resultados `SENT`, `SKIPPED` o `FAILED` y sanitiza errores de proveedores. El historial y los reintentos siguen
+  siendo durables; los canaries externos continúan pendientes y los canales permanecen apagados por defecto.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
