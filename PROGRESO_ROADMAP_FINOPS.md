@@ -13,6 +13,8 @@
   8.712,79 ms en Supabase remoto; no se redefine el SLA representativo hasta contar con destino de despliegue.
 - El E2E completo se revalidó después de corregir la espera del selector de tenant: `test:e2e:full` pasó 5/5
   escenarios contra 61 migraciones en un schema aislado de Supabase y eliminó sus dos tenants y el schema al finalizar.
+- El runner también elimina el manifiesto local de fixtures, que contiene la contraseña temporal, únicamente dentro
+  de `finops-backend/.test-artifacts`; la validación posterior confirmó que no quedó el archivo.
 
 ### 2026-08-12 — Auditoría final local y reconciliación documental del runtime
 

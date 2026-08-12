@@ -126,6 +126,8 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
 - `9ba1a1f` — reconciliación final de los conteos de pruebas y release hygiene con la evidencia vigente.
 - `0b67035` — E2E frontend estabilizado: la prueba espera la finalización del cambio de tenant antes de
   continuar con el panel de análisis; la suite completa volvió a pasar 5/5.
+- `46f2cc5` — el runner E2E elimina el manifiesto local con la contraseña temporal después del cleanup,
+  con una guardia que impide borrar fuera de `finops-backend/.test-artifacts`.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
