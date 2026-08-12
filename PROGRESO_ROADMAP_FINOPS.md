@@ -16,6 +16,8 @@
 - La UI de `Agente IA > Evidencia` muestra la ventana, indicadores, desglose y notas de interpretación. El costo de tokens solo aparece cuando existen `AI_INPUT_COST_PER_MILLION_TOKENS_USD` y `AI_OUTPUT_COST_PER_MILLION_TOKENS_USD`; de lo contrario se declara no configurado.
 - Verificación: `AgentQualityService.test.ts` 2/2, `AgentController.test.ts` 2/2, typecheck backend, arquitectura 338 archivos/3 excepciones, typecheck frontend, lint dirigido y build/bundle frontend aprobados. Se agregó `agentQuality.integration.test.ts` para la siguiente ejecución PostgreSQL aislada.
 - Pendiente: ejecutar la integración aislada con el nuevo caso, validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
+- El informe de calidad usa paginación keyset de 1.000 filas y agregación incremental para que ventanas históricas grandes no se materialicen en una única respuesta de PostgreSQL ni en un lote sin límite del repositorio.
+- Se preparó `202608120001_quality_report_keyset_indexes` para acelerar el filtro/orden por tenant, fecha e id; su aplicación en Supabase queda pendiente de una ejecución explícita de migraciones.
 
 > **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
