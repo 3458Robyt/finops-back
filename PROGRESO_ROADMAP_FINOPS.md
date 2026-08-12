@@ -1,5 +1,15 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Runner de recomendaciones IA aislado
+
+- Se extrajo el caso de uso de generación de recomendaciones a `FinOpsAiRecommendationRunner`, que concentra
+  preparación/evidencia, contexto determinístico, generación, auditoría, persistencia, deduplicación y trazas.
+- `FinOpsAiService` queda como fachada de casos de uso y conserva sin cambios los contratos de chat,
+  recomendaciones, preparación y planes. La lógica de auditoría y el bloqueo por evidencia siguen en las mismas
+  fronteras; no se habilita ninguna acción cloud automática.
+- La suite dirigida IA pasó 10 archivos/62 pruebas y el typecheck pasó. Graphify quedó actualizado a 4.259 nodos,
+  11.610 relaciones y 228 comunidades.
+
 ### 2026-08-12 — Orquestación de backfill técnico modularizada
 
 - Se extrajo la generación idempotente de ventanas de métricas técnicas a `CloudIngestionBackfillService`; el

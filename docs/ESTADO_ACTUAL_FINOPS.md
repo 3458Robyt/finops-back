@@ -39,6 +39,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   ruta Usage API está caracterizada offline, pero su canary real sigue bloqueado por IAM (`OCI-001`).
 - La generación de ventanas de backfill técnico está aislada en `CloudIngestionBackfillService`; conserva la
   idempotencia por ventana y la fachada de ingesta no cambia.
+- El caso de uso de generación de recomendaciones está aislado en `FinOpsAiRecommendationRunner`; la fachada IA
+  conserva contratos públicos y la secuencia evidencia → generación → auditoría → persistencia → trazas.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
