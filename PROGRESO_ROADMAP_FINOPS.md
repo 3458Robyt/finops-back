@@ -57,6 +57,9 @@
   las excepciones no se declaran resueltas y se revisarán conforme avance MOD-001.
 - El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
+- Se agregó `docs/MODELO_AMENAZAS_STRIDE.md` como matriz compacta de amenazas para identidad, cambio de tenant,
+  administración MSP, credenciales cloud, ingesta, IA, ejecución manual, asignación, cierres, workers y mensajería.
+  El documento separa controles implementados, evidencia y riesgo residual; no sustituye una prueba DAST externa.
 
 ### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
 

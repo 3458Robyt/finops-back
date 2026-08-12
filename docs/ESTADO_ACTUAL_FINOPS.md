@@ -6,6 +6,10 @@ Fecha: 2026-08-11
 
 La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/PostgreSQL como base principal, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas.
 
+La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
+matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
+siguen explicitamente diferenciados de los controles ya verificados.
+
 ## Cierre incremental 2026-08-11
 
 - Las sesiones autenticadas ahora tienen ciclo de vida persistido: logout, revocación individual/global y
