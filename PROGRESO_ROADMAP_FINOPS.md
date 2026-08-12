@@ -59,8 +59,9 @@
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
 - `RecommendationAnalysisRunsPanel.tsx` quedó en 257 líneas al separar el detalle de corrida, la presentación de
   estados y los componentes Metric/Notice; conserva polling cancelable, retry, cancelación y navegación al detalle.
-  El typecheck, lint, build, bundle budget y architecture check del frontend pasaron; las excepciones frontend quedan
-  reducidas a `AgentSettings.tsx` y sus componentes de gobierno/canales ya extraídos.
+  `AgentSettings.tsx` quedó en 149 líneas al separar su controlador de carga, formularios y canales en
+  `useAgentSettingsController.ts`. El typecheck, lint, build, bundle budget y architecture check del frontend
+  pasaron; el fitness check ya no tiene excepciones frontend.
 - Se agregó `docs/MODELO_AMENAZAS_STRIDE.md` como matriz compacta de amenazas para identidad, cambio de tenant,
   administración MSP, credenciales cloud, ingesta, IA, ejecución manual, asignación, cierres, workers y mensajería.
   El documento separa controles implementados, evidencia y riesgo residual; no sustituye una prueba DAST externa.
