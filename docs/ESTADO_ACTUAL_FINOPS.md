@@ -27,8 +27,8 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - El frontend mantiene la sesión autenticada en `AuthSessionProvider`; las vistas y controladores consumen el
   access token mediante `useAccessToken` en lugar de propagarlo desde `App.tsx`. El transporte de API sigue
   recibiendo el token explícitamente para conservar pruebas y contratos aislados.
-- Verificación vigente: backend `test:all` con 86 archivos, 339 pruebas pasadas y 9 omitidas; escenarios IA
-  offline 21/21; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
+- Verificación vigente: backend `test:all` con 86 archivos, 340 pruebas pasadas y 9 omitidas; escenarios IA
+  offline 22/22; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
   queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.
 
@@ -137,8 +137,8 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (86 archivos aprobados, 339 pruebas pasadas y 9 omitidas),
-  `npm run test:ai:offline` (21/21), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
+- Backend: `npm run test:all` (86 archivos aprobados, 340 pruebas pasadas y 9 omitidas),
+  `npm run test:ai:offline` (22/22), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados. `test:e2e:full` aplica las 52 migraciones desde cero en un
   schema aislado, crea fixtures autenticados y aprobó 5/5 escenarios Playwright; el cleanup eliminó los dos

@@ -101,3 +101,10 @@ La auditoria offline valida escenarios dorados y rubricas deterministicas. La au
 - ahorros no negativos;
 - trazas IA persistidas;
 - uso del backend real y del tenant E2E.
+
+## Última evidencia local
+
+Al 2026-08-11, `npm run test:all` pasó con 86 archivos, 340 pruebas y 9 omitidas; `npm run test:ai:offline`
+pasó 22/22. La rúbrica incluye alcance tenant/recurso, frescura y suficiencia técnica, idioma español,
+ahorro máximo determinístico, ausencia de ejecución automática y ausencia de payloads de tool, SQL, shell o código.
+El canary live sigue dependiendo de la configuración explícita del proveedor y no se usa para pruebas destructivas.

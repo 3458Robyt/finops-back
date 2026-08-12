@@ -6,7 +6,7 @@
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
 > **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 86 archivos de prueba,
-> 339 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 21/21. Las cifras menores en entradas
+> 340 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 22/22. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
@@ -41,14 +41,14 @@
   de `.env`, claves y artefactos de pruebas; la conexión local queda disponible solo fuera del índice Git (`a7ed749`).
 - Costos, administración MSP, trazabilidad, análisis de recomendaciones y métricas técnicas también usan el
   responder compartido. Se agregó una regresión para dobles de respuesta sin `res.locals`; la suite queda en
-  86 archivos, 339 pruebas pasadas y 9 omitidas.
+  86 archivos, 340 pruebas pasadas y 9 omitidas.
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
 - El shell autenticado de `finops-app` ahora expone `AuthSessionProvider`, `useAuthSession` y `useAccessToken`;
   las vistas y controladores ya no reciben el access token por prop desde `App.tsx`. Las funciones de transporte
   conservan el token explícito para mantenerlas testeables y no se modificó el contrato HTTP. Commits `6f41988`,
   `a6ebe47`.
-- Evidencia de validación: backend 86 archivos/339 pruebas/9 omitidas, IA offline 21/21, audit de producción
+- Evidencia de validación: backend 86 archivos/340 pruebas/9 omitidas, IA offline 22/22, audit de producción
   sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
