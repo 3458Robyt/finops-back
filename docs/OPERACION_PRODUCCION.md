@@ -70,6 +70,18 @@ forma consistente.
 - `GET /metrics`: formato Prometheus. En producción exige `X-Metrics-Token` y
   `METRICS_TOKEN`; nunca se debe publicar sin una red o autenticación interna.
 
+`GET /ready` devuelve checks separados para base de datos, rol runtime,
+migraciones, capacidad de adquirir un advisory lease, heartbeat del proceso y
+disponibilidad opcional del proveedor IA. La IA no bloquea el readiness cuando
+está sin configurar, porque los endpoints determinísticos pueden seguir
+funcionando. En producción `DB_EXPECTED_MIGRATION` es obligatorio y debe
+coincidir con la última migración desplegada. El detalle de backup/restore,
+rotación y recuperación de jobs vive en `docs/OPERACION_RECUPERACION.md`.
+
+El heartbeat exporta `process_heartbeat_writes_total`,
+`process_heartbeat_write_duration_ms` y `process_heartbeat_stops_total` sin usar
+el `process_id` como etiqueta de alta cardinalidad.
+
 ## Ejecución con Docker Compose
 
 `docker-compose.runtime.yml` separa los tres roles del mismo artefacto. Requiere

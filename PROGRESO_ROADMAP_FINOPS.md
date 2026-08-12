@@ -1,5 +1,23 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Readiness operativo, métricas de heartbeat y recuperación documentada
+
+- `GET /ready` dejó de comprobar únicamente la conexión de base: ahora devuelve
+  checks separados para base de datos, rol `finops_runtime`, migración esperada,
+  advisory lease, heartbeat fresco y disponibilidad opcional de IA. La IA sin
+  configuración no bloquea las capacidades determinísticas.
+- Se añadió `DB_EXPECTED_MIGRATION`, obligatorio en producción, para evitar que
+  una imagen incompatible reciba tráfico después de una migración futura. La
+  identidad de proceso se comparte entre heartbeat y readiness, y el heartbeat
+  exporta contadores/latencia sin etiquetas de alta cardinalidad.
+- `npm run test:integration:process-heartbeat` verifica ahora también readiness
+  contra migraciones desde cero, RLS runtime, lease y heartbeat. Se documentó el
+  runbook `docs/OPERACION_RECUPERACION.md`; el rehearsal productivo de backup y
+  restore queda diferido porque todavía no existe destino operativo autorizado.
+- La validación completa posterior pasó con 103 archivos de test aprobados, 4
+  omitidos, 403 pruebas pasadas y 10 omitidas; arquitectura 356/1 excepción y
+  release hygiene 607 rutas.
+
 ### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
 
 - Se añadió `ProcessHeartbeatService` con repositorio Prisma, tabla
