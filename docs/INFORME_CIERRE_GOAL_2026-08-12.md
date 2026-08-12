@@ -42,7 +42,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - Typecheck, ESLint y build: aprobados.
 - Bundle: 23 chunks JavaScript; el mayor es `226.18 kB`, dentro del límite de `500 kB`.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
-- `npm run check:release-hygiene`: 133 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run check:release-hygiene`: 134 rutas rastreadas sin secretos ni artefactos prohibidos.
 
 ### Higiene del repositorio
 
