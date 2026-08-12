@@ -12,8 +12,10 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - El resumen ejecutivo FinOps se genera con evidencia tenant-scoped y se encola como entrega durable `PENDING` para correo/Telegram; el procesador existente conserva leases, reintentos y deduplicación diaria.
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante `PATCH /api/v1/ai/learning/memories/:memoryId/deactivate`; la operación exige autorización, respeta el alcance tenant/global y deja auditoría.
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
+- El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
 - La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011 y 012 sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `test:all` con 92 archivos aprobados, 359 pruebas pasadas y 9 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- Validación posterior: backend `npm run test:unit` con 94 archivos aprobados, 4 omitidos, 363 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- La lógica de calibración tiene pruebas unitarias determinísticas y una prueba de integración aislada para comprobar consultas reales y aislamiento entre tenants; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
@@ -39,7 +41,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - El frontend mantiene la sesión autenticada en `AuthSessionProvider`; las vistas y controladores consumen el
   access token mediante `useAccessToken` en lugar de propagarlo desde `App.tsx`. El transporte de API sigue
   recibiendo el token explícitamente para conservar pruebas y contratos aislados.
-- Verificación vigente: backend `test:all` con 89 archivos, 351 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación histórica: backend `test:unit` con 89 archivos, 351 pruebas pasadas y 9 omitidas; escenarios IA
   offline 24/24; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
   queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.

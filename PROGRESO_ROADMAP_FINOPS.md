@@ -6,16 +6,24 @@
 - El resumen ejecutivo tenant-scoped se encola como entrega `PENDING` para correo/Telegram, con deduplicación diaria y procesamiento posterior por la cola outbound existente.
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante endpoint protegido; la operación registra auditoría y no elimina el evento de aprendizaje original.
 - La trazabilidad genera `finops-opportunity-rules-v1` antes de la IA para detectar vínculos pendientes, datos desactualizados, evidencia técnica débil y brechas de etiquetas. El catálogo no emite ahorros.
-- Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó 92 archivos, 359 pruebas y 9 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
+- Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó `test:unit` con 94 archivos aprobados, 4 omitidos, 363 pruebas y 10 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
 - Pendiente: E2E completo con el entorno de aplicación aislado, canaries SMTP/Telegram y revisión de seguridad operativa productiva. La integración PostgreSQL desde migraciones cero ya pasó 5 archivos/6 pruebas en schema efímero y el schema fue eliminado. Graphify y commits separados quedaron completados; AWS real y OCI Usage API permanecen bloqueados externamente.
+
+### 2026-08-12 — Calibración observable del agente IA
+
+- Se añadió `GET /api/v1/agent/quality`, protegido por `AGENT_OBSERVE`, para medir por tenant la tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, resultado verificado y latencia/tokens de las trazas IA.
+- El reporte desglosa recomendaciones por tipo, regla determinística y proveedor. La extracción tolera las formas históricas de evidencia y agrupa explícitamente lo que no tiene regla como `SIN_REGLA_DETERMINISTICA`; no usa coincidencias fuzzy ni datos de otro tenant.
+- La UI de `Agente IA > Evidencia` muestra la ventana, indicadores, desglose y notas de interpretación. El costo de tokens solo aparece cuando existen `AI_INPUT_COST_PER_MILLION_TOKENS_USD` y `AI_OUTPUT_COST_PER_MILLION_TOKENS_USD`; de lo contrario se declara no configurado.
+- Verificación: `AgentQualityService.test.ts` 2/2, typecheck backend, arquitectura 338 archivos/3 excepciones, typecheck frontend, lint dirigido y build/bundle frontend aprobados. Se agregó `agentQuality.integration.test.ts` para la siguiente ejecución PostgreSQL aislada.
+- Pendiente: ejecutar la integración aislada con el nuevo caso, validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
 
 > **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-12: 92 archivos de prueba pasados,
-> 359 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 94 archivos aprobados, 4 omitidos,
+> 363 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible

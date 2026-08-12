@@ -21,14 +21,17 @@
 
 > **Corte de implementación 2026-08-12:** se añadieron escenarios de pronóstico en analítica,
 > resumen ejecutivo encolado para correo/Telegram, desactivación reversible de memorias del agente
-> y un catálogo determinista de oportunidades de calidad de datos derivado de la trazabilidad.
+> y un catálogo determinista de oportunidades de calidad de datos derivado de la trazabilidad. También
+> se añadió el reporte protegido `/api/v1/agent/quality` con calibración por tipo, regla y proveedor,
+> ahorro estimado frente a verificado y consumo operativo del LLM; las métricas se abstienen de inventar
+> precisión o coste si no hay ground truth o precios configurados.
 > La evidencia no se convierte en ahorro ni acción cloud automáticamente; AWS real y OCI Usage API
 > continúan bloqueados por dependencias externas.
 
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
 > adicionales para utilización, alcance de planes, idioma, ahorro máximo, payloads ejecutables y salida sensible.
-> El último corte de la suite es 359 pruebas pasadas y 9 omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
+> El corte vigente es `npm run test:unit`: 94 archivos aprobados, 4 omitidos, 363 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
 > Las secciones con fecha conservan snapshots históricos y no deben usarse para inferir conteos actuales.
