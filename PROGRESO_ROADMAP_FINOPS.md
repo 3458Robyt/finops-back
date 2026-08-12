@@ -1,5 +1,13 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Cierre de bypass de configuración y nomenclatura canónica de oportunidades
+
+- `APP_PROCESS_ROLE` ahora falla cerrado cuando se proporciona un valor inválido incluso en desarrollo; únicamente
+  la ausencia explícita de la variable conserva el shorthand `all`. Se agregó regresión de configuración.
+- El recálculo de analítica expone `opportunities` como campo canónico y conserva `anomalies` solo como alias de
+  compatibilidad. El frontend consume el campo canónico y mantiene fallback temporal para backends antiguos.
+- Validación dirigida: 2 archivos/19 pruebas de configuración, 1 prueba de analítica y typecheck frontend aprobados.
+
 ### 2026-08-12 — Runner de recomendaciones IA aislado
 
 - Se extrajo el caso de uso de generación de recomendaciones a `FinOpsAiRecommendationRunner`, que concentra
