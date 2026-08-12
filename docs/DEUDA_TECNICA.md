@@ -1,6 +1,6 @@
 # Deuda técnica y faltantes — FinOps Inteligente
 
-> Registro autoritativo al 2026-08-11. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
+> Registro autoritativo al 2026-08-12. Cada ítem debe tener estado `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO` y evidencia asociada. Los ítems de desarrollo manual no son incidentes.
 
 | ID | Prioridad | Tipo | Estado | Hallazgo / criterio de cierre | Evidencia o siguiente acción |
@@ -15,6 +15,9 @@
 | OPS-001 | Media | Operación | DIFERIDO | Workers, healthchecks, alertas 24/7 y scheduler productivo. | Desarrollo manual aceptado hasta definir despliegue. |
 | OPS-002 | Baja | Presupuestos | DIFERIDO | Conectar evaluación periódica de presupuestos a worker/scheduler desplegado. | La evaluación manual funciona durante desarrollo. |
 | MSG-001 | Media | Mensajería | ABIERTO | Validar envío real de alertas de presupuesto con proveedores externos. | Código y pruebas unitarias implementados: `PROCESSING`, lease, reintentos y recuperación en `OutboundMessageDeliveryProcessor`/`PrismaOutboundMessageRepository`; migración `202608110009_outbound_delivery_queue` aplicada y verificada en Supabase. Faltan canaries SMTP/Telegram, por lo que el envío externo permanece deshabilitado por defecto. |
+| FIN-003 | Media | Analítica FinOps | CERRADO | Generar escenarios de pronóstico comparables sin presentar proyecciones como ahorro realizado. | `CostAnalyticsService.getForecastScenarios`, panel de dashboard y escenarios para base/tendencia/aprobado/ejecutado/verificado; pruebas determinísticas y suite backend vigente. |
+| AI-006 | Media | IA/aprendizaje | CERRADO | Permitir revertir una memoria activa sin borrar trazabilidad ni permitir cambios fuera del alcance autorizado. | `PATCH /api/v1/ai/learning/memories/:memoryId/deactivate`; transacción tenant/global autorizada, auditoría `AGENT_MEMORY_DEACTIVATED` y UI de Agente IA. |
+| DATA-003 | Media | Datos/IA | CERRADO | Exponer oportunidades de calidad de datos antes de llamar al LLM, sin inventar ahorro ni acciones cloud. | Catálogo `finops-opportunity-rules-v1` en `ResourceLinkageReadinessService`, evidencia de vínculos/frescura/tags y panel en Ingesta; la muestra de recursos se declara explícitamente cuando el endpoint está limitado. |
 | OPS-003 | Media | Secretos/observabilidad | DIFERIDO | Secret manager externo, rotación formal, logs/alertas centralizados. | Requerido antes de producción pública. |
 | FIN-001 | Media | Alcance FinOps | CERRADO | Distribución porcentual auditable, separación por moneda y cierre reproducible sin contabilidad. | Migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index`; API/UI DIRECT/SPLIT, Decimal, idempotencia, versiones correctivas, snapshot de líneas, FK tenant-aware, inmutabilidad, grants runtime y preview obligatorio verificados. Chargeback contable sigue fuera de alcance. |
 | FIN-002 | Media | Integración FinOps | CERRADO | Consultar presupuesto, impacto y ahorro por destino sin duplicar cálculos ni atribuir evidencia inexistente. | Presupuesto y Value Realization reutilizan cierres cerrados. La atribución exige evidencia exacta de tenant, moneda, recurso canónico, hash de métrica y período; si falta, no se atribuye. Cierres previos a `202608040004` pueden no tener snapshot de líneas. |

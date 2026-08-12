@@ -1,12 +1,21 @@
 # Progreso — FinOps Inteligente (Backend)
 
-> **Estado vigente 2026-08-11:** las entradas inferiores son bitácora histórica. La fase de distribución
+### 2026-08-12 — Pronóstico, mensajería durable, aprendizaje reversible y oportunidades deterministas
+
+- La analítica incorpora escenarios comparables de base, tendencia, aprobado, ejecutado y verificado; el dashboard los presenta con separación explícita entre proyección, ahorro aprobado y valor realizado.
+- El resumen ejecutivo tenant-scoped se encola como entrega `PENDING` para correo/Telegram, con deduplicación diaria y procesamiento posterior por la cola outbound existente.
+- Las memorias activas del agente pueden desactivarse de forma reversible mediante endpoint protegido; la operación registra auditoría y no elimina el evento de aprendizaje original.
+- La trazabilidad genera `finops-opportunity-rules-v1` antes de la IA para detectar vínculos pendientes, datos desactualizados, evidencia técnica débil y brechas de etiquetas. El catálogo no emite ahorros.
+- Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó 92 archivos, 359 pruebas y 9 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
+- Pendiente: suite de integración/E2E con base aislada, canaries SMTP/Telegram, revisión de seguridad operativa, Graphify y commits separados. AWS real y OCI Usage API permanecen bloqueados externamente.
+
+> **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 89 archivos de prueba pasados,
-> 351 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-12: 92 archivos de prueba pasados,
+> 359 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible

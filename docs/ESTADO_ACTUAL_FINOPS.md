@@ -1,10 +1,19 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-11
+Fecha: 2026-08-12
 
 ## Resumen
 
 La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/PostgreSQL como base principal, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas.
+
+## Corte vigente 2026-08-12
+
+- La analítica ahora expone escenarios de pronóstico comparables (base, tendencia, aprobado, ejecutado y verificado) y el dashboard los presenta sin convertir una proyección en ahorro realizado.
+- El resumen ejecutivo FinOps se genera con evidencia tenant-scoped y se encola como entrega durable `PENDING` para correo/Telegram; el procesador existente conserva leases, reintentos y deduplicación diaria.
+- Las memorias activas del agente pueden desactivarse de forma reversible mediante `PATCH /api/v1/ai/learning/memories/:memoryId/deactivate`; la operación exige autorización, respeta el alcance tenant/global y deja auditoría.
+- La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
+- La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011 y 012 sin borrar datos. Prisma reporta la base actualizada.
+- Validación posterior: backend `test:all` con 92 archivos aprobados, 359 pruebas pasadas y 9 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. Frontend typecheck, lint, build y presupuesto de bundle aprobados. La integración destructiva sigue pendiente de una base aislada.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
