@@ -5,7 +5,13 @@
 - Se aplicó en Supabase la migración `202608120001_quality_report_keyset_indexes` mediante `npx prisma migrate deploy`; `prisma migrate status` quedó al día.
 - Se añadió `npm run db:verify:quality-indexes`, una comprobación read-only que valida los dos índices y ejecuta `EXPLAIN (COSTS OFF)` sin imprimir credenciales ni datos de tenant.
 - La verificación encontró `recommendations_tenant_id_created_at_id_idx` y `ai_context_traces_tenant_id_created_at_id_idx`; ambos planes usan `Index Only Scan Backward` con filtro por tenant/fecha y límite de página.
-- `PERF-002` queda cerrado con evidencia remota. La integración aislada completa de calibración sigue condicionada a disponer de `TEST_DATABASE_URL` dedicado (`AI-007`).
+- `PERF-002` queda cerrado con evidencia remota. La integración aislada de calibración pasó 1/1 en un schema efímero creado por el runner `npm run test:integration:agent-quality`; `AI-007` queda cerrado sin inventar precisión ML ni precios LLM.
+
+### 2026-08-12 — Integración aislada del reporte de calidad IA
+
+- Se añadió `npm run test:integration:agent-quality`, que crea un schema `finops_e2e_*`, aplica todas las migraciones, ejecuta el caso tenant-scoped del reporte y elimina el schema en `finally`.
+- La ejecución remota pasó 1/1: el tenant AWS solo mostró sus dimensiones y el tenant OCI solo las suyas; no se observaron filas cross-tenant.
+- El runner exige un nombre de schema allowlisted y nunca usa la BD principal como destino de fixtures; `AI-007` queda cerrado con evidencia PostgreSQL real aislada.
 
 ### 2026-08-12 — Pronóstico, mensajería durable, aprendizaje reversible y oportunidades deterministas
 
