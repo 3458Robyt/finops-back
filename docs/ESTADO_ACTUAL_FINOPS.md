@@ -76,6 +76,10 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - Las recomendaciones con evidencia `COST_USAGE_AND_TECHNICAL` ahora requieren evidencia tecnica fuerte: referencias, recurso enlazado, cobertura/muestras suficientes y muestra reciente.
 - La evidencia técnica se construye como un snapshot canónico hasheado: costo/consumo FOCUS, métricas agregadas en PostgreSQL, percentiles, cobertura, frescura, vínculo costo-recurso, reglas determinísticas y referencias exactas. El mismo snapshot llega al prompt, auditor, compuerta determinística, persistencia y detalle de la recomendación.
 - Las recomendaciones aisladas por recurso también consumen aprendizaje auditado relevante del tenant, sin ampliar los hechos técnicos fuera del recurso solicitado.
+- Las reglas técnicas determinísticas están versionadas (`technical-rules-2026-08-11.v1`) y cada evaluación conserva
+  los umbrales críticos aplicados junto con la evidencia. Además de CPU y memoria, clasifican señales de baja o alta
+  utilización en red, disco e IOPS cuando la unidad es porcentual; una señal auxiliar por sí sola no autoriza
+  rightsizing y los picos siguen preservados en min/max/p95/p99 y drilldown raw.
 - Si la evidencia tecnica es debil, la recomendacion debe marcar validacion tecnica pendiente.
 - Existen golden scenarios offline para medir regresiones sin llamar al LLM.
 - El resumen de aprendizaje expone por tenant el feedback humano, los estados del auditor, las memorias activas

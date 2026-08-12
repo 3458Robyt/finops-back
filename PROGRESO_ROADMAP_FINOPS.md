@@ -79,6 +79,9 @@
   reducir prompt injection; chat, recomendaciones y planes rechazan respuestas que contengan PEM, JWT, API keys,
   URLs autenticadas o asignaciones de secretos. La rúbrica y los golden scenarios cubren este control sin enviar
   credenciales al proveedor.
+- El motor determinístico de evidencia técnica usa la versión `technical-rules-2026-08-11.v1`, conserva los
+  umbrales críticos en cada evaluación y reconoce señales auxiliares porcentuales de red, disco e IOPS sin
+  convertirlas por sí solas en autorización de rightsizing. La regresión específica pasó 7/7.
 - El arranque de workers y schedulers quedó aislado en `src/bootstrap/backgroundProcessRuntime.ts`; `src/index.ts`
   conserva únicamente composition root, servidor HTTP y shutdown, con los roles de proceso y semántica de loops
   existentes.
