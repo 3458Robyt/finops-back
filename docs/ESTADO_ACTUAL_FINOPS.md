@@ -238,7 +238,8 @@ Estado de cierre:
   en `finally`; verificó 1 registro expirado eliminado por cada categoría, retuvo registros futuros y evitó la
   cascada de un refresh vigente asociado a una sesión con TTL inconsistente.
 - Frontend: lint, typecheck y build aprobados. La revalidación del 2026-08-12 de `test:e2e:full` aplicó las 61
-  migraciones desde cero en un schema aislado, creó fixtures autenticados y aprobó 5/5 escenarios Playwright;
+  migraciones desde cero en un schema aislado, creó fixtures autenticados y aprobó 6/6 escenarios Playwright,
+  incluido el ciclo HTTP de autenticación y sesiones;
   el cleanup eliminó los dos tenants y el schema de prueba incluso con la ruta de recuperación para preparación
   incompleta. La ejecución actual exige `TEST_DATABASE_URL` apuntando a una base/schema efímero y se abstiene si
   esa variable no está presente; el smoke `test:e2e:smoke` sí funciona sin BD.
