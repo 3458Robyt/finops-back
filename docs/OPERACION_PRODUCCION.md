@@ -1,6 +1,13 @@
 # Operación e infraestructura
 
-Fecha de revisión: 2026-08-11.
+Fecha de revisión: 2026-08-12.
+
+La configuración se valida antes de construir la composición: en producción
+`APP_PROCESS_ROLE` es obligatorio y debe ser `api`, `worker`, `scheduler` o
+`all`; un valor inválido no puede caer silenciosamente en `all`. Si se habilita
+correo, Telegram o el scheduler de mensajes/reconciliación, también son
+obligatorios sus secretos y destinos explícitos. En desarrollo estas mismas
+integraciones permanecen apagadas por defecto.
 
 ## Roles de proceso
 

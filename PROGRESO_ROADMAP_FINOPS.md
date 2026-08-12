@@ -1,5 +1,14 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Configuración productiva fail-closed
+
+- Producción ahora exige `APP_PROCESS_ROLE` y rechaza valores desconocidos en vez de caer silenciosamente en
+  `all`. También valida que las integraciones habilitadas tengan sus credenciales y destinos: SMTP, Telegram,
+  scheduler de mensajes y scheduler de reconciliación.
+- Desarrollo conserva defaults seguros: las integraciones siguen apagadas y puede usarse `APP_PROCESS_ROLE=all`.
+- La suite de configuración quedó en 18 pruebas para roles, integraciones y destinos; la validación de
+  configuración, typecheck y arquitectura pasan.
+
 ### 2026-08-12 — Manejo HTTP de errores centralizado
 
 - `AgentController`, `AiController`, `AnalyticsController`, `OutboundMessageController` y
@@ -9,7 +18,7 @@
   para rechazos IA y registra errores inesperados con `safeErrorMessage`. El identificador de auditoría IA
   no se sobrescribe con el request ID cuando ambos existen.
 - Se añadieron regresiones para proveedor IA y `AiAuditRejectedError`. Las pruebas dirigidas de HTTP/agent/
-  Telegram pasan 8/8; arquitectura y typecheck pasan. Graphify quedó actualizado a 4.233 nodos y 11.433
+  Telegram pasan 8/8; arquitectura y typecheck pasan. Graphify quedó actualizado a 4.237 nodos y 11.441
   relaciones.
 
 ### 2026-08-12 — Extracción del despacho de canales externos
