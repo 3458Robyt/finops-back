@@ -24,7 +24,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 95 archivos aprobados, 4 omitidos, 377 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 97 archivos aprobados, 4 omitidos, 382 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
 - `npm run check:architecture`: 345 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
@@ -84,6 +84,8 @@ El registro autoritativo contiene **30 cerrados**, **1 abierto**, **2 bloqueados
 - `1261735` — `docs(architecture): close critical modularity debt`.
 - `1de6664` — `docs(analytics): clarify deprecated endpoint contract`: la ruta legacy conserva su payload
   histórico y `/opportunities` queda documentado como la forma canónica.
+- `pending` — hardening de mensajería externa: timeouts SMTP/Telegram configurables y regresiones sin llamadas
+  reales a proveedores.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

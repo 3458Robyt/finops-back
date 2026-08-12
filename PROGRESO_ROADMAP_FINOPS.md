@@ -1,12 +1,22 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Hardening de timeouts para mensajería externa
+
+- SMTP aplica `connectionTimeout`, `greetingTimeout` y `socketTimeout`; Telegram usa `AbortController` y transforma
+  expiraciones en `TELEGRAM_TIMEOUT`. Ambos comparten `OUTBOUND_PROVIDER_TIMEOUT_MS`, con 15 segundos por defecto y
+  rango 5–60 segundos validado en producción.
+- Se agregaron regresiones de configuración, transporte SMTP y timeout Telegram. La suite vigente queda en 97
+  archivos aprobados, 4 omitidos, 382 pruebas pasadas y 10 omitidas; IA offline 24/24, typecheck, arquitectura y
+  build pasan. Graphify quedó actualizado a 4.279 nodos, 11.633 relaciones y 238 comunidades. El canary real
+  SMTP/Telegram sigue abierto y no se simula.
+
 ### 2026-08-12 — Cierre de modularidad crítica y evidencia de la beta
 
 - `MOD-001` queda cerrado: los hotspots críticos ya están divididos por responsabilidad, los contratos públicos se
   conservan y `npm run check:architecture` pasa con 345 archivos de producción y una única excepción declarativa
   (`goldenScenarios.ts`). Las extracciones futuras de módulos cohesivos entre 200 y 400 líneas quedan como
   mantenimiento oportunista, no como bloqueo de la beta.
-- La validación completa vigente pasa: backend `npm run test:all` con 95 archivos aprobados, 4 omitidos, 377 pruebas
+- La validación completa vigente pasa: backend `npm run test:all` con 97 archivos aprobados, 4 omitidos, 382 pruebas
   y 10 omitidas; IA offline 24/24; frontend arquitectura, typecheck, lint, build y bundle budget; auditorías de
   dependencias de producción sin vulnerabilidades.
 - Permanecen explícitos los bloqueos/deferimientos externos de `AWS-001`, `OCI-001`, `MSG-001`, operación 24/7,

@@ -101,7 +101,7 @@ Corte local vigente: 2026-08-12. Las cifras menores en documentos fechados son h
 
 | Capa | Resultado |
 |---|---|
-| Backend unitario | 95 archivos, 377 pruebas y 10 omitidas |
+| Backend unitario | 97 archivos, 382 pruebas y 10 omitidas |
 | IA offline | 2 archivos, 24 escenarios |
 | PostgreSQL aislado | Claim, tenant, estados, cancelación, reintento y enlaces aprobados |
 | Frontend | ESLint y build aprobados |

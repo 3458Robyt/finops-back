@@ -14,7 +14,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
 - El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
 - La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011 y 012 sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `npm run test:unit` con 95 archivos aprobados, 4 omitidos, 377 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- Validación posterior: backend `npm run test:unit` con 97 archivos aprobados, 4 omitidos, 382 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
 - La lógica de calibración tiene pruebas unitarias determinísticas y una integración aislada aprobada (`npm run test:integration:agent-quality`, 1/1) para comprobar consultas reales y aislamiento entre tenants con dos fixtures separados. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La analítica expone `/api/v1/analytics/opportunities` como ruta canónica. `/api/v1/analytics/anomalies` se conserva
   solo como alias histórico deprecado y mantiene su payload legado para no romper clientes antiguos; las vistas y
@@ -53,6 +53,8 @@ siguen explicitamente diferenciados de los controles ya verificados.
   autenticación y no guarda tokens en `localStorage` ni `sessionStorage`.
 - El límite HTTP en memoria está acotado, el trust proxy es explícito y el servidor configura timeouts de
   request, headers y keep-alive. El store distribuido sigue diferido hasta desplegar varias instancias.
+- Los clientes SMTP y Telegram tienen un timeout de proveedor común (`OUTBOUND_PROVIDER_TIMEOUT_MS`, 15 segundos
+  por defecto) para que un canal externo lento no mantenga workers bloqueados indefinidamente.
 - Los logs operativos ahora son estructurados y sanitizados mediante `safeErrorMessage`; se eliminan de los
   eventos URLs con credenciales, API keys, JWT, bearer tokens, cookies, claves AWS y PEM. Esto no sustituye un agregador/secret manager
   de producción.
@@ -194,7 +196,7 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (95 archivos aprobados, 377 pruebas pasadas y 10 omitidas),
+- Backend: `npm run test:all` (97 archivos aprobados, 382 pruebas pasadas y 10 omitidas),
   `npm run test:ai:offline` (24/24), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Frontend: lint, typecheck y build aprobados. La última ejecución documentada de `test:e2e:full` aplicó las
