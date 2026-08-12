@@ -108,7 +108,7 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
   la evidencia del corte.
 - `4882ff1` — `feat(ops): expose operational readiness checks`: readiness estructurado para usuario/rol de BD,
   migración esperada, lease advisory, heartbeat y configuración de IA; `/ready` responde según el estado real.
-- `pending` — `docs(ops): document readiness and recovery`: runbook de backup/restore, rollback RLS y pérdida de
+- `48525aa` — `docs(ops): document readiness and recovery`: runbook de backup/restore, rollback RLS y pérdida de
   jobs; la prueba formal de recuperación permanece diferida hasta contar con un destino productivo.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
