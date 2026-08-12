@@ -71,7 +71,8 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
   identidad canónica (`cloudResourceId` con `cloudConnectionId + externalResourceId`); las corridas durables
   también persisten `cloudResourceId`.
 - **Canales:** notificaciones in-app; Telegram MVP; correo SMTP y cola outbound durable con scheduler opcional,
-  leases, reintentos y estados auditables. La migración de la cola debe aplicarse antes de habilitarla en Supabase.
+  leases, reintentos y estados auditables. La migración de la cola está aplicada en Supabase; los canaries
+  externos siguen deshabilitados por defecto hasta configurar proveedores reales.
 - **Gobernanza financiera:** reglas DIRECT/SPLIT, preview determinista, cierres por tenant/período/moneda,
   versiones correctivas, snapshot de líneas y distribución por destino para presupuestos y valor realizado.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de

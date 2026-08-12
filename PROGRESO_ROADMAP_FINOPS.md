@@ -1,5 +1,19 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Compatibilidad terminológica de oportunidades
+
+- La ruta canónica de analítica continúa siendo `/api/v1/analytics/opportunities`; la ruta histórica
+  `/api/v1/analytics/anomalies` conserva su payload por compatibilidad, pero ahora devuelve headers de
+  deprecación y enlaza explícitamente a su sucesora.
+- Se revisaron las cadenas visibles de frontend, Telegram y controladores: la interfaz usa “oportunidades”.
+  Los nombres internos de dominio/BD (`CostAnomaly`, `anomalies`) se mantienen únicamente como compatibilidad
+  técnica y no se renombraron de forma masiva para evitar una migración de contrato innecesaria.
+- Se corrigieron comentarios y variables de presentación que todavía hablaban de anomalías, y se corrigió la
+  documentación de la cola outbound para reflejar que su migración ya está aplicada en Supabase; los canaries
+  externos siguen deshabilitados por defecto.
+- Verificación dirigida: `npm run typecheck`, `npm run check:architecture` y `TelegramBotService.test.ts` (4/4)
+  pasaron. Graphify fue actualizado a 4.228 nodos y 11.398 relaciones.
+
 ### 2026-08-12 — Verificación remota de paginación del reporte IA
 
 - Se aplicó en Supabase la migración `202608120001_quality_report_keyset_indexes` mediante `npx prisma migrate deploy`; `prisma migrate status` quedó al día.
