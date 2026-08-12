@@ -1,5 +1,19 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Sanitización durable y error HTTP unificado
+
+- Los mensajes de proveedores ya se sanitizan en la frontera de persistencia antes de guardarse en eventos de
+  aprendizaje, trazas IA, trabajos de ingesta, corridas de contexto, resultados de Telegram y advertencias de
+  inventario OCI. La regresión cubre API key y cookies en el flujo de aprendizaje.
+- `AuthController`, `AuthSessionController`, `PasswordRecoveryController`, `MfaController`,
+  `NotificationController`, `RecommendationReadController`, middleware de roles y el manejador HTTP global
+  reutilizan `respondWithFinOpsError`; se eliminó mapeo duplicado y `AUTHENTICATION_FAILED` conserva 401.
+- La configuración de fuentes de conexión cloud se extrajo a `CloudConnectionSourceConfiguration`, dejando el
+  onboarding concentrado en registro, credenciales, validación y previsualización sin cambiar el contrato público.
+- Se reemplazaron mensajes visibles en inglés de estas rutas por mensajes en español. La suite vigente quedó en
+  95 archivos aprobados, 4 omitidos, 375 pruebas pasadas y 10 omitidas; IA offline 24/24, typecheck, arquitectura
+  y build pasan. Graphify quedó actualizado a 4.242 nodos, 11.525 relaciones y 231 comunidades.
+
 ### 2026-08-12 — Redacción de headers sensibles en errores
 
 - `safeErrorMessage` ahora consume y redacta el valor completo de headers `Authorization`/`Proxy-Authorization`
@@ -96,7 +110,7 @@
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
 > **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 95 archivos aprobados, 4 omitidos,
-> 373 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> 375 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible

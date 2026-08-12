@@ -14,7 +14,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
 - El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
 - La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011 y 012 sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `npm run test:unit` con 95 archivos aprobados, 4 omitidos, 373 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- Validación posterior: backend `npm run test:unit` con 95 archivos aprobados, 4 omitidos, 375 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
 - La lógica de calibración tiene pruebas unitarias determinísticas y una integración aislada aprobada (`npm run test:integration:agent-quality`, 1/1) para comprobar consultas reales y aislamiento entre tenants con dos fixtures separados. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La analítica expone `/api/v1/analytics/opportunities` como ruta canónica. `/api/v1/analytics/anomalies` se conserva
   solo como alias histórico deprecado y mantiene su payload legado para no romper clientes antiguos; las vistas y
@@ -28,6 +28,13 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Los controladores de agente, IA, analítica, mensajería y Telegram comparten `respondWithFinOpsError`; el helper
   mantiene códigos HTTP coherentes, `diagnosticId` de auditoría IA y redacción de errores conocidos e inesperados.
   `safeErrorMessage` también consume bearer tokens y valores de cookies completos antes de que lleguen a logs o respuestas.
+- Los flujos de autenticación, sesiones, recuperación, MFA, notificaciones y lectura de oportunidades reutilizan el
+  mismo mapeo HTTP. Los errores de proveedores se sanitizan también antes de persistirse en trazas, trabajos,
+  corridas de contexto, aprendizaje y advertencias de inventario; un error externo no debe convertir una tabla de
+  operación en un canal de filtración.
+- La configuración de fuentes de las conexiones cloud vive en `CloudConnectionSourceConfiguration`; el onboarding
+  conserva registro, credenciales, validación y previsualización, y `CloudConnectionService` mantiene la fachada
+  pública sin modificar contratos HTTP.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
