@@ -30,6 +30,9 @@
 - `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
   conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
   `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
+- `PrismaCloudIngestionJobRepository` pasó de 834 a 599 líneas al extraer proyección de costos FOCUS/API,
+  upsert de cuentas, recursos históricos, resolución exacta de recursos y agregación de linkage a
+  `PrismaIngestionCostProjector` (141 líneas) y helpers tipados; el flujo transaccional de jobs conserva su contrato.
 - El mapeo de errores HTTP de conexiones cloud, presupuestos, asignación y valor realizado reutiliza
   `finOpsErrorResponse.ts`, con diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida
   y la suite completa cubren el contrato sin exponer el status interno en el JSON. El controlador cloud conserva
