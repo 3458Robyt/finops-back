@@ -111,8 +111,8 @@ El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La 
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local recomendada es `npm run test:all`: el corte vigente cubre 104 archivos aprobados,
-4 omitidos, 433 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
+La verificación local recomendada es `npm run test:all`: el corte vigente cubre 105 archivos aprobados,
+4 omitidos, 436 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
 24/24 y build; el fitness check backend mantiene una sola excepción justificada para los escenarios golden
 de IA. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración aisladas
 cuando existe un `TEST_DATABASE_URL` dedicado. Las cifras de snapshots históricos en documentos fechados no

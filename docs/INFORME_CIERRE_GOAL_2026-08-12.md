@@ -24,13 +24,13 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 104 archivos aprobados, 4 omitidos, 433 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 105 archivos aprobados, 4 omitidos, 436 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
 - `npm run check:architecture`: 357 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
 - Typecheck y build: aprobados.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
-- `npm run check:release-hygiene`: 616 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run check:release-hygiene`: 617 rutas rastreadas sin secretos ni artefactos prohibidos.
 - `npm run test:integration:auth-cleanup`: integración aislada aprobada; migraciones desde cero, RLS de mantenimiento,
   borrado bounded, bloqueo de sesiones contra carreras de refresh, preservación de refresh vigente con TTL inconsistente
   y limpieza del schema en `finally`.

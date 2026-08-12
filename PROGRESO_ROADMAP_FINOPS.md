@@ -16,8 +16,8 @@
 
 - Se revalidó el estado actual contra el goal y las cuatro fuentes autoritativas. Los repositorios quedaron
   limpios en `feat/shared-cost-allocation`; no se hizo push, merge ni PR.
-- La validación vigente conserva 104 archivos de pruebas aprobados, 433 pruebas pasadas y 10 omitidas,
-  IA offline 24/24, arquitectura 357/1 excepción, release hygiene backend 616 y frontend 134.
+- La validación vigente conserva 105 archivos de pruebas aprobados, 436 pruebas pasadas y 10 omitidas,
+  IA offline 24/24, arquitectura 357/1 excepción, release hygiene backend 617 y frontend 134.
 - Supabase reportó 61 migraciones aplicadas; `db:verify:quality-indexes`, integración de heartbeat/RLS,
   typecheck, build, frontend lint/build y `npm audit --omit=dev --audit-level=high` pasaron.
 - Se corrigieron conteos obsoletos en `README.md`, `docs/DEUDA_TECNICA.md` y `docs/ESTADO_ACTUAL_FINOPS.md`.
@@ -297,8 +297,8 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 95 archivos aprobados, 4 omitidos,
-> 377 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 105 archivos aprobados, 4 omitidos,
+> 436 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
