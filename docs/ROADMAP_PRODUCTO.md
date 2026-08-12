@@ -21,7 +21,8 @@
 
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
-> adicionales para utilización, alcance de planes, idioma, ahorro máximo y payloads ejecutables. La suite vigente es 340 pruebas pasadas y 9
+> adicionales para utilización, alcance de planes, idioma, ahorro máximo, payloads ejecutables y salida sensible.
+> La suite vigente es 349 pruebas pasadas y 9
 > omitidas. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
@@ -51,7 +52,8 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
 - **Inteligencia por recurso:** inventario cloud, detalle 360, oportunidades relacionadas y análisis IA aislado por
   identidad canónica (`cloudResourceId` con `cloudConnectionId + externalResourceId`); las corridas durables
   también persisten `cloudResourceId`.
-- **Canales:** notificaciones in-app; Telegram MVP; base outbound con correo SMTP y scheduler opcional.
+- **Canales:** notificaciones in-app; Telegram MVP; correo SMTP y cola outbound durable con scheduler opcional,
+  leases, reintentos y estados auditables. La migración de la cola debe aplicarse antes de habilitarla en Supabase.
 - **Gobernanza financiera:** reglas DIRECT/SPLIT, preview determinista, cierres por tenant/período/moneda,
   versiones correctivas, snapshot de líneas y distribución por destino para presupuestos y valor realizado.
 - **Frontend:** 10 vistas conectadas a endpoints reales (dashboard, consola técnica, detalle de

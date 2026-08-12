@@ -24,11 +24,14 @@ siguen explicitamente diferenciados de los controles ya verificados.
   explícitamente la cobertura de descubrimiento recursivo de compartimentos y recursos.
 - La gobernanza IA incorporó tres controles determinísticos: utilización técnica solo para métricas de porcentaje,
   alcance exacto del plan contra el recurso objetivo y techo de ahorro calculado desde la evidencia antes del LLM.
+- Los prompts delimitan el contexto externo como dato no confiable para impedir instrucciones incrustadas, y la
+  salida de chat, oportunidades y planes pasa por un guardia determinístico que rechaza credenciales, PEM, JWT,
+  API keys, URLs autenticadas y asignaciones de secretos antes de trazar o persistir la respuesta.
 - El frontend mantiene la sesión autenticada en `AuthSessionProvider`; las vistas y controladores consumen el
   access token mediante `useAccessToken` en lugar de propagarlo desde `App.tsx`. El transporte de API sigue
   recibiendo el token explícitamente para conservar pruebas y contratos aislados.
-- Verificación vigente: backend `test:all` con 86 archivos, 340 pruebas pasadas y 9 omitidas; escenarios IA
-  offline 22/22; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
+- Verificación vigente: backend `test:all` con 89 archivos, 349 pruebas pasadas y 9 omitidas; escenarios IA
+  offline 24/24; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
   queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.
 
@@ -87,6 +90,10 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - Existe un módulo de presupuestos mensuales persistentes por tenant, cuenta cloud o servicio.
 - Cada presupuesto compara únicamente costos y forecasts de su misma moneda; si no hay forecast persistido se declara no disponible.
 - La evaluación manual de umbrales 80/90/100 crea eventos idempotentes, notificaciones in-app y registros outbound pendientes, sin exigir un scheduler durante desarrollo.
+- Las entregas outbound de alertas ya tienen cola durable: `PENDING` se reclama con lease, pasa a `PROCESSING`, se
+  reintenta con backoff limitado y termina en `SENT`, `FAILED` o `SKIPPED`. El scheduler procesa lotes acotados y
+  recupera leases vencidos; el cuerpo completo no se expone en el DTO de entregas. La migración
+  `202608110009_outbound_delivery_queue` debe aplicarse en Supabase antes de habilitar este flujo allí.
 - El dashboard ya no calcula un presupuesto inventado; muestra únicamente el presupuesto tenant real cuando existe.
 
 ## Asignación compartida y cierre financiero

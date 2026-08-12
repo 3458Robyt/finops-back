@@ -5,8 +5,8 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 86 archivos de prueba,
-> 340 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 22/22. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 89 archivos de prueba pasados,
+> 349 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
@@ -40,15 +40,15 @@
 - La higiene del repositorio excluye la metadata de fuentes de datos de IntelliJ (`.idea/dataSources.xml`), además
   de `.env`, claves y artefactos de pruebas; la conexión local queda disponible solo fuera del índice Git (`a7ed749`).
 - Costos, administración MSP, trazabilidad, análisis de recomendaciones y métricas técnicas también usan el
-  responder compartido. Se agregó una regresión para dobles de respuesta sin `res.locals`; la suite queda en
-  86 archivos, 340 pruebas pasadas y 9 omitidas.
+  responder compartido. Se agregó una regresión para dobles de respuesta sin `res.locals`; la suite vigente
+  queda en 89 archivos, 349 pruebas pasadas y 9 omitidas.
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
 - El shell autenticado de `finops-app` ahora expone `AuthSessionProvider`, `useAuthSession` y `useAccessToken`;
   las vistas y controladores ya no reciben el access token por prop desde `App.tsx`. Las funciones de transporte
   conservan el token explícito para mantenerlas testeables y no se modificó el contrato HTTP. Commits `6f41988`,
   `a6ebe47`.
-- Evidencia de validación: backend 86 archivos/340 pruebas/9 omitidas, IA offline 22/22, audit de producción
+- Evidencia de validación: backend 89 archivos/349 pruebas/9 omitidas, IA offline 24/24, audit de producción
   sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
@@ -68,6 +68,18 @@
 - La configuración de fuentes de una conexión cloud se aisló en `PrismaCloudConnectionConfigurationRepository`
   (110 líneas); `PrismaCloudConnectionRepository` quedó en 639 líneas sin cambiar el puerto ni los contratos HTTP.
   La prueba dirigida de cloud/onboarding/ingesta pasó 25/25 y el typecheck quedó verde.
+- Las alertas de presupuesto ya no quedan como registros `PENDING` sin consumidor: se agregó una cola durable de
+  entregas outbound con cuerpo completo, lease `FOR UPDATE SKIP LOCKED`, estado `PROCESSING`, reintentos con backoff,
+  recuperación de leases vencidos y estados finales `SENT`, `FAILED` o `SKIPPED`. El scheduler procesa lotes
+  acotados antes de los recordatorios de ahorro y el frontend distingue “En proceso”. La migración pendiente es
+  `202608110009_outbound_delivery_queue`; todavía requiere aplicarse en Supabase y validarse con SMTP/Telegram reales.
+- La frontera de contexto IA marca nombres, etiquetas, identificadores y texto externo como no confiables para
+  reducir prompt injection; chat, recomendaciones y planes rechazan respuestas que contengan PEM, JWT, API keys,
+  URLs autenticadas o asignaciones de secretos. La rúbrica y los golden scenarios cubren este control sin enviar
+  credenciales al proveedor.
+- El arranque de workers y schedulers quedó aislado en `src/bootstrap/backgroundProcessRuntime.ts`; `src/index.ts`
+  conserva únicamente composition root, servidor HTTP y shutdown, con los roles de proceso y semántica de loops
+  existentes.
 
 ### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
 
