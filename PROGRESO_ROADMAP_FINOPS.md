@@ -60,6 +60,9 @@
 - Se agregó `docs/MODELO_AMENAZAS_STRIDE.md` como matriz compacta de amenazas para identidad, cambio de tenant,
   administración MSP, credenciales cloud, ingesta, IA, ejecución manual, asignación, cierres, workers y mensajería.
   El documento separa controles implementados, evidencia y riesgo residual; no sustituye una prueba DAST externa.
+- La configuración de fuentes de una conexión cloud se aisló en `PrismaCloudConnectionConfigurationRepository`
+  (110 líneas); `PrismaCloudConnectionRepository` quedó en 639 líneas sin cambiar el puerto ni los contratos HTTP.
+  La prueba dirigida de cloud/onboarding/ingesta pasó 25/25 y el typecheck quedó verde.
 
 ### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
 

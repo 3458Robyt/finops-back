@@ -51,7 +51,8 @@ siguen explicitamente diferenciados de los controles ya verificados.
   393 líneas sin cambiar el contrato; las pruebas OCI dirigidas pasan 22/22.
 - La gestión de conexiones cloud también está separada: la fachada pública conserva el contrato de la API,
   mientras onboarding/configuración, orquestación de jobs, contratos y validación de entradas viven en módulos
-  independientes de máximo 400 líneas; los 23 escenarios de caracterización continúan aprobados.
+  independientes de máximo 400 líneas; la configuración de fuentes ahora persiste mediante
+  `PrismaCloudConnectionConfigurationRepository` (110 líneas), y los 23 escenarios de caracterización continúan aprobados.
 - La analítica técnica separa consulta, contratos, overview, cobertura y utilidades matemáticas; el servicio
   coordinador quedó en 202 líneas y conserva los 12 escenarios de series, cobertura, recursos duplicados y raw.
 - La persistencia de ingesta mantiene una fachada estable y ahora delega la normalización de recursos derivados de
