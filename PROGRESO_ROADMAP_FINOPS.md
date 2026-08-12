@@ -1,9 +1,30 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
+
+- Se añadió `ProcessHeartbeatService` con repositorio Prisma, tabla
+  `runtime_process_heartbeats` y migración `202608120005_runtime_process_heartbeats`.
+  Cada API/worker/scheduler registra su instancia al iniciar, renueva su liveness
+  con `PROCESS_HEARTBEAT_INTERVAL_MS`, marca `STOPPED` durante el shutdown y queda
+  stale si deja de renovar. La política RLS limita lectura/escritura al
+  `app.worker_id` propio; Supabase principal fue migrado y verificado sin grants
+  para `anon`, `authenticated` ni `service_role`.
+- La persistencia usa transacciones para que el contexto runtime se aplique de
+  forma consistente también en operaciones Prisma directas. La identidad combina
+  rol, instancia y PID para reutilizar la fila cuando el mismo proceso se reinicia.
+  El runner
+  `npm run test:integration:process-heartbeat` validó desde un schema aislado la
+  escritura del propietario, el aislamiento entre procesos y la transición a
+  `STOPPED`; la suite dirigida y typecheck pasan.
+- La validación de flags booleanos ahora rechaza valores ambiguos (`yes`, `1`,
+  vacíos, etc.) y mantiene semántica case-insensitive/trimmed en integraciones y
+  enforcement de producción. AWS, OCI Usage API, mensajería real y operación 24/7
+  siguen en sus estados externos/diferidos; no se simulan.
+
 ### 2026-08-12 — Validación del slice de higiene auth
 
-- La suite vigente pasa con 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas; arquitectura backend
-  348/1 excepción, typecheck, build e IA offline 24/24. El registro de higiene cubre 598 rutas backend y 134 frontend.
+- La suite vigente pasa con 102 archivos aprobados, 4 omitidos, 400 pruebas pasadas y
+  10 omitidas; arquitectura backend 352/1 excepción, typecheck, build e IA offline 24/24. El registro de higiene cubre 598 rutas backend y 134 frontend.
 
 ### 2026-08-12 — Higiene acotada del ciclo de vida de autenticación
 

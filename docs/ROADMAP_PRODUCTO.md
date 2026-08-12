@@ -48,10 +48,15 @@
 > es exclusivo de `finops-maintenance:auth-lifecycle`, las consultas están indexadas por `expires_at` y no se
 > eliminan registros aún vigentes.
 
+> **Observabilidad de procesos 2026-08-12:** API, workers y schedulers registran un heartbeat durable por instancia
+> en `runtime_process_heartbeats`, con estados `RUNNING`/`STOPPED`, RLS por `app.worker_id` e intervalos configurables.
+> La integración aislada de PostgreSQL comprobó el propietario, el aislamiento entre procesos y el shutdown ordenado;
+> la detección de stale queda disponible aunque un proceso termine abruptamente.
+>
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
 > adicionales para utilización, alcance de planes, idioma, ahorro máximo, payloads ejecutables y salida sensible.
-> El corte vigente es `npm run test:unit`: 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
+> El corte vigente es `npm run test:unit`: 102 archivos aprobados, 4 omitidos, 400 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
 > Las secciones con fecha conservan snapshots históricos y no deben usarse para inferir conteos actuales.
@@ -136,7 +141,7 @@ Las fases se ordenan por dependencia y por si requieren credenciales cloud reale
 son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 
 ### Fase 0 — Cierre de lo actual (sin credenciales) · CORTO
-- **Hardening base:** `helmet`, rate limiting, CORS configurable, logging estructurado, runtime RLS,
+- **Hardening base:** `helmet`, rate limiting, CORS configurable, logging estructurado, heartbeat durable por proceso, runtime RLS,
   funciones Supabase endurecidas e índices FK están implementados y verificados. El canary runtime RLS
   pasó con `DB_RUNTIME_ENFORCE=true` y `DB_RUNTIME_ROLE=finops_runtime`; la activación permanente queda
   diferida hasta disponer de un destino de despliegue.

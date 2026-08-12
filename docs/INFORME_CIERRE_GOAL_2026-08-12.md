@@ -24,9 +24,9 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 102 archivos aprobados, 4 omitidos, 400 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
-- `npm run check:architecture`: 348 archivos de producción, una excepción declarada para el fixture
+- `npm run check:architecture`: 352 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
 - Typecheck y build: aprobados.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
@@ -34,6 +34,8 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - `npm run test:integration:auth-cleanup`: integración aislada aprobada; migraciones desde cero, RLS de mantenimiento,
   borrado bounded, bloqueo de sesiones contra carreras de refresh, preservación de refresh vigente con TTL inconsistente
   y limpieza del schema en `finally`.
+- `npm run test:integration:process-heartbeat`: integración aislada aprobada; migración desde cero, escritura del
+  propietario, aislamiento RLS entre procesos y transición durable a `STOPPED`.
 
 ### Frontend
 
@@ -58,9 +60,9 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 |---|---|---|---|
 | Gobernanza de entrega | Parcial local | Ramas limpias, commits convencionales, documentación y Graphify actualizados | Publicar ramas y abrir PR coordinados cuando exista autorización de release y CI remoto verde |
 | Seguridad e identidad | Cerrado para beta | Sesiones persistidas y revocables, logout, refresh rotation, recuperación, MFA, autorización central, RLS, sanitización, Helmet, CORS y rate limits | Activación permanente de runtime RLS, rotación formal y observabilidad externa dependen del despliegue |
-| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 348/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
+| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 352/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
 | Inventario y linaje OCI | Cerrado dentro de la cobertura disponible | Inventario OCI/Resource Search, identidades históricas exactas, backfill idempotente, cruces canónicos y sin fuzzy matching; 8.173/8.173 costos elegibles enlazados en la cuenta validada | OCI Usage API requiere policy; AWS requiere cuenta/rol reales |
-| Operación e infraestructura | Base implementada | Roles `api`/`worker`/`scheduler`/`all`, contenedores, health/readiness, leases, graceful shutdown, logs y métricas | OPS-001/002/003: destino 24/7, scheduler permanente, secret manager y alertas centralizadas |
+| Operación e infraestructura | Base implementada | Roles `api`/`worker`/`scheduler`/`all`, contenedores, health/readiness, leases, heartbeat durable por proceso, graceful shutdown, logs y métricas | OPS-001/002/003: destino 24/7, scheduler permanente, secret manager y alertas centralizadas |
 | IA y auditoría | Cerrado para el pipeline gobernado | Evidencia determinística antes del LLM, auditoría independiente, salida segura, planes persistidos, aprendizaje auditable, golden scenarios y canary IA aislado | Mantener canaries periódicos; no declarar precisión ML o coste LLM sin ground truth/precios |
 | FinOps avanzado | Cerrado en el alcance actual | Gobernanza de tags/readiness, catálogo de oportunidades, forecast por escenarios, presupuestos, asignación, valor realizado y resumen ejecutivo durable | Commitments/chargeback contable permanecen fuera de alcance hasta tener datos reales |
 | Rendimiento y calidad | Cerrado localmente con una deuda de entorno | Métricas con SQL/uPlot/cursor, índices y benchmarks existentes; suite, builds y audits verdes | PERF-001 requiere entorno representativo para alcanzar objetivos de preview/cierre |
@@ -68,7 +70,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 ## 4. Deuda vigente
 
-El registro autoritativo contiene **32 cerrados**, **1 abierto**, **2 bloqueados** y **6 diferidos**:
+El registro autoritativo contiene **33 cerrados**, **1 abierto**, **2 bloqueados** y **6 diferidos**:
 
 - `MSG-001` — abierto: faltan canaries reales de SMTP/Telegram; la cola, leases, retries, estados y sanitización ya
   están implementados y los envíos externos siguen deshabilitados por defecto.
@@ -77,6 +79,7 @@ El registro autoritativo contiene **32 cerrados**, **1 abierto**, **2 bloqueados
 - `OPS-001`, `OPS-002`, `OPS-003` — diferidos por falta de destino productivo y gestión operacional externa.
 - `SEC-002`, `SEC-003` — diferidos por escalamiento horizontal y vulnerabilidades dev-only sin fix disponible.
 - `PERF-001` — diferido hasta medir en infraestructura representativa sin sacrificar trazabilidad.
+- `OPS-004` — cerrado: heartbeat durable por proceso con RLS, shutdown ordenado e integración PostgreSQL aislada.
 
 ## 5. Cambios de esta iteración
 
@@ -95,6 +98,8 @@ El registro autoritativo contiene **32 cerrados**, **1 abierto**, **2 bloqueados
   su ejecución real sigue pendiente para `MSG-001`.
 - `REL-001` — compuerta reproducible de higiene de release añadida a ambos repositorios y a sus validaciones locales.
 - `AUTH-004` — limpieza bounded de artefactos de autenticación expirados, con RLS de mantenimiento indexado y prueba aislada.
+- `OPS-004` — heartbeat durable por proceso, con migración Supabase aplicada, política RLS por worker y runner de
+  integración aislado.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

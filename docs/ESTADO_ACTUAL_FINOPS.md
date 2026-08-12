@@ -8,13 +8,21 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 
 ## Corte vigente 2026-08-12
 
+- La observabilidad operativa ya tiene heartbeat durable por instancia en
+  `runtime_process_heartbeats`: API, worker y scheduler registran `RUNNING`,
+  renuevan su timestamp con intervalos configurables y marcan `STOPPED` durante
+  el shutdown ordenado. RLS limita cada proceso a su propio `process_id` mediante
+  `app.worker_id`; la identidad combina rol, instancia y PID para que un reinicio
+  controlado reutilice la fila y restablezca su inicio. La integración aislada verificó propietario, aislamiento y
+  expiración. La migración `202608120005_runtime_process_heartbeats` está aplicada
+  en Supabase principal.
 - La analítica ahora expone escenarios de pronóstico comparables (base, tendencia, aprobado, ejecutado y verificado) y el dashboard los presenta sin convertir una proyección en ahorro realizado.
 - El resumen ejecutivo FinOps se genera con evidencia tenant-scoped y se encola como entrega durable `PENDING` para correo/Telegram; el procesador existente conserva leases, reintentos y deduplicación diaria.
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante `PATCH /api/v1/ai/learning/memories/:memoryId/deactivate`; la operación exige autorización, respeta el alcance tenant/global y deja auditoría.
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
 - El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
-- La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011 y 012 sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `npm run test:unit` con 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011, 012 y `202608120005` sin borrar datos. Prisma reporta la base actualizada.
+- Validación posterior: backend `npm run test:unit` con 102 archivos aprobados, 4 omitidos, 400 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar; además, `npm run test:integration:process-heartbeat` comprobó liveness durable, RLS por proceso y transición a `STOPPED`. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
 - La lógica de calibración tiene pruebas unitarias determinísticas y una integración aislada aprobada (`npm run test:integration:agent-quality`, 1/1) para comprobar consultas reales y aislamiento entre tenants con dos fixtures separados. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La analítica expone `/api/v1/analytics/opportunities` como ruta canónica. `/api/v1/analytics/anomalies` se conserva
   solo como alias histórico deprecado y mantiene su payload legado para no romper clientes antiguos; las vistas y
@@ -82,7 +90,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
   `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
   `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. Además, los puertos
   de recomendaciones y conexiones cloud componen capacidades cohesivas sin superar 400 líneas. El fitness check
-  backend pasa con 348 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
+  backend pasa con 352 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 
@@ -159,7 +167,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación auditada de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
 - La interfaz añade un resumen financiero por destino que combina costo cerrado vigente (o costo live identificado como no cerrado), período anterior, variación, presupuesto consumido y ahorro potencial/aprobado/verificado/acumulado sin duplicar el motor financiero.
 - El historial de cierres permite cargar bajo demanda el detalle y comparar versiones, incluyendo hashes, responsable, totales y resultados por destino. El botón `Previsualizar` no persiste reglas: el frontend distingue explícitamente la acción del formulario antes de llamar a la API.
-- El repositorio contiene 60 migraciones Prisma; las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index`, las ocho de ciclo de vida de autenticación, las migraciones `202608110009` a `202608110011` y `202608120002` a `202608120004` ya están aplicadas y verificadas en Supabase principal. Las tablas nuevas tienen RLS, índices de tenant/período/estado, índices de expiración auth, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
+- El repositorio contiene 61 migraciones Prisma; las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index`, las ocho de ciclo de vida de autenticación, las migraciones `202608110009` a `202608110011` y `202608120002` a `202608120005` ya están aplicadas y verificadas en Supabase principal. Las tablas nuevas tienen RLS, índices de tenant/período/estado, índices de expiración auth, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. Antes del cierre, el actual queda explícitamente no disponible y el preview conserva el valor como proyectado. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
@@ -203,7 +211,7 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (99 archivos aprobados, 386 pruebas pasadas y 10 omitidas),
+- Backend: `npm run test:all` (102 archivos aprobados, 400 pruebas pasadas y 10 omitidas),
   `npm run test:ai:offline` (24/24), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Integración PostgreSQL aislada de limpieza auth: `npm run test:integration:auth-cleanup` pasó y eliminó su schema

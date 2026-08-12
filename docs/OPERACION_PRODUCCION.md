@@ -36,6 +36,20 @@ en el proceso `scheduler`. Solo elimina filas cuyo `expiresAt` ya pasó y ejecut
 con el contexto RLS `finops-maintenance:auth-lifecycle`; conserva registros no
 expirados para no debilitar la detección de replay de refresh tokens.
 
+La liveness durable de cada instancia se registra en
+`runtime_process_heartbeats`. `PROCESS_HEARTBEAT_ENABLED` está activo por defecto
+en desarrollo, el primer heartbeat se escribe al arrancar y luego se renueva
+según `PROCESS_HEARTBEAT_INTERVAL_MS`; `PROCESS_HEARTBEAT_STALE_AFTER_MS` define
+cuándo debe considerarse atrasado. El `process_id` combina rol, instancia y PID,
+y la política RLS permite a cada proceso leer/modificar únicamente su propio
+registro mediante `app.worker_id`. Un reinicio de la misma instancia reutiliza su
+identidad y restablece `started_at`, evitando una fila nueva por cada reinicio;
+los cambios de instancia conservan su historial operativo. Durante un shutdown ordenado el estado
+pasa a `STOPPED`; un proceso terminado abruptamente queda `RUNNING` hasta que
+supere el umbral de stale. La tabla no contiene datos de tenant y sus operaciones
+se ejecutan dentro de transacciones para que el contexto runtime se aplique de
+forma consistente.
+
 ## Imagen y usuario
 
 - `finops-backend/Dockerfile` construye TypeScript en una etapa y ejecuta la
@@ -79,7 +93,8 @@ El healthcheck del servicio `api` valida únicamente liveness (`/health`) para
 evitar reinicios por una caída temporal de Supabase; el balanceador u orquestador
 debe usar `/ready` para retirar tráfico cuando la BD o el rol runtime no estén
 disponibles. `worker` y `scheduler` no exponen un healthcheck HTTP ficticio: su
-estado se verifica mediante logs de claim/lease y métricas operativas.
+estado se verifica mediante `runtime_process_heartbeats`, logs de claim/lease y
+métricas operativas.
 
 La configuración activa `init`, `no-new-privileges`, elimina capabilities Linux
 innecesarias y da 20 segundos para que el shutdown drene trabajo antes de que
@@ -94,7 +109,7 @@ backend de métricas durable.
 
 ## Secuencia de release
 
-1. Validar `npm run check:release-hygiene`, `npm run test:all`, `npm run test:integration:auth-cleanup`, `npm audit --omit=dev --audit-level=high` y el
+1. Validar `npm run check:release-hygiene`, `npm run test:all`, `npm run test:integration:auth-cleanup`, `npm run test:integration:process-heartbeat`, `npm audit --omit=dev --audit-level=high` y el
    build del frontend.
 2. Construir imágenes con un tag inmutable basado en el commit.
 3. Aplicar migraciones Prisma desde un job con permisos de migración y ejecutar
@@ -123,6 +138,8 @@ Alertar cuando:
 - aumenta `5xx` o `auth` fallido;
 - aparecen replays de refresh/MFA;
 - jobs `FAILED` superan el umbral por conexión o el lease expira;
+- un heartbeat de proceso permanece `RUNNING` por encima de
+  `PROCESS_HEARTBEAT_STALE_AFTER_MS` o desaparece de la ventana esperada;
 - el backlog de análisis/aprendizaje crece sin disminuir;
 - la latencia IA o el estimado de tokens supera el presupuesto;
 - el enlace de costos a inventario cae por debajo del umbral acordado.
