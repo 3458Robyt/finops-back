@@ -31,6 +31,9 @@
 - `FinOpsAiService` quedó en 364 líneas al separar los casos de uso en `FinOpsAiChatRunner`,
   `FinOpsAiExecutionPlanRunner` y `FinOpsAiRecommendationPreparer`; se mantienen la evidencia determinística,
   la auditoría y las trazas sin cambiar el contrato público.
+- `PrismaCloudConnectionRepository` quedó en 338 líneas al separar las operaciones de jobs, salud, readiness,
+  historial y calidad en `PrismaCloudIngestionReadRepository`, y la creación idempotente en
+  `PrismaCloudIngestionCommandRepository`; el puerto de conexiones cloud permanece sin cambios.
 - `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
   conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
   `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
