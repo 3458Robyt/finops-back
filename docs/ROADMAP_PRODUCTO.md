@@ -62,14 +62,15 @@
 > `ingestion-worker`, `learning-worker`, `recommendation-analysis-worker`,
 > `savings-reconciliation-worker`, `ingestion-scheduler`,
 > `recommendation-analysis-scheduler` y `notification-scheduler`, además de
-> `auth-cleanup-scheduler`. Los alias `worker`, `scheduler` y `all` permanecen
+> `auth-cleanup-scheduler` y `budget-scheduler`. Los alias `worker`, `scheduler`
+> y `all` permanecen
 > para compatibilidad; esta separación no implica que el desarrollo local deba
 > mantener procesos permanentes.
 >
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
 > adicionales para utilización, alcance de planes, idioma, ahorro máximo, payloads ejecutables y salida sensible.
-> El corte vigente es `npm run test:unit`: 104 archivos aprobados, 4 omitidos, 430 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
+> El corte vigente es `npm run test:unit`: 104 archivos aprobados, 4 omitidos, 433 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
 > Las secciones con fecha conservan snapshots históricos y no deben usarse para inferir conteos actuales.
@@ -83,7 +84,7 @@
 
 ## 1. Estado actual (qué está hecho de verdad)
 
-Incluye presupuestos mensuales persistentes por tenant, cuenta o servicio, evaluación manual de umbrales y alertas idempotentes. La ejecución periódica permanece fuera del alcance de desarrollo (OPS-002).
+Incluye presupuestos mensuales persistentes por tenant, cuenta o servicio, evaluación manual de umbrales y alertas idempotentes. Existe un `budget-scheduler` opt-in, tenant-scoped e idempotente; permanece apagado en desarrollo y su operación continua se difiere hasta disponer de un destino productivo (OPS-002).
 
 ### Núcleo funcional y verificado
 - **Arquitectura:** Clean Architecture (domain / application / infrastructure / presentation), ESM,

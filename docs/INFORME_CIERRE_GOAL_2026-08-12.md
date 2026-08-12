@@ -24,7 +24,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 104 archivos aprobados, 4 omitidos, 430 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 104 archivos aprobados, 4 omitidos, 433 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
 - `npm run check:architecture`: 357 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
@@ -114,6 +114,8 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
   para cada worker y scheduler sin iniciar responsabilidades ajenas; los alias de beta se conservan.
 - `e2160a7` — `feat(ops): instrument background loops`: los loops no solapables y el scheduler outbound exponen
   contadores y duración acotados por rol/proceso y resultado para detectar atascos sin cardinalidad peligrosa.
+- `c07ac97` — integración opt-in de `budget-scheduler` con actor técnico, configuración tenant-scoped y alertas
+  idempotentes sobre la cola outbound; la operación continua permanece diferida por falta de destino.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

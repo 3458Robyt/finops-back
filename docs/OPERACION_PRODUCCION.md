@@ -8,7 +8,7 @@ La configuración se valida antes de construir la composición: en producción
 `recommendation-analysis-worker`, `savings-reconciliation-worker`,
 `ingestion-scheduler`,
 `recommendation-analysis-scheduler`,
-`notification-scheduler`, `auth-cleanup-scheduler`). Un valor inválido no puede caer silenciosamente en `all`. Si se habilita
+`notification-scheduler`, `auth-cleanup-scheduler`, `budget-scheduler`). Un valor inválido no puede caer silenciosamente en `all`. Si se habilita
 correo, Telegram o el scheduler de mensajes/reconciliación, también son
 obligatorios sus secretos y destinos explícitos. En desarrollo estas mismas
 integraciones permanecen apagadas por defecto.
@@ -30,6 +30,7 @@ El mismo artefacto backend puede ejecutarse con responsabilidades separadas:
 | `savings-reconciliation-worker` | No | Solo reconciliación de valor |
 | `notification-scheduler` | No | Solo cola de mensajes |
 | `auth-cleanup-scheduler` | No | Solo limpieza de autenticación |
+| `budget-scheduler` | No | Solo evaluación periódica de presupuestos |
 | `all` | Sí | Todas las responsabilidades |
 
 `all` mantiene compatibilidad con el desarrollo local; `worker` y `scheduler`
@@ -50,7 +51,14 @@ $env:APP_PROCESS_ROLE='recommendation-analysis-worker'; node dist/index.js
 $env:APP_PROCESS_ROLE='savings-reconciliation-worker'; node dist/index.js
 $env:APP_PROCESS_ROLE='ingestion-scheduler'; node dist/index.js
 $env:APP_PROCESS_ROLE='notification-scheduler'; node dist/index.js
+$env:APP_PROCESS_ROLE='budget-scheduler'; node dist/index.js
 ```
+
+El scheduler de presupuestos es opt-in mediante
+`BUDGET_SCHEDULER_ENABLED=true`, `BUDGET_SCHEDULER_TENANT_ID` y
+`BUDGET_SCHEDULER_USER_ID`. Evalúa únicamente presupuestos activos del tenant
+configurado, conserva la idempotencia de `BudgetService` y publica las alertas
+por la cola outbound existente; no calcula ni persiste un ledger paralelo.
 
 Los envíos SMTP y Telegram están limitados por `OUTBOUND_PROVIDER_TIMEOUT_MS`
 (15 segundos por defecto; entre 5 y 60 segundos en producción). Un timeout se

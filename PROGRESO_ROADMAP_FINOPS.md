@@ -18,6 +18,17 @@
   y resultado. Esto hace observable el backlog/atasco sin introducir IDs de alta
   cardinalidad; el scheduler outbound usa el mismo mecanismo.
 
+### 2026-08-12 — Evaluación periódica de presupuestos opt-in
+
+- Se integró `budget-scheduler`, con actor técnico explícito, tenant scoping,
+  intervalo configurable y ejecución idempotente mediante el `BudgetService` ya
+  existente. Las alertas reutilizan la cola outbound y las notificaciones in-app.
+- Se añadieron `BUDGET_SCHEDULER_ENABLED`, `BUDGET_SCHEDULER_TENANT_ID`,
+  `BUDGET_SCHEDULER_USER_ID` y `BUDGET_SCHEDULER_INTERVAL_MS`; todas las
+  integraciones continúan apagadas por defecto durante desarrollo.
+- La activación permanente, alertas 24/7 y despliegue del scheduler siguen en
+  `OPS-002` diferido por falta de destino productivo.
+
 ### 2026-08-12 — Readiness operativo, métricas de heartbeat y recuperación documentada
 
 - `GET /ready` dejó de comprobar únicamente la conexión de base: ahora devuelve
@@ -33,7 +44,7 @@
   runbook `docs/OPERACION_RECUPERACION.md`; el rehearsal productivo de backup y
   restore queda diferido porque todavía no existe destino operativo autorizado.
 - La validación completa posterior pasó con 104 archivos de test aprobados, 4
-  omitidos, 430 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
+  omitidos, 433 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
   release hygiene 615 rutas.
 
 ### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
