@@ -30,7 +30,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - El frontend mantiene la sesión autenticada en `AuthSessionProvider`; las vistas y controladores consumen el
   access token mediante `useAccessToken` en lugar de propagarlo desde `App.tsx`. El transporte de API sigue
   recibiendo el token explícitamente para conservar pruebas y contratos aislados.
-- Verificación vigente: backend `test:all` con 89 archivos, 350 pruebas pasadas y 9 omitidas; escenarios IA
+- Verificación vigente: backend `test:all` con 89 archivos, 351 pruebas pasadas y 9 omitidas; escenarios IA
   offline 24/24; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
   queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.

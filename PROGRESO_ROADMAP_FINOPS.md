@@ -6,7 +6,7 @@
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
 > **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-11: 89 archivos de prueba pasados,
-> 350 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> 351 pruebas pasadas y 9 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
@@ -19,8 +19,9 @@
   enforcement runtime RLS; se agregó una prueba de drenaje.
 - El runtime Compose activa `init`, `no-new-privileges`, capabilities reducidas, healthcheck de API y ventana
   de apagado de 20 segundos. La imagen no aplica migraciones automáticamente; la operación queda documentada.
-- `PrismaResourceMetricRepository` pasó de 882 a 656 líneas al extraer cursores, filtros SQL, buckets y mapeo
-  a `technicalMetricQueryHelpers.ts`, con pruebas de compatibilidad de cursor. `FinOpsArtifactGenerator` pasó
+- `PrismaResourceMetricRepository` quedó en 527 líneas al extraer además la lectura paginada de series raw/agregadas
+  y el conteo a `PrismaResourceMetricSeriesReader.ts`; se conserva el contrato público y las pruebas de compatibilidad
+  de cursor. `FinOpsArtifactGenerator` pasó
   de 562 a 340 líneas al extraer la normalización determinística de borradores contra evidencia canónica.
 - `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
   de métricas, la clasificación de namespace y la precedencia inventario-proveedor en
@@ -41,14 +42,14 @@
   de `.env`, claves y artefactos de pruebas; la conexión local queda disponible solo fuera del índice Git (`a7ed749`).
 - Costos, administración MSP, trazabilidad, análisis de recomendaciones y métricas técnicas también usan el
   responder compartido. Se agregó una regresión para dobles de respuesta sin `res.locals`; la suite vigente
-  queda en 89 archivos, 350 pruebas pasadas y 9 omitidas.
+  queda en 89 archivos, 351 pruebas pasadas y 9 omitidas.
 - `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
   no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
 - El shell autenticado de `finops-app` ahora expone `AuthSessionProvider`, `useAuthSession` y `useAccessToken`;
   las vistas y controladores ya no reciben el access token por prop desde `App.tsx`. Las funciones de transporte
   conservan el token explícito para mantenerlas testeables y no se modificó el contrato HTTP. Commits `6f41988`,
   `a6ebe47`.
-- Evidencia de validación: backend 89 archivos/350 pruebas/9 omitidas, IA offline 24/24, audit de producción
+- Evidencia de validación: backend 89 archivos/351 pruebas/9 omitidas, IA offline 24/24, audit de producción
   sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
