@@ -1,5 +1,17 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Manejo HTTP de errores centralizado
+
+- `AgentController`, `AiController`, `AnalyticsController`, `OutboundMessageController` y
+  `TelegramController` ya reutilizan `respondWithFinOpsError`; se eliminaron cinco implementaciones
+  divergentes de mapeo HTTP.
+- El helper central conserva `401`, `403`, `404`, `409`, `422` y `502`, incluye `diagnosticId`/auditoría
+  para rechazos IA y registra errores inesperados con `safeErrorMessage`. El identificador de auditoría IA
+  no se sobrescribe con el request ID cuando ambos existen.
+- Se añadieron regresiones para proveedor IA y `AiAuditRejectedError`. Las pruebas dirigidas de HTTP/agent/
+  Telegram pasan 8/8; arquitectura y typecheck pasan. Graphify quedó actualizado a 4.233 nodos y 11.433
+  relaciones.
+
 ### 2026-08-12 — Extracción del despacho de canales externos
 
 - `OutboundMessageService` dejó de mezclar la orquestación tenant-scoped con el detalle de entrega por canal.

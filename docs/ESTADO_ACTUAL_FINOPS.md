@@ -25,6 +25,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La entrega de correo y Telegram está separada del orquestador en `OutboundChannelDeliveryService`, que persiste
   resultados `SENT`, `SKIPPED` o `FAILED` y sanitiza errores de proveedores. El historial y los reintentos siguen
   siendo durables; los canaries externos continúan pendientes y los canales permanecen apagados por defecto.
+- Los controladores de agente, IA, analítica, mensajería y Telegram comparten `respondWithFinOpsError`; el helper
+  mantiene códigos HTTP coherentes, `diagnosticId` de auditoría IA y redacción de errores inesperados.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
