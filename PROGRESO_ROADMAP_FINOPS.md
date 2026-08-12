@@ -34,6 +34,9 @@
 - `PrismaCloudConnectionRepository` quedó en 338 líneas al separar las operaciones de jobs, salud, readiness,
   historial y calidad en `PrismaCloudIngestionReadRepository`, y la creación idempotente en
   `PrismaCloudIngestionCommandRepository`; el puerto de conexiones cloud permanece sin cambios.
+- La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
+  a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
+  la suficiencia técnica y la verificación inmutable.
 - `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
   conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
   `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
