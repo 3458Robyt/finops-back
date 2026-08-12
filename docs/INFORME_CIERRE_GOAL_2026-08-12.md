@@ -32,7 +32,8 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
 - `npm run check:release-hygiene`: 598 rutas rastreadas sin secretos ni artefactos prohibidos.
 - `npm run test:integration:auth-cleanup`: integración aislada aprobada; migraciones desde cero, RLS de mantenimiento,
-  borrado bounded, preservación de refresh vigente con TTL inconsistente y limpieza del schema en `finally`.
+  borrado bounded, bloqueo de sesiones contra carreras de refresh, preservación de refresh vigente con TTL inconsistente
+  y limpieza del schema en `finally`.
 
 ### Frontend
 

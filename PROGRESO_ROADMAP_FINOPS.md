@@ -9,7 +9,8 @@
 
 - Se añadió `AuthLifecycleCleanupService` con repositorio Prisma bounded: solo elimina sesiones, refresh tokens,
   tokens de recuperación y desafíos MFA cuyo `expiresAt` ya pasó; mantiene artefactos usados/revocados aún vigentes
-  para no perder detección de replay ni trazabilidad.
+  para no perder detección de replay ni trazabilidad. La selección de sesiones usa `FOR UPDATE SKIP LOCKED` y
+  comprueba refresh tokens vigentes para evitar que una cascada elimine credenciales por una carrera concurrente.
 - El scheduler es opt-in (`AUTH_CLEANUP_SCHEDULER_ENABLED=false` en desarrollo) y utiliza el contexto RLS exacto
   `finops-maintenance:auth-lifecycle`. Las migraciones `202608120002`, `202608120003` y `202608120004`
   restringen la función, acotan el worker a filas expiradas, agregan índices por `expires_at` y revocan explícitamente

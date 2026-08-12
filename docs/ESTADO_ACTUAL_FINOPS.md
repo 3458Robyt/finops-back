@@ -58,7 +58,8 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - La higiene de autenticación ya tiene un scheduler opt-in y bounded: elimina únicamente artefactos cuyo `expiresAt`
   ya pasó (sesiones, refresh tokens, recuperación y desafíos MFA), conserva tokens usados/revocados aún no expirados,
   y accede a esas tablas mediante el contexto RLS exacto `finops-maintenance:auth-lifecycle`. Las migraciones
-  `202608120002`–`202608120004` revocan grants API, restringen borrado a filas expiradas e indexan `expires_at`.
+  `202608120002`–`202608120004` revocan grants API, restringen borrado a filas expiradas e indexan `expires_at`;
+  la selección de sesiones bloquea filas y verifica refresh vigentes para evitar cascadas por carreras concurrentes.
 - Los logs operativos ahora son estructurados y sanitizados mediante `safeErrorMessage`; se eliminan de los
   eventos URLs con credenciales, API keys, JWT, bearer tokens, cookies, claves AWS y PEM. Esto no sustituye un agregador/secret manager
   de producción.
