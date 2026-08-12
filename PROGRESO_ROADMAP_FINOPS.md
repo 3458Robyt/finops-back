@@ -71,8 +71,9 @@
 - Las alertas de presupuesto ya no quedan como registros `PENDING` sin consumidor: se agregó una cola durable de
   entregas outbound con cuerpo completo, lease `FOR UPDATE SKIP LOCKED`, estado `PROCESSING`, reintentos con backoff,
   recuperación de leases vencidos y estados finales `SENT`, `FAILED` o `SKIPPED`. El scheduler procesa lotes
-  acotados antes de los recordatorios de ahorro y el frontend distingue “En proceso”. La migración pendiente es
-  `202608110009_outbound_delivery_queue`; todavía requiere aplicarse en Supabase y validarse con SMTP/Telegram reales.
+  acotados antes de los recordatorios de ahorro y el frontend distingue “En proceso”. La migración
+  `202608110009_outbound_delivery_queue` ya fue aplicada y verificada en Supabase; todavía requiere validarse con
+  SMTP/Telegram reales.
 - La frontera de contexto IA marca nombres, etiquetas, identificadores y texto externo como no confiables para
   reducir prompt injection; chat, recomendaciones y planes rechazan respuestas que contengan PEM, JWT, API keys,
   URLs autenticadas o asignaciones de secretos. La rúbrica y los golden scenarios cubren este control sin enviar

@@ -93,7 +93,8 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - Las entregas outbound de alertas ya tienen cola durable: `PENDING` se reclama con lease, pasa a `PROCESSING`, se
   reintenta con backoff limitado y termina en `SENT`, `FAILED` o `SKIPPED`. El scheduler procesa lotes acotados y
   recupera leases vencidos; el cuerpo completo no se expone en el DTO de entregas. La migración
-  `202608110009_outbound_delivery_queue` debe aplicarse en Supabase antes de habilitar este flujo allí.
+  `202608110009_outbound_delivery_queue` ya está aplicada y verificada en Supabase; faltan canaries con SMTP/Telegram
+  reales antes de habilitar envíos externos en operación.
 - El dashboard ya no calcula un presupuesto inventado; muestra únicamente el presupuesto tenant real cuando existe.
 
 ## Asignación compartida y cierre financiero
