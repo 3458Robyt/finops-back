@@ -57,6 +57,10 @@
   las excepciones no se declaran resueltas y se revisarán conforme avance MOD-001.
 - El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
+- `RecommendationAnalysisRunsPanel.tsx` quedó en 257 líneas al separar el detalle de corrida, la presentación de
+  estados y los componentes Metric/Notice; conserva polling cancelable, retry, cancelación y navegación al detalle.
+  El typecheck, lint, build, bundle budget y architecture check del frontend pasaron; las excepciones frontend quedan
+  reducidas a `AgentSettings.tsx` y sus componentes de gobierno/canales ya extraídos.
 - Se agregó `docs/MODELO_AMENAZAS_STRIDE.md` como matriz compacta de amenazas para identidad, cambio de tenant,
   administración MSP, credenciales cloud, ingesta, IA, ejecución manual, asignación, cierres, workers y mensajería.
   El documento separa controles implementados, evidencia y riesgo residual; no sustituye una prueba DAST externa.
