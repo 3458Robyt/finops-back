@@ -41,6 +41,10 @@
 - `CloudConnectionController` dejó de concentrar conexión e ingesta: el facade quedó en 58 líneas y delega
   handlers de gestión (319), handlers de ingesta (228) y soporte común de parseo/error (71), manteniendo la
   identidad de handlers que esperan los routers y sus 35 pruebas focalizadas.
+- `RecommendationController` quedó en 54 líneas como facade estable; ejecución/decisiones/planes viven en
+  `RecommendationExecutionController` (118), ahorro verificado en `RecommendationSavingsController` (270) y
+  consultas tenant-aware en `RecommendationReadController` (92). El contrato de rutas y las pruebas de
+  caracterización del controlador permanecen sin cambios (8/8).
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
