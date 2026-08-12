@@ -178,6 +178,8 @@ Implementado:
 - Rate limit especifico para login, Telegram e IA.
 - Logging estructurado por request con `x-request-id`.
 - Validacion runtime estricta en produccion para secretos/configuracion critica.
+- Compuerta `npm run check:release-hygiene` en backend y frontend: las rutas rastreadas por Git no contienen
+  `.env` no permitido, claves/certificados, bases locales, logs ni artefactos E2E; `.env.example` es la excepción.
 
 Estado de cierre:
 
