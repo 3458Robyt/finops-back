@@ -96,6 +96,7 @@ src/
 - \`npm run prisma:migrate\` / \`npm run db:seed\`: Migraciones y datos de ejemplo.
 - \`npm run import:oci-focus\`: Importa el dataset FOCUS de OCI.
 - \`npm run test:integration:docker\`: Ejecuta las pruebas de integración contra PostgreSQL de prueba en Docker (requiere Docker instalado).
+- \`npm run test:integration:agent-quality\`: Ejecuta la calibración IA contra un schema efímero de Supabase, con limpieza automática.
 - \`npm run test:api:smoke\`: Smoke test de la API contra el backend configurado.
 - \`npm run test:api:onboarding\`: Verifica API, roles, aislamiento y exposición de secretos del onboarding.
 - \`npm run test:canary:oci-onboarding\`: Canary OCI real read-only cuando existe configuración local.
@@ -107,8 +108,9 @@ credenciales, estados, endpoints y troubleshooting está en
 
 La verificación local recomendada es `npm run test:all`: el corte vigente cubre 94 archivos aprobados,
 4 omitidos, 364 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
-24/24 y build. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración
-aisladas cuando existe un `TEST_DATABASE_URL` dedicado.
+24/24 y build; el fitness check backend mantiene una sola excepción justificada para los escenarios golden
+de IA. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración aisladas
+cuando existe un `TEST_DATABASE_URL` dedicado.
 
 ## Manejo de Errores y Seguridad
 
