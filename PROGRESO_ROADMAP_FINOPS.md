@@ -11,6 +11,8 @@
 - Evidencia de esta revalidación: heartbeat `PASSED`, auth cleanup `PASSED`, agent quality 1/1, resource lineage
   5/5 y cost allocation 3/3. El benchmark de asignación quedó documentado con preview 1.694,86 ms y cierre
   8.712,79 ms en Supabase remoto; no se redefine el SLA representativo hasta contar con destino de despliegue.
+- El E2E completo se revalidó después de corregir la espera del selector de tenant: `test:e2e:full` pasó 5/5
+  escenarios contra 61 migraciones en un schema aislado de Supabase y eliminó sus dos tenants y el schema al finalizar.
 
 ### 2026-08-12 — Auditoría final local y reconciliación documental del runtime
 

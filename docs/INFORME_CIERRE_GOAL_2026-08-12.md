@@ -49,6 +49,8 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 - Bundle: 23 chunks JavaScript; el mayor es `226.18 kB`, dentro del límite de `500 kB`.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
 - `npm run check:release-hygiene`: 134 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run test:e2e:full`: 5/5 escenarios Playwright aprobados después de esperar explícitamente la rotación de sesión
+  al cambiar de tenant; la corrida aplicó 61 migraciones en un schema aislado y eliminó fixtures y schema al finalizar.
 
 ### Higiene del repositorio
 
@@ -122,6 +124,8 @@ El registro autoritativo contiene **34 cerrados**, **1 abierto**, **2 bloqueados
 - `19bbdfc` y `fb26035` — runners de integración acotados con timeout, terminación del árbol de procesos,
   allowlist de schemas y prueba del guard de timeout; se evitó dejar procesos o schemas E2E residuales.
 - `9ba1a1f` — reconciliación final de los conteos de pruebas y release hygiene con la evidencia vigente.
+- `0b67035` — E2E frontend estabilizado: la prueba espera la finalización del cambio de tenant antes de
+  continuar con el panel de análisis; la suite completa volvió a pasar 5/5.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 
