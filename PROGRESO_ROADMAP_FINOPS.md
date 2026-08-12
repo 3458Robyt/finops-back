@@ -1,5 +1,18 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Auditoría final local y reconciliación documental del runtime
+
+- Se revalidó el estado actual contra el goal y las cuatro fuentes autoritativas. Los repositorios quedaron
+  limpios en `feat/shared-cost-allocation`; no se hizo push, merge ni PR.
+- La validación vigente conserva 104 archivos de pruebas aprobados, 433 pruebas pasadas y 10 omitidas,
+  IA offline 24/24, arquitectura 357/1 excepción, release hygiene backend 615 y frontend 134.
+- Supabase reportó 61 migraciones aplicadas; `db:verify:quality-indexes`, integración de heartbeat/RLS,
+  typecheck, build, frontend lint/build y `npm audit --omit=dev --audit-level=high` pasaron.
+- Se corrigieron conteos obsoletos en `README.md`, `docs/DEUDA_TECNICA.md` y `docs/ESTADO_ACTUAL_FINOPS.md`.
+  Los snapshots fechados más antiguos permanecen como historia y no se interpretan como estado vigente.
+- El goal mantiene como abiertos, bloqueados o diferidos únicamente los elementos que requieren proveedores,
+  credenciales, IAM o destino de despliegue externo; no se fabricó evidencia para AWS, OCI Usage API ni mensajería.
+
 ### 2026-08-12 — Roles de proceso granulares para operación separable
 
 - `APP_PROCESS_ROLE` ahora admite roles específicos para cada worker y

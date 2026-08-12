@@ -109,7 +109,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
   `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
   `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. Además, los puertos
   de recomendaciones y conexiones cloud componen capacidades cohesivas sin superar 400 líneas. El fitness check
-  backend pasa con 356 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
+  backend pasa con 357 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 
@@ -230,7 +230,7 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (104 archivos aprobados, 429 pruebas pasadas y 10 omitidas),
+- Backend: `npm run test:all` (104 archivos aprobados, 433 pruebas pasadas y 10 omitidas),
   `npm run test:ai:offline` (24/24), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
 - Integración PostgreSQL aislada de limpieza auth: `npm run test:integration:auth-cleanup` pasó y eliminó su schema
