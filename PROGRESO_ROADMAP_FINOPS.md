@@ -1,5 +1,17 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Cierre de modularidad crítica y evidencia de la beta
+
+- `MOD-001` queda cerrado: los hotspots críticos ya están divididos por responsabilidad, los contratos públicos se
+  conservan y `npm run check:architecture` pasa con 345 archivos de producción y una única excepción declarativa
+  (`goldenScenarios.ts`). Las extracciones futuras de módulos cohesivos entre 200 y 400 líneas quedan como
+  mantenimiento oportunista, no como bloqueo de la beta.
+- La validación completa vigente pasa: backend `npm run test:all` con 95 archivos aprobados, 4 omitidos, 377 pruebas
+  y 10 omitidas; IA offline 24/24; frontend arquitectura, typecheck, lint, build y bundle budget; auditorías de
+  dependencias de producción sin vulnerabilidades.
+- Permanecen explícitos los bloqueos/deferimientos externos de `AWS-001`, `OCI-001`, `MSG-001`, operación 24/7,
+  secret manager externo, rate limiting distribuido y benchmark representativo; no se simulan para cerrar el roadmap.
+
 ### 2026-08-12 — Cierre de bypass de configuración y nomenclatura canónica de oportunidades
 
 - `APP_PROCESS_ROLE` ahora falla cerrado cuando se proporciona un valor inválido incluso en desarrollo; únicamente
