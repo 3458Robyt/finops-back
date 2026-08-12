@@ -24,13 +24,15 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 - Rama: `feat/shared-cost-allocation`.
 - Árbol de trabajo limpio y sin push efectuado en esta iteración.
-- `npm run test:all`: 97 archivos aprobados, 4 omitidos, 382 pruebas pasadas y 10 omitidas.
+- `npm run test:all`: 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas.
 - `npm run test:ai:offline`: 24/24 escenarios.
-- `npm run check:architecture`: 345 archivos de producción, una excepción declarada para el fixture
+- `npm run check:architecture`: 348 archivos de producción, una excepción declarada para el fixture
   `goldenScenarios.ts`.
 - Typecheck y build: aprobados.
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades.
-- `npm run check:release-hygiene`: 588 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run check:release-hygiene`: 589 rutas rastreadas sin secretos ni artefactos prohibidos.
+- `npm run test:integration:auth-cleanup`: integración aislada aprobada; migraciones desde cero, RLS de mantenimiento,
+  borrado bounded, preservación de refresh vigente con TTL inconsistente y limpieza del schema en `finally`.
 
 ### Frontend
 
@@ -55,7 +57,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 |---|---|---|---|
 | Gobernanza de entrega | Parcial local | Ramas limpias, commits convencionales, documentación y Graphify actualizados | Publicar ramas y abrir PR coordinados cuando exista autorización de release y CI remoto verde |
 | Seguridad e identidad | Cerrado para beta | Sesiones persistidas y revocables, logout, refresh rotation, recuperación, MFA, autorización central, RLS, sanitización, Helmet, CORS y rate limits | Activación permanente de runtime RLS, rotación formal y observabilidad externa dependen del despliegue |
-| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 345/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
+| Modularidad | Cerrado para hotspots críticos | `MOD-001` cerrado; fitness backend 348/1 excepción y frontend 97/0; composición, IA, ingesta, métricas, repositorios y mensajería separados | Extracciones oportunistas de módulos cohesivos de 200–400 líneas no bloquean la beta |
 | Inventario y linaje OCI | Cerrado dentro de la cobertura disponible | Inventario OCI/Resource Search, identidades históricas exactas, backfill idempotente, cruces canónicos y sin fuzzy matching; 8.173/8.173 costos elegibles enlazados en la cuenta validada | OCI Usage API requiere policy; AWS requiere cuenta/rol reales |
 | Operación e infraestructura | Base implementada | Roles `api`/`worker`/`scheduler`/`all`, contenedores, health/readiness, leases, graceful shutdown, logs y métricas | OPS-001/002/003: destino 24/7, scheduler permanente, secret manager y alertas centralizadas |
 | IA y auditoría | Cerrado para el pipeline gobernado | Evidencia determinística antes del LLM, auditoría independiente, salida segura, planes persistidos, aprendizaje auditable, golden scenarios y canary IA aislado | Mantener canaries periódicos; no declarar precisión ML o coste LLM sin ground truth/precios |
@@ -65,7 +67,7 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
 
 ## 4. Deuda vigente
 
-El registro autoritativo contiene **31 cerrados**, **1 abierto**, **2 bloqueados** y **6 diferidos**:
+El registro autoritativo contiene **32 cerrados**, **1 abierto**, **2 bloqueados** y **6 diferidos**:
 
 - `MSG-001` — abierto: faltan canaries reales de SMTP/Telegram; la cola, leases, retries, estados y sanitización ya
   están implementados y los envíos externos siguen deshabilitados por defecto.
@@ -91,6 +93,7 @@ El registro autoritativo contiene **31 cerrados**, **1 abierto**, **2 bloqueados
 - `pending` — `test:canary:messaging` preparado con confirmación fuerte, destino explícito y sin acceso a la BD;
   su ejecución real sigue pendiente para `MSG-001`.
 - `REL-001` — compuerta reproducible de higiene de release añadida a ambos repositorios y a sus validaciones locales.
+- `AUTH-004` — limpieza bounded de artefactos de autenticación expirados, con RLS de mantenimiento indexado y prueba aislada.
 
 No se hizo merge, push ni PR. No se modificó `main` directamente.
 

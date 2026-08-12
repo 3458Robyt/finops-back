@@ -1,5 +1,22 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Validación del slice de higiene auth
+
+- La suite vigente pasa con 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas; arquitectura backend
+  348/1 excepción, typecheck, build e IA offline 24/24. El registro de higiene cubre 589 rutas backend y 133 frontend.
+
+### 2026-08-12 — Higiene acotada del ciclo de vida de autenticación
+
+- Se añadió `AuthLifecycleCleanupService` con repositorio Prisma bounded: solo elimina sesiones, refresh tokens,
+  tokens de recuperación y desafíos MFA cuyo `expiresAt` ya pasó; mantiene artefactos usados/revocados aún vigentes
+  para no perder detección de replay ni trazabilidad.
+- El scheduler es opt-in (`AUTH_CLEANUP_SCHEDULER_ENABLED=false` en desarrollo) y utiliza el contexto RLS exacto
+  `finops-maintenance:auth-lifecycle`. Las migraciones `202608120002`, `202608120003` y `202608120004`
+  restringen la función, acotan el worker a filas expiradas, agregan índices por `expires_at` y revocan explícitamente
+  ejecución a `anon`, `authenticated` y `service_role`.
+- `npm run test:integration:auth-cleanup` pasó en schema Supabase aislado y lo eliminó en `finally`; se conservaron
+  los registros no expirados. La suite dirigida y typecheck también pasan.
+
 ### 2026-08-12 — Compuerta reproducible de higiene de release
 
 - Backend y frontend incorporan `npm run check:release-hygiene`, que inspecciona las rutas rastreadas por Git y

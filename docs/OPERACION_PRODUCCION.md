@@ -31,6 +31,11 @@ Los envíos SMTP y Telegram están limitados por `OUTBOUND_PROVIDER_TIMEOUT_MS`
 (15 segundos por defecto; entre 5 y 60 segundos en producción). Un timeout se
 persiste como resultado de entrega fallida y no debe detener el loop del scheduler.
 
+La limpieza de autenticación se activa con `AUTH_CLEANUP_SCHEDULER_ENABLED=true`
+en el proceso `scheduler`. Solo elimina filas cuyo `expiresAt` ya pasó y ejecuta
+con el contexto RLS `finops-maintenance:auth-lifecycle`; conserva registros no
+expirados para no debilitar la detección de replay de refresh tokens.
+
 ## Imagen y usuario
 
 - `finops-backend/Dockerfile` construye TypeScript en una etapa y ejecuta la
@@ -89,7 +94,7 @@ backend de métricas durable.
 
 ## Secuencia de release
 
-1. Validar `npm run check:release-hygiene`, `npm run test:all`, `npm audit --omit=dev --audit-level=high` y el
+1. Validar `npm run check:release-hygiene`, `npm run test:all`, `npm run test:integration:auth-cleanup`, `npm audit --omit=dev --audit-level=high` y el
    build del frontend.
 2. Construir imágenes con un tag inmutable basado en el commit.
 3. Aplicar migraciones Prisma desde un job con permisos de migración y ejecutar

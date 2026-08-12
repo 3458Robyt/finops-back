@@ -14,7 +14,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
 - El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
 - La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011 y 012 sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `npm run test:unit` con 97 archivos aprobados, 4 omitidos, 382 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- Validación posterior: backend `npm run test:unit` con 99 archivos aprobados, 4 omitidos, 386 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
 - La lógica de calibración tiene pruebas unitarias determinísticas y una integración aislada aprobada (`npm run test:integration:agent-quality`, 1/1) para comprobar consultas reales y aislamiento entre tenants con dos fixtures separados. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La analítica expone `/api/v1/analytics/opportunities` como ruta canónica. `/api/v1/analytics/anomalies` se conserva
   solo como alias histórico deprecado y mantiene su payload legado para no romper clientes antiguos; las vistas y
@@ -55,6 +55,10 @@ siguen explicitamente diferenciados de los controles ya verificados.
   request, headers y keep-alive. El store distribuido sigue diferido hasta desplegar varias instancias.
 - Los clientes SMTP y Telegram tienen un timeout de proveedor común (`OUTBOUND_PROVIDER_TIMEOUT_MS`, 15 segundos
   por defecto) para que un canal externo lento no mantenga workers bloqueados indefinidamente.
+- La higiene de autenticación ya tiene un scheduler opt-in y bounded: elimina únicamente artefactos cuyo `expiresAt`
+  ya pasó (sesiones, refresh tokens, recuperación y desafíos MFA), conserva tokens usados/revocados aún no expirados,
+  y accede a esas tablas mediante el contexto RLS exacto `finops-maintenance:auth-lifecycle`. Las migraciones
+  `202608120002`–`202608120004` revocan grants API, restringen borrado a filas expiradas e indexan `expires_at`.
 - Los logs operativos ahora son estructurados y sanitizados mediante `safeErrorMessage`; se eliminan de los
   eventos URLs con credenciales, API keys, JWT, bearer tokens, cookies, claves AWS y PEM. Esto no sustituye un agregador/secret manager
   de producción.
@@ -77,7 +81,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
   `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
   `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. Además, los puertos
   de recomendaciones y conexiones cloud componen capacidades cohesivas sin superar 400 líneas. El fitness check
-  backend pasa con 345 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
+  backend pasa con 348 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 
@@ -198,9 +202,12 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (97 archivos aprobados, 382 pruebas pasadas y 10 omitidas),
+- Backend: `npm run test:all` (99 archivos aprobados, 386 pruebas pasadas y 10 omitidas),
   `npm run test:ai:offline` (24/24), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
+- Integración PostgreSQL aislada de limpieza auth: `npm run test:integration:auth-cleanup` pasó y eliminó su schema
+  en `finally`; verificó 1 registro expirado eliminado por cada categoría, retuvo registros futuros y evitó la
+  cascada de un refresh vigente asociado a una sesión con TTL inconsistente.
 - Frontend: lint, typecheck y build aprobados. La última ejecución documentada de `test:e2e:full` aplicó las
   migraciones desde cero en un schema aislado, creó fixtures autenticados y aprobó 5/5 escenarios Playwright;
   el cleanup eliminó los dos tenants y el schema de prueba incluso con la ruta de recuperación para preparación
