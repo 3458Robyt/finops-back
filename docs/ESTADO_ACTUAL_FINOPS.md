@@ -18,6 +18,7 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La lógica de calibración tiene pruebas unitarias determinísticas y una prueba de integración aislada para comprobar consultas reales y aislamiento entre tenants. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La migración local `202608120001_quality_report_keyset_indexes` añade índices compuestos para el orden keyset de recomendaciones y trazas. Está preparada para el siguiente despliegue de esquema; no se declara aplicada en Supabase desde este entorno.
 - La configuración del proveedor IA ya no acepta fallbacks `NVIDIA_*`/`NIM_*`; únicamente se leen variables `AI_*`, evitando activar silenciosamente endpoints o credenciales heredadas.
+- La auditoría de aprendizaje usa por defecto un timeout de 15 segundos y producción rechaza valores fuera de 5–60 segundos; un proveedor lento no debe bloquear la decisión humana.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
 matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)

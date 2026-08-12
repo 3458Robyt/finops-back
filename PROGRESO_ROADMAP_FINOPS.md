@@ -19,6 +19,7 @@
 - El informe de calidad usa paginación keyset de 1.000 filas y agregación incremental para que ventanas históricas grandes no se materialicen en una única respuesta de PostgreSQL ni en un lote sin límite del repositorio.
 - Se preparó `202608120001_quality_report_keyset_indexes` para acelerar el filtro/orden por tenant, fecha e id; su aplicación en Supabase queda pendiente de una ejecución explícita de migraciones.
 - Se retiraron los fallbacks `NVIDIA_*`/`NIM_*` del lector de configuración y se añadió una regresión que falla cerrado cuando solo existen variables heredadas; el contrato vigente es `AI_*`.
+- Se alineó el timeout runtime del auditor de aprendizaje con el contrato de 15 segundos y se añadió validación productiva de límites para evitar bloqueos prolongados.
 
 > **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
