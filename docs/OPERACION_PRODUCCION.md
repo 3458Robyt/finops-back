@@ -105,7 +105,11 @@ rotación y recuperación de jobs vive en `docs/OPERACION_RECUPERACION.md`.
 
 El heartbeat exporta `process_heartbeat_writes_total`,
 `process_heartbeat_write_duration_ms` y `process_heartbeat_stops_total` sin usar
-el `process_id` como etiqueta de alta cardinalidad.
+el `process_id` como etiqueta de alta cardinalidad. Los loops de workers y
+schedulers exportan contadores acotados `*_started_total`, `*_completed_total`,
+`*_failed_total`, `*_skipped_total` y el histograma `*_duration_ms`, etiquetados
+por `process_role` y `outcome`; el scheduler outbound usa el prefijo
+`outbound_message_scheduler_iteration`.
 
 ## Ejecución con Docker Compose
 
