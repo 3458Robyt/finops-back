@@ -151,9 +151,11 @@ Estado de cierre:
 - Backend: `npm run test:all` (86 archivos aprobados, 340 pruebas pasadas y 9 omitidas),
   `npm run test:ai:offline` (22/22), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
-- Frontend: lint, typecheck y build aprobados. `test:e2e:full` aplica las 55 migraciones desde cero en un
-  schema aislado, crea fixtures autenticados y aprobó 5/5 escenarios Playwright; el cleanup eliminó los dos
-  tenants y el schema de prueba incluso con la ruta de recuperación para preparación incompleta.
+- Frontend: lint, typecheck y build aprobados. La última ejecución documentada de `test:e2e:full` aplicó las
+  migraciones desde cero en un schema aislado, creó fixtures autenticados y aprobó 5/5 escenarios Playwright;
+  el cleanup eliminó los dos tenants y el schema de prueba incluso con la ruta de recuperación para preparación
+  incompleta. La ejecución actual exige `TEST_DATABASE_URL` apuntando a una base/schema efímero y se abstiene si
+  esa variable no está presente; el smoke `test:e2e:smoke` sí funciona sin BD.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
   ahorros no negativos, trazabilidad y `persist=false` aprobados con el modelo `gpt-5.4-mini`.
   Latencia de generación: 54.662 s; estimación de contexto/trazas: 4.093 tokens; recomendaciones: 3.
