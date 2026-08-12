@@ -1,5 +1,17 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Runners de integración aislada acotados y revalidación PostgreSQL
+
+- Se centralizó la ejecución de `auth-cleanup`, `process-heartbeat`, `agent-quality`, `resource-lineage` y
+  `cost-allocation` en `scripts/testing/integrationRuntime.ts`: timeout de proceso configurable, timeout de
+  conexión/consulta, allowlist de schemas y cleanup garantizado en `finally`.
+- Una corrida que superó cinco minutos dejó un schema de prueba residual; se eliminó únicamente ese schema
+  permitido y las cinco integraciones se ejecutaron individualmente con resultado aprobado. La inspección final
+  confirmó cero schemas `finops_e2e_*` residuales.
+- Evidencia de esta revalidación: heartbeat `PASSED`, auth cleanup `PASSED`, agent quality 1/1, resource lineage
+  5/5 y cost allocation 3/3. El benchmark de asignación quedó documentado con preview 1.694,86 ms y cierre
+  8.712,79 ms en Supabase remoto; no se redefine el SLA representativo hasta contar con destino de despliegue.
+
 ### 2026-08-12 — Auditoría final local y reconciliación documental del runtime
 
 - Se revalidó el estado actual contra el goal y las cuatro fuentes autoritativas. Los repositorios quedaron

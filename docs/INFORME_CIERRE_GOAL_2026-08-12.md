@@ -36,6 +36,9 @@ Las fuentes autoritativas son `docs/ESTADO_ACTUAL_FINOPS.md`, `docs/ROADMAP_PROD
   y limpieza del schema en `finally`.
 - `npm run test:integration:process-heartbeat`: integración aislada aprobada; migración desde cero, escritura del
   propietario, aislamiento RLS entre procesos y transición durable a `STOPPED`.
+- Revalidación aislada adicional: `test:integration:auth-cleanup`, `test:integration:agent-quality`,
+  `test:integration:resource-lineage` (5/5) y `test:integration:cost-allocation` (3/3) pasaron. Los runners
+  quedaron acotados por timeout y la inspección final confirmó cero schemas `finops_e2e_*` residuales.
 
 ### Frontend
 

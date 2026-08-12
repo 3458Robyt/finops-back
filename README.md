@@ -100,8 +100,12 @@ src/
 - \`npm run test:integration:auth-cleanup\`: Verifica desde migraciones cero la limpieza bounded de credenciales auth y su RLS de mantenimiento.
 - \`npm run test:api:smoke\`: Smoke test de la API contra el backend configurado.
 - \`npm run test:api:onboarding\`: Verifica API, roles, aislamiento y exposición de secretos del onboarding.
-- \`npm run test:canary:oci-onboarding\`: Canary OCI real read-only cuando existe configuración local.
-- \`npm run test:ai:offline\`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
+ - \`npm run test:canary:oci-onboarding\`: Canary OCI real read-only cuando existe configuración local.
+ - \`npm run test:ai:offline\`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
+
+Las integraciones aisladas que crean schemas `finops_e2e_*` tienen cleanup en `finally` y límites de conexión,
+consulta y proceso. `TEST_COMMAND_TIMEOUT_MS` permite ajustar el límite entre 30 segundos y 10 minutos
+(180 segundos por defecto) cuando el proveedor PostgreSQL remoto tenga una latencia de migración elevada.
 
 El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La guía de permisos,
 credenciales, estados, endpoints y troubleshooting está en
