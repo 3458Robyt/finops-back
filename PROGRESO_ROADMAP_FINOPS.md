@@ -54,6 +54,11 @@
   `PrismaRecommendationLifecycleRepository` (314), ahorro/medición en `PrismaRecommendationSavingsRepository`
   (96) y timeline en `PrismaRecommendationTimelineRepository` (47). Las pruebas de recomendaciones y valor
   focalizadas pasaron 12/12 y se conserva el puerto `IRecommendationRepository`.
+- `PrismaValueRealizationRepository` quedó en 47 líneas como facade; las consultas de cartera, resumen, tendencia
+  y exportación viven en `PrismaValueRealizationPortfolioRepository` (146), mientras que atribución por destino
+  y candidatos de conciliación viven en `PrismaValueRealizationAllocationRepository` (101). El SQL compartido
+  y el mapeo/cursor quedaron aislados en soportes pequeños; el puerto `IValueRealizationRepository` y las pruebas
+  de valor realizado permanecen sin cambios.
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
@@ -86,7 +91,7 @@
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
   archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
-  La última verificación pasó con 313 archivos backend/6 excepciones y 93 archivos frontend/0 excepciones;
+  La última verificación pasó con 320 archivos backend/6 excepciones y 93 archivos frontend/0 excepciones;
   las excepciones no se declaran resueltas y se revisarán conforme avance MOD-001.
 - El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
