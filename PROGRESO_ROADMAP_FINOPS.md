@@ -1,5 +1,14 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-12 — Redacción de headers sensibles en errores
+
+- `safeErrorMessage` ahora consume y redacta el valor completo de headers `Authorization`/`Proxy-Authorization`
+  (incluido el prefijo `Bearer`) y de `Cookie`/`Set-Cookie`, además de las credenciales, tokens, URLs autenticadas,
+  claves AWS, JWT y PEM que ya cubría.
+- Se agregó una regresión específica para bearer y cookies. La validación vigente quedó en `npm run test:unit`:
+  95 archivos aprobados, 4 omitidos, 373 pruebas pasadas y 10 omitidas; arquitectura, typecheck, IA offline y build
+  también pasan. Graphify quedó actualizado a 4.238 nodos, 11.442 relaciones y 237 comunidades.
+
 ### 2026-08-12 — Configuración productiva fail-closed
 
 - Producción ahora exige `APP_PROCESS_ROLE` y rechaza valores desconocidos en vez de caer silenciosamente en
@@ -86,8 +95,8 @@
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 94 archivos aprobados, 4 omitidos,
-> 364 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 95 archivos aprobados, 4 omitidos,
+> 373 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
