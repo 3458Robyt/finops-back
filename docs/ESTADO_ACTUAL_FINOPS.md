@@ -237,7 +237,7 @@ Estado de cierre:
 - Integración PostgreSQL aislada de limpieza auth: `npm run test:integration:auth-cleanup` pasó y eliminó su schema
   en `finally`; verificó 1 registro expirado eliminado por cada categoría, retuvo registros futuros y evitó la
   cascada de un refresh vigente asociado a una sesión con TTL inconsistente.
-- Frontend: lint, typecheck y build aprobados. La última ejecución documentada de `test:e2e:full` aplicó las
+- Frontend: lint, typecheck y build aprobados. La revalidación del 2026-08-12 de `test:e2e:full` aplicó las 61
   migraciones desde cero en un schema aislado, creó fixtures autenticados y aprobó 5/5 escenarios Playwright;
   el cleanup eliminó los dos tenants y el schema de prueba incluso con la ruta de recuperación para preparación
   incompleta. La ejecución actual exige `TEST_DATABASE_URL` apuntando a una base/schema efímero y se abstiene si
