@@ -31,6 +31,10 @@
 - `FinOpsAiService` quedó en 364 líneas al separar los casos de uso en `FinOpsAiChatRunner`,
   `FinOpsAiExecutionPlanRunner` y `FinOpsAiRecommendationPreparer`; se mantienen la evidencia determinística,
   la auditoría y las trazas sin cambiar el contrato público.
+- La rúbrica determinística IA quedó separada por responsabilidad: `qualityRubric.ts` conserva el facade público,
+  `recommendationQualityChecks.ts` concentra evidencia y ahorro de recomendaciones y
+  `executionPlanQualityChecks.ts` concentra alcance, seguridad y estructura de planes; los escenarios golden
+  existentes mantienen 23/23 aprobados.
 - `PrismaCloudConnectionRepository` quedó en 338 líneas al separar las operaciones de jobs, salud, readiness,
   historial y calidad en `PrismaCloudIngestionReadRepository`, y la creación idempotente en
   `PrismaCloudIngestionCommandRepository`; el puerto de conexiones cloud permanece sin cambios.
