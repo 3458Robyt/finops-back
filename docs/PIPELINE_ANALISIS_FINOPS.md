@@ -97,12 +97,12 @@ PostgreSQL no soporta quitar valores enum de forma segura sin reconstruir el tip
 
 ## Evidencia de validación
 
-Corte local vigente: 2026-08-11. Las cifras menores en documentos fechados son históricas.
+Corte local vigente: 2026-08-12. Las cifras menores en documentos fechados son históricas.
 
 | Capa | Resultado |
 |---|---|
-| Backend unitario | 86 archivos, 340 pruebas y 9 omitidas |
-| IA offline | 2 archivos, 22 escenarios |
+| Backend unitario | 95 archivos, 377 pruebas y 10 omitidas |
+| IA offline | 2 archivos, 24 escenarios |
 | PostgreSQL aislado | Claim, tenant, estados, cancelación, reintento y enlaces aprobados |
 | Frontend | ESLint y build aprobados |
 | E2E dedicado | Admin, rol de lectura y cambio de tenant aprobados |
