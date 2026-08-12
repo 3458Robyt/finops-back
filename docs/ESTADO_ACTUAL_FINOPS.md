@@ -51,8 +51,9 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - La modularización estructural más reciente mantiene contratos públicos y redujo tres hotspots del backend:
   `PrismaValueRealizationRepository` quedó en 47 líneas con portfolio y atribución separados;
   `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
-  `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. El fitness check
-  backend pasa con 324 archivos de producción y 3 excepciones justificadas; frontend pasa sin excepciones.
+  `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. Además, los puertos
+  de recomendaciones y conexiones cloud componen capacidades cohesivas sin superar 400 líneas. El fitness check
+  backend pasa con 340 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 

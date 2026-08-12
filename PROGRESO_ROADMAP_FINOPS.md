@@ -27,8 +27,8 @@
 - Se añadió `GET /api/v1/agent/quality`, protegido por `AGENT_OBSERVE`, para medir por tenant la tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, resultado verificado y latencia/tokens de las trazas IA.
 - El reporte desglosa recomendaciones por tipo, regla determinística y proveedor. La extracción tolera las formas históricas de evidencia y agrupa explícitamente lo que no tiene regla como `SIN_REGLA_DETERMINISTICA`; no usa coincidencias fuzzy ni datos de otro tenant.
 - La UI de `Agente IA > Evidencia` muestra la ventana, indicadores, desglose y notas de interpretación. El costo de tokens solo aparece cuando existen `AI_INPUT_COST_PER_MILLION_TOKENS_USD` y `AI_OUTPUT_COST_PER_MILLION_TOKENS_USD`; de lo contrario se declara no configurado.
-- Verificación: `AgentQualityService.test.ts` 2/2, `AgentController.test.ts` 2/2, typecheck backend, arquitectura 338 archivos/3 excepciones, typecheck frontend, lint dirigido y build/bundle frontend aprobados. Se agregó `agentQuality.integration.test.ts` para la siguiente ejecución PostgreSQL aislada.
-- Pendiente: ejecutar la integración aislada con el nuevo caso, validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
+- Verificación: `AgentQualityService.test.ts` 2/2, `AgentController.test.ts` 2/2, integración aislada `npm run test:integration:agent-quality` 1/1, typecheck backend, arquitectura 340 archivos/1 excepción, typecheck frontend, lint dirigido y build/bundle frontend aprobados.
+- La integración aislada del nuevo caso ya está ejecutada; queda validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
 - El informe de calidad usa paginación keyset de 1.000 filas y agregación incremental para que ventanas históricas grandes no se materialicen en una única respuesta de PostgreSQL ni en un lote sin límite del repositorio.
 - `202608120001_quality_report_keyset_indexes` quedó aplicada y verificada en Supabase; la consulta permanente `npm run db:verify:quality-indexes` confirma ambos índices y sus planes `Index Only Scan Backward`.
 - Se retiraron los fallbacks `NVIDIA_*`/`NIM_*` del lector de configuración y se añadió una regresión que falla cerrado cuando solo existen variables heredadas; el contrato vigente es `AI_*`.
@@ -132,8 +132,8 @@
   sintácticamente con PyYAML. No se hizo push ni merge.
 - Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
   archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
-  La última verificación pasó con 324 archivos backend/3 excepciones y 93 archivos frontend/0 excepciones;
-  las excepciones no se declaran resueltas y se revisarán conforme avance MOD-001.
+  La verificación vigente pasa con 340 archivos backend/1 excepción y 97 archivos frontend/0 excepciones;
+  los contratos de recomendaciones y conexiones cloud ya no requieren excepciones.
 - El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
   queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
 - `RecommendationAnalysisRunsPanel.tsx` quedó en 257 líneas al separar el detalle de corrida, la presentación de
