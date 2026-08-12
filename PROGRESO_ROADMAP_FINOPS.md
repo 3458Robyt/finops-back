@@ -61,7 +61,7 @@
   estados y los componentes Metric/Notice; conserva polling cancelable, retry, cancelación y navegación al detalle.
   `AgentSettings.tsx` quedó en 149 líneas al separar su controlador de carga, formularios y canales en
   `useAgentSettingsController.ts`. El typecheck, lint, build, bundle budget y architecture check del frontend
-  pasaron; el fitness check ya no tiene excepciones frontend.
+  pasaron; el fitness check ya no tiene excepciones frontend. El smoke Playwright sin API/BD pasó 1/1.
 - Se agregó `docs/MODELO_AMENAZAS_STRIDE.md` como matriz compacta de amenazas para identidad, cambio de tenant,
   administración MSP, credenciales cloud, ingesta, IA, ejecución manual, asignación, cierres, workers y mensajería.
   El documento separa controles implementados, evidencia y riesgo residual; no sustituye una prueba DAST externa.

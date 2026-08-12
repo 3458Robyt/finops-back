@@ -55,7 +55,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
   `PrismaCloudConnectionConfigurationRepository` (110 líneas), y los 23 escenarios de caracterización continúan aprobados.
 - En el frontend, el detalle de corridas de análisis y el estado de Agente IA están separados de sus vistas:
   `RecommendationAnalysisRunsPanel.tsx` tiene 257 líneas y `AgentSettings.tsx` 149; el fitness check frontend
-  no conserva excepciones.
+  no conserva excepciones. El smoke Playwright del shell de login pasa 1/1 sin requerir API ni base de datos.
 - La analítica técnica separa consulta, contratos, overview, cobertura y utilidades matemáticas; el servicio
   coordinador quedó en 202 líneas y conserva los 12 escenarios de series, cobertura, recursos duplicados y raw.
 - La persistencia de ingesta mantiene una fachada estable y ahora delega la normalización de recursos derivados de
