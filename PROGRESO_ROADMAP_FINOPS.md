@@ -37,6 +37,9 @@
 - La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
   a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
   la suficiencia técnica y la verificación inmutable.
+- `PrismaCloudIngestionJobRepository` quedó en 434 líneas al extraer la persistencia de filas FOCUS, muestras
+  técnicas, batching y reconciliación exacta a `PrismaIngestionSamplePersistence.ts`; los contratos de ingesta,
+  deduplicación y linkage permanecen sin cambios. Typecheck y 38 pruebas focalizadas de ingesta pasaron.
 - `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
   conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
   `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
