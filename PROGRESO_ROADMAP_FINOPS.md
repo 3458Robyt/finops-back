@@ -28,6 +28,9 @@
   `ingestionResourceNormalizer.ts`; se agregaron pruebas de normalización y no se modificó el contrato de ingesta.
 - El proveedor de llamadas IA y auditoría de artefactos se aisló en `finOpsArtifactAiRunner.ts` (152 líneas);
   `FinOpsArtifactGenerator` quedó en 234 líneas y conserva la orquestación de revisión, normalización y rúbrica.
+- `FinOpsAiService` quedó en 364 líneas al separar los casos de uso en `FinOpsAiChatRunner`,
+  `FinOpsAiExecutionPlanRunner` y `FinOpsAiRecommendationPreparer`; se mantienen la evidencia determinística,
+  la auditoría y las trazas sin cambiar el contrato público.
 - `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
   conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
   `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
