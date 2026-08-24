@@ -10,6 +10,92 @@
 > mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
 > y operación productiva activable cuando exista destino de despliegue.
 
+## Corte de implementación 2026-08-19 — ingesta OCI/FOCUS y métricas nativas
+
+La implementación del flujo de ingesta se validó con datos reales de `Tak 2.0` y dejó
+la plataforma preparada para continuar el backfill sin mezclar fuentes ni perder la
+identidad de los streams. El catálogo contiene 296 definiciones confirmadas de 663
+descubiertas, el inventario normalizado tiene 994 recursos, y Supabase conserva 82.400
+muestras técnicas separadas en MEAN, MIN, MAX y P95. La conexión ya puede descubrir el
+FOCUS administrado por OCI; cuando el periodo solicitado no tiene objetos FOCUS, `AUTO`
+usa OCI Usage API como fallback exclusivo.
+
+### Completado en este corte
+
+- Consultas OCI Monitoring consolidadas por tenancy con `compartmentIdInSubtree=true`
+  y fallback por compartimento solo ante una denegación explícita.
+- Rate limiting compartido por tenancy para descubrimiento, métricas y jobs concurrentes;
+  dos jobs reales procesaron 19.776 muestras cada uno con 100 % de enlace a recursos.
+- Descubrimiento de namespaces sin lista fija, normalización de OCIDs y preservación de
+  dimensiones/hash de stream en persistencia y agregados.
+- FOCUS autodetectado en `bling/<tenancy>/FOCUS Reports`, filtrado por periodo antes de
+  persistir y fallback Usage API sin sumar ambas fuentes.
+- Validación OCI con deadline, señales cancelables y cliente Usage API sin el
+  circuit-breaker incompatible; las cinco capacidades de la conexión empresarial están
+  disponibles en el canary controlado.
+- Separación del helper de metadatos de definiciones para mantener el repositorio de
+  jobs bajo el límite arquitectónico sin cambiar contratos.
+- Backend `test:all` (495 pruebas, 11 omitidas), frontend build y Graphify actualizados.
+
+### Pendiente inmediato
+
+1. Continuar y observar los 129 jobs técnicos `PENDING` del backfill de Tak 2.0; no
+   declarar cobertura histórica completa hasta que finalicen o se documenten sus
+   ventanas sin datos.
+2. Perfilar la persistencia bulk en Supabase remoto: la consulta OCI ya está optimizada,
+   pero la actualización de resúmenes/transacciones sigue siendo el cuello de botella.
+3. Enriquecer los 19 recursos sin nombre legible y medir la cobertura por namespace,
+   recurso y periodo antes de habilitar nuevas recomendaciones técnicas.
+4. Resolver `QA-003` ejecutando la integración PostgreSQL aislada por archivo y
+   cerrando todos los pools en `finally`.
+
+## Corte histórico de implementación 2026-08-18 — validación con Tak 2.0
+
+La fase de estabilización de datos reales quedó ejecutada para la conexión OCI de
+`Tak 2.0`: inventario multirregión de 953 recursos, proyección de 3.267 filas reales
+de Usage API, reconciliación de referencias históricas y 21.536 muestras técnicas
+vinculadas. El producto ya puede cruzar costos, inventario y métricas sin inventar
+recursos; la readiness queda `PARTIAL` cuando la evidencia no permite un vínculo o una
+recomendación técnica segura.
+
+### Completado en este corte
+
+- Inventario OCI normalizado y reconciliación de OCID históricos ausentes del
+  Resource Search.
+- Proyección de costos por fuente, período, región, servicio, SKU y recurso con
+  clasificación explícita de filas enlazadas, históricas, agregadas y no soportadas.
+- Catálogo OCI de métricas descubierto y confirmación segura solo para recursos
+  presentes en el inventario.
+- Persistencia bulk de muestras técnicas con identidad por estadística, granularidad,
+  timestamp y dimensiones.
+- Compuerta de evidencia y normalizador de recomendaciones reforzados para impedir
+  recomendaciones ejecutables cuando faltan métricas técnicas o el vínculo de
+  recurso es débil.
+- Canary live aislado de chat/recomendaciones/auditoría IA aprobado con proveedor real.
+- Backend y frontend verificados con typecheck, pruebas unitarias/offline, lint,
+  arquitectura y build.
+
+### Siguiente orden recomendado
+
+1. Resolver `QA-003`: evitar transacciones abiertas y cleanup bloqueado en la suite
+   PostgreSQL aislada remota; ejecutar por archivo y cerrar siempre clientes/pools.
+2. Perfilar la persistencia de muestras técnicas en Supabase (transacción, triggers,
+   índices, pool y capacidad) antes de ampliar el backfill de Tak 2.0.
+3. Mejorar la cobertura técnica real de OCI donde el tenant la exponga y mantener la
+   abstención para CPU/memoria no disponibles.
+4. Convertir la falta de tags y los costos no enlazables en oportunidades visibles,
+   sin convertirlas en ahorro estimado ni recomendación ejecutable.
+5. Mantener FOCUS como fuente operativa primaria y documentar OCI Usage API como
+   redundancia validada; AWS permanece bloqueado hasta disponer de cuenta y rol reales.
+
+### Estado de beta
+
+La beta es funcional para desarrollo manual y para validar el flujo empresarial con
+Tak 2.0, pero todavía no se considera lista para operación 24/7. Persisten como
+trabajo abierto la latencia de persistencia y la suite de integración remota; los
+workers continuos, secret manager externo, observabilidad centralizada y AWS siguen
+diferidos o bloqueados según `docs/DEUDA_TECNICA.md`.
+
 > Documento de **propuesta y planificación de producto**. Traza el camino desde el estado actual
 > hacia una versión terminada, por fases y con dependencias explícitas.
 >
@@ -17,7 +103,18 @@
 > `PROGRESO_ROADMAP_FINOPS.md` (bitácora de avance). Este documento es el **mapa hacia adelante**;
 > la bitácora registra lo que ya se hizo.
 >
-> Última revisión: 2026-08-12.
+> Última revisión: 2026-08-19.
+
+> **Corte de implementación 2026-08-16:** la ingesta técnica OCI de la conexión personal
+> fue reejecutada para 90 días con estadísticas nativas MEAN, MIN, MAX y P95. Se eliminó
+> el índice único legado que descartaba estadísticas distintas de MEAN y se alinearon las
+> ventanas futuras al límite de 30 minutos. La capacidad directa de costos OCI sigue
+> bloqueada por IAM; FOCUS continúa operativo como fuente de costos.
+
+> **Corte de validación 2026-08-13:** se reconstruyó `dist` antes de repetir el canary comparativo de aprendizaje.
+> El proveedor respondió y ambos brazos fueron válidos (3/3 recomendaciones aprobadas, ahorros no negativos), pero
+> el candidato obtuvo 90 frente a 92 del baseline. La promoción GLOBAL permaneció bloqueada por la compuerta estricta;
+> no se interpreta una corrida válida sin mejora como éxito del aprendizaje.
 
 > **Corte de implementación 2026-08-12:** se añadieron escenarios de pronóstico en analítica,
 > resumen ejecutivo encolado para correo/Telegram, desactivación reversible de memorias del agente
@@ -27,6 +124,12 @@
 > precisión o coste si no hay ground truth o precios configurados.
 > La evidencia no se convierte en ahorro ni acción cloud automáticamente; AWS real y OCI Usage API
 > continúan bloqueados por dependencias externas.
+
+> **Aprendizaje global 2026-08-13:** los patrones recurrentes se mantienen como candidatos `SHADOW` y las memorias
+> GLOBAL activas se consultan por alcance, sin depender de FTS. `GlobalLearningPromotionService` exige `MASTER_ADMIN`,
+> evidencia comparativa live, mejora estricta, auditoría durable y rollback. El canary reconstruido autenticó correctamente
+> tras la migración portable `202608120006_schema_portable_rls_helpers` y produjo 3/3 recomendaciones aprobadas por brazo,
+> pero candidate obtuvo 90 frente a 92 de baseline; `AI-008` sigue abierto y no se activó ninguna memoria GLOBAL.
 
 > La sanitización de errores también consume los valores completos de headers `Authorization`/`Proxy-Authorization`
 > y `Cookie`/`Set-Cookie`, incluyendo bearer tokens, antes de persistirlos o devolverlos. La regresión está cubierta
@@ -67,10 +170,20 @@
 > para compatibilidad; esta separación no implica que el desarrollo local deba
 > mantener procesos permanentes.
 >
+> **Cierre incremental 2026-08-12:** la suite PostgreSQL aislada completa aplicó las 64 migraciones locales y pasó
+> 10 archivos/17 pruebas más auth cleanup y heartbeat/readiness; se corrigieron la rama DELETE del worker de limpieza
+> en `202608120007` y los grants API residuales en `202608120008`. Supabase principal tiene 64 migraciones aplicadas,
+> con ACL de helpers FinOps verificada sin exposición a roles API. No se ejecutaron pruebas destructivas contra datos de negocio.
+
+> **Smoke API 2026-08-12:** `npm run test:api:smoke:isolated` pasó 35 verificaciones generales y el smoke de
+> onboarding: autenticación HTTP, lecturas operativas, asignación/presupuestos, cambio de tenant, mutaciones
+> denegadas al viewer, aislamiento cross-tenant y redacción de secretos. El schema y las credenciales temporales
+> se eliminaron al finalizar.
+>
 > **Cierre incremental 2026-08-11:** se completó el ciclo persistido de sesiones, el saneamiento de logs,
 > la cobertura explícita del inventario OCI, la frescura de validación del scheduler y controles determinísticos
 > adicionales para utilización, alcance de planes, idioma, ahorro máximo, payloads ejecutables y salida sensible.
-> El corte vigente es `npm run test:unit`: 106 archivos aprobados, 4 omitidos, 440 pruebas pasadas y 10 omitidas; IA offline 24/24. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
+> El corte vigente es `npm run test:all`: 109 archivos aprobados, 5 omitidos, 451 pruebas pasadas y 11 omitidas; IA offline 25/25. AWS real, OCI Usage API, rate limiting distribuido, secret manager externo y operación 24/7 siguen
 > bloqueados o diferidos según la deuda técnica; no se simulan para declarar el roadmap completo.
 >
 > Las secciones con fecha conservan snapshots históricos y no deben usarse para inferir conteos actuales.
@@ -79,6 +192,13 @@
 
 > **Modularización vigente:** los últimos refactors separaron valor realizado, procesamiento de análisis IA y
 > motor determinístico de asignación sin cambiar contratos HTTP, puertos de dominio ni invariantes financieras.
+
+> **Estabilización empresarial 2026-08-14:** ya están implementados los controles de
+> estadísticas nativas OCI/AWS, filtros server-side del inventario, invitaciones
+> de portal cliente con entrega SMTP opcional y auto-vinculación segura de Telegram. Las seis migraciones
+> nuevas ya fueron aplicadas en Supabase; `prisma migrate status` confirma 70/70,
+> Security Advisor no tiene lints y Performance Advisor no tiene WARN. El canary RLS remoto pasó. La validación de la cuenta
+> empresarial queda pendiente de rotación de credenciales; AWS continúa en standby.
 
 ---
 
@@ -113,6 +233,9 @@ reglas TAK y trazas de contexto. El grafo visual fue retirado por baja utilidad 
   el resumen no confunde decisión aprobada con memoria aprobada y conserva los estados `PENDING`, `APPROVED`,
   `REJECTED`, `SKIPPED` y `ERROR`. Las memorias LOCAL auditadas pueden activarse; los patrones GLOBAL recurrentes
   pasan primero por un candidato `SHADOW` con golden scenarios y esperan un canary live antes de afectar el contexto.
+  La promoción manual está protegida por `GlobalLearningPromotionService`, exige `MASTER_ADMIN`, comparación estricta
+  y rollback; el canary live más reciente fue rechazado por no demostrar mejora estricta (90 vs. 92), no por una falla
+  de seguridad (`AI-008`).
 
 ### Base estructural lista, con validaciones productivas aún pendientes
 - **Ingesta:** existen workers persistentes, scheduler, lectura S3/OCI, parser FOCUS streaming y
@@ -166,7 +289,8 @@ son ejecutables **sin credenciales**; las Fases 2–4 las requieren.
 - **Endurecimiento de prompts medido** contra la rúbrica y los golden scenarios ya construidos.
 - **Aprendizaje observable:** el resumen IA por tenant muestra decisiones humanas, estados de auditoría, memorias
   activas y candidatos globales en shadow; el agente no aprende cuando el auditor falla o la evidencia es insuficiente.
-  La promoción global requiere comparar calidad con y sin el candidato en un canary live aislado (`AI-008`).
+  La promoción global requiere comparar calidad con y sin el candidato en un canary live aislado (`AI-008`). El
+  mecanismo de promoción y rollback ya está implementado, pero no se habilita sin evidencia válida de ambos brazos.
 - **Recuperación MFA:** códigos aleatorios de un solo uso, almacenados como hash, rotables y consumidos
   atómicamente con el challenge; las políticas pre-auth ya no contienen recursión RLS.
 - Mantener `REFACTOR_PLAN.md` como referencia histórica; no abrir nuevas tareas allí.
@@ -202,7 +326,8 @@ vínculo, backfill paginado/idempotente, cobertura visible en Ingesta y guardrai
 `cloudResourceId` para evidencia técnica. El análisis por recurso persiste el vínculo canónico y sus
 índices ya están aplicados en Supabase. La cobertura histórica OCI se cerró mediante Resource Search y
 referencias históricas exactas derivadas de OCID: 8.173/8.173 costos elegibles quedaron enlazados, mientras
-555 identificadores de telemetría no soportados y 432 costos sin conexión se excluyen explícitamente del
+555 identificadores de telemetría no facturables (`INVENTORY_RESOURCE_NOT_FOUND`) y 432 costos sin conexión
+(`CONNECTION_NOT_AVAILABLE`) se excluyen explícitamente del
 denominador técnico. Falta validar frecuencia/volumen productivo. Habilita recomendaciones
 con evidencia `COST_USAGE_AND_TECHNICAL` (rightsizing técnico con datos reales, no inferido de FOCUS).
 - El job de inventario OCI controlado más reciente persistió 1 recurso en 3,4 s con 2 llamadas SDK.

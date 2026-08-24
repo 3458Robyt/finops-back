@@ -1,12 +1,151 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-12
+Fecha: 2026-08-19
 
 ## Resumen
 
 La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/PostgreSQL como base principal, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas.
 
-## Corte vigente 2026-08-12
+## Corte operativo verificable 2026-08-19 — ingesta OCI, FOCUS y métricas nativas
+
+La implementación del flujo inventario → descubrimiento → confirmación → backfill se
+validó con la conexión empresarial `Tak 2.0`, sin exponer credenciales. Los siguientes
+conteos son del corte real de Supabase y deben interpretarse como cobertura disponible,
+no como una afirmación de que el backfill histórico ya terminó.
+
+### Ingesta y fuentes de costo
+
+- La validación controlada reporta disponibles `IDENTITY`, `INVENTORY`, `COSTS`,
+  `METRICS` y `STORAGE` para OCI.
+- La autodetección de FOCUS encuentra el almacenamiento administrado por OCI en el
+  namespace `bling`, bajo el prefijo `FOCUS Reports`. El bucket empresarial observado
+  contiene objetos históricos de 2024; para periodos actuales sin objeto FOCUS el modo
+  `AUTO` usa OCI Usage API como fallback.
+- El corte contiene **602 líneas FOCUS** históricas y **621 métricas de costo de
+  PROVIDER_API**. Las fuentes no se suman para el mismo periodo: cada corrida conserva
+  una única procedencia y la cobertura registra el fallback.
+- Se filtraron objetos por fecha del path y filas por `ChargePeriodStart/End` antes de
+  persistir; esto evita importar reportes históricos fuera de la ventana solicitada.
+
+### Inventario y métricas técnicas
+
+- El inventario actual de la conexión contiene **994 recursos**: 918 provenientes de
+  OCI Resource Search, 5 de OCI Compute SDK, 11 de definiciones métricas y referencias
+  históricas de costos; **19** todavía no tienen nombre legible y permanecen como
+  deuda de enriquecimiento, no como nombres inventados.
+- Se mantienen **663 definiciones** en el catálogo: **296 confirmadas/habilitadas** y
+  **380 descubiertas aún deshabilitadas**. La confirmación solo habilita streams con
+  identidad y recurso suficientes.
+- Hay **82.400 muestras técnicas** y **1.324 resúmenes de streams**. Las cuatro
+  estadísticas OCI nativas están separadas: **20.600 MEAN, 20.600 MIN, 20.600 MAX y
+  20.600 P95**; cada muestra conserva namespace, región, compartimento, dimensiones,
+  hash de stream, timestamp y granularidad.
+- Dos jobs concurrentes de una ventana de 24 horas a 1h procesaron cada uno 19.776
+  muestras mediante 776 llamadas OCI, enlazando el 100 % de sus muestras a 27 recursos.
+  El rate limiter está compartido por tenancy para no multiplicar la tasa al usar
+  varias regiones o jobs en paralelo.
+
+### Estado de operación y verificación
+
+- El backfill empresarial continúa en cola: hay **129 jobs técnicos PENDING**, además
+  de 48 técnicos SUCCESS, 6 de inventario SUCCESS, 7 de facturación SUCCESS, 1
+  SKIPPED y 1 CANCELLED en el corte. No se debe presentar la cobertura actual como
+  backfill completo.
+- Backend: `npm run test:all` aprobó **116 archivos, 495 pruebas y 11 omitidas**;
+  IA offline **25/25**, arquitectura, typecheck, build y release hygiene aprobados.
+  Frontend: release hygiene, typecheck, build y presupuesto de bundle aprobados.
+- `graphify update .` se ejecutó correctamente. Graphify reportó 5.299 nodos y
+  14.500 relaciones; quedan advertencias de extracción SQL por dependencia opcional y
+  un test de integración con sintaxis parcial, sin bloquear el build.
+
+## Corte operativo verificable 2026-08-18 — Tak 2.0
+
+Este fue el corte de referencia anterior para validar la plataforma con una cuenta OCI
+empresarial con uso real. El corte vigente está arriba, fechado 2026-08-19. Los conteos
+distinguen inventario vivo, referencias históricas de costos, muestras técnicas y
+evidencia apta para recomendaciones; no se presentan como cobertura total cuando el
+proveedor no entrega una relación recurso-métrica confiable.
+
+### Inventario y costos
+
+- La conexión OCI de `Tak 2.0` tiene **953 recursos normalizados** después de la
+  sincronización multirregión.
+- Una ejecución real de OCI Usage API devolvió **3.267 filas** con moneda COP y sin
+  moneda faltante. La proyección persistió **3.158 filas**, creó **30 referencias
+  históricas** para OCID válidos ausentes del inventario vivo y dejó **1.520 filas
+  enlazadas** durante la primera reconciliación.
+- El estado agregado actual de la base contiene **3.683 métricas de costo**, de las
+  cuales **1.478 son elegibles**, **1.468 están enlazadas** y **10 permanecen sin
+  enlace actual**. Las filas no enlazables restantes corresponden principalmente a
+  identificadores lógicos de servicio, agregados de OCI o recursos que no pueden
+  resolverse honestamente; no se crean recursos falsos para forzar el join.
+- La cobertura de tags requeridos (`environment`, `owner`, `application` y
+  `cost_center`) es actualmente **0 %** en el inventario Tak 2.0. Esto se expone como
+  oportunidad de calidad de datos y limita el análisis de distribución, no bloquea la
+  ingesta básica.
+
+### Métricas técnicas
+
+- Se almacenaron **21.536 muestras técnicas** de Tak 2.0 y el 100 % de esas muestras
+  tiene vínculo con un recurso normalizado.
+- La conexión tiene **197 definiciones confirmadas respaldadas por recursos** y
+  **660 definiciones descubiertas/persistidas** en el catálogo. La confirmación segura
+  solo habilita streams cuyo recurso existe en el inventario.
+- La cuenta actual no expone definiciones suficientes de `oci_computeagent` ni
+  `oci_vmi_resource_utilization`; por tanto, no se afirma que exista cobertura de
+  CPU/memoria de Compute ni se generan recomendaciones de rightsizing basadas en
+  esas métricas. PostgreSQL, volúmenes, VNIC y otros namespaces quedan sujetos a la
+  cobertura real devuelta por OCI.
+- El resultado de readiness es `PARTIAL`: hay evidencia técnica vinculada, pero no
+  todos los costos tienen recurso resoluble ni todas las familias técnicas necesarias
+  para una recomendación ejecutable.
+
+### IA y recomendaciones
+
+- El canary live aislado con `gpt-5.4-mini` pasó chat en español, generación,
+  evidencia determinística, auditoría y trazas: **2 recomendaciones**, ambas
+  aprobadas por el auditor, sin ahorros negativos; latencia aproximada **62,2 s** de
+  generación y **68,0 s** total, con **4.025 tokens estimados**.
+- Las recomendaciones técnicas sin evidencia suficiente se normalizan como
+  `TECHNICAL_VALIDATION_REQUIRED`, con autorización operativa `NONE` y sin ahorro
+  ejecutable inventado. Las recomendaciones financieras se mantienen separadas de
+  las técnicas.
+
+### Rendimiento y verificación
+
+- La persistencia bulk redujo el tiempo, pero sigue siendo el principal cuello de
+  botella contra Supabase remoto: aproximadamente **256,8 s para 15.848 muestras** y
+  **318,2 s para 13.044 muestras**. La mejora adicional requiere perfilar transacciones,
+  pool, triggers y capacidad de la base; no se debe eliminar información raw para
+  ocultar la latencia.
+- Backend: arquitectura, typecheck, suite unitaria, IA offline y build aprobados
+  (**487 pruebas pasadas y 11 omitidas** en el corte ejecutado).
+- Frontend: typecheck, lint, build y arquitectura aprobados; la verificación de
+  release hygiene cubrió 135 archivos.
+- La suite PostgreSQL aislada completa **no se declara aprobada**: quedó bloqueada
+  después de más de 10 minutos por sesiones `idle in transaction` durante fixtures y
+  cleanup en Supabase remoto. El schema temporal fue eliminado manualmente; el caso
+  queda registrado como deuda `QA-003`.
+
+## Corte operativo 2026-08-16 — Ingesta OCI personal y estadísticas nativas
+
+- Se aplicaron en Supabase las migraciones `202608160002_oci_ingestion_configuration` y
+  `202608160003_drop_legacy_metric_unique`. La unicidad efectiva de
+  `resource_metric_samples` incluye ahora `statistic` y `granularity_seconds`, por lo que
+  MEAN, MIN, MAX y P95 no se descartan entre sí.
+- Las 11 definiciones técnicas OCI de la conexión personal quedaron configuradas con
+  MEAN, MIN, MAX y P95. Se completó un backfill de 90 días dentro de la retención móvil
+  del proveedor. La base contiene 56.427 muestras MEAN y 37.210 de cada estadística
+  nativa MIN, MAX y P95; las estadísticas nativas cubren 2026-05-18 a 2026-08-16 19:00
+  UTC y MEAN conserva histórico desde 2026-05-04.
+- No quedaron trabajos `PENDING` o `RUNNING` para esa conexión. Los trabajos históricos
+  fallidos o cancelados se conservaron para trazabilidad; no se borraron datos de negocio.
+- Las ventanas futuras de métricas OCI se alinean al límite de 30 minutos para evitar
+  duplicados por desplazamiento de minutos. La fuente de costos sigue siendo FOCUS;
+  la capacidad directa `COSTS` de OCI continúa denegada por IAM, mientras Object Storage
+  está disponible para los reportes FOCUS.
+
+## Corte vigente 2026-08-13
 
 - La observabilidad operativa ya tiene heartbeat durable por instancia en
   `runtime_process_heartbeats`: API, worker y scheduler registran `RUNNING`,
@@ -40,9 +179,12 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante `PATCH /api/v1/ai/learning/memories/:memoryId/deactivate`; la operación exige autorización, respeta el alcance tenant/global y deja auditoría.
 - La trazabilidad incluye un catálogo determinista de oportunidades de calidad de datos antes de la IA. Usa reglas versionadas sobre vínculos, frescura, evidencia técnica y etiquetas; no inventa ahorros ni autoriza acciones cloud.
 - El módulo Agente IA expone `/api/v1/agent/quality`, un reporte tenant-scoped de calibración que separa tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, desglose por tipo/regla/proveedor y latencia/tokens del LLM. La aprobación se declara como proxy de calidad, no como precisión ML absoluta; el coste de tokens solo se estima si se configuran precios explícitos por millón de tokens.
-- La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011, 012 y `202608120005` sin borrar datos. Prisma reporta la base actualizada.
-- Validación posterior: backend `npm run test:unit` con 106 archivos aprobados, 4 omitidos, 440 pruebas pasadas y 10 omitidas; IA offline 24/24; arquitectura, typecheck y build aprobados. La integración PostgreSQL desde migraciones cero pasó 5 archivos y 6 pruebas en un schema aislado de Supabase, que fue eliminado al finalizar; además, `npm run test:integration:process-heartbeat` comprobó liveness durable, readiness de migraciones/lease, RLS por proceso y transición a `STOPPED`. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- La migración `202608110012_executive_summary_delivery` está aplicada en Supabase. La migración 009 se regularizó con `migrate resolve` porque el enum de la cola ya existía; después se aplicaron 010, 011, 012, `202608120005` y `202608190001` sin borrar datos. Las migraciones de ingesta empresarial `202608170001`–`202608190001` también están aplicadas y `npx prisma migrate status` confirma que las 79 migraciones están al día.
+- Validación posterior: backend `npm run test:all` con 110 archivos aprobados, 5 omitidos, 462 pruebas pasadas y 11 omitidas; IA offline 25/25; arquitectura (365/1), typecheck, build y release hygiene (619 rutas) aprobados. Supabase recibió las migraciones del goal y el canary `npm run test:canary:runtime-rls` pasó con dos tenants, tablas nuevas y cero visibilidad cross-tenant. Frontend typecheck, lint, build, smoke E2E y presupuesto de bundle aprobados. El E2E completo de frontend requiere el entorno de aplicación aislado.
+- El smoke API reproducible `npm run test:api:smoke:isolated` pasó en un schema separado: 35 checks generales, onboarding cloud, 13 mutaciones administrativas rechazadas para `VIEWER`, cambio de tenant, aislamiento cross-tenant y redacción de secretos. El runner inicia el backend con `DB_RUNTIME_ENFORCE=true`, apaga workers no requeridos y elimina schema/fixtures en `finally`.
 - En la revalidación del corte también pasaron los runners aislados de auth cleanup, agent quality, resource lineage y cost allocation; todos usan allowlist de schemas, límites de ejecución y cleanup en `finally`. La inspección final no encontró schemas `finops_e2e_*` residuales.
+- `npm run test:integration` exige explícitamente `TEST_DATABASE_URL` y `ALLOW_DESTRUCTIVE_TEST_DATABASE=true`; sin esa
+  infraestructura devuelve un skip seguro en lugar de presentar errores de fixtures como fallos de la aplicación.
 - La lógica de calibración tiene pruebas unitarias determinísticas y una integración aislada aprobada (`npm run test:integration:agent-quality`, 1/1) para comprobar consultas reales y aislamiento entre tenants con dos fixtures separados. El reporte lee recomendaciones y trazas con paginación keyset de 1.000 filas por consulta, agregando en el servicio sin cargar una respuesta histórica ilimitada; las cifras de producción aparecerán cuando existan decisiones y mediciones verificadas en la ventana solicitada.
 - La analítica expone `/api/v1/analytics/opportunities` como ruta canónica. `/api/v1/analytics/anomalies` se conserva
   solo como alias histórico deprecado y mantiene su payload legado para no romper clientes antiguos; las vistas y
@@ -53,6 +195,8 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - La entrega de correo y Telegram está separada del orquestador en `OutboundChannelDeliveryService`, que persiste
   resultados `SENT`, `SKIPPED` o `FAILED` y sanitiza errores de proveedores. El historial y los reintentos siguen
   siendo durables; los canaries externos continúan pendientes y los canales permanecen apagados por defecto.
+- Las invitaciones de cliente envían el enlace directamente por SMTP cuando el correo está habilitado; el registro
+  `CLIENT_INVITATION` conserva únicamente una previsualización segura y metadatos, nunca el token de un solo uso.
 - Los controladores de agente, IA, analítica, mensajería y Telegram comparten `respondWithFinOpsError`; el helper
   mantiene códigos HTTP coherentes, `diagnosticId` de auditoría IA y redacción de errores conocidos e inesperados.
   `safeErrorMessage` también consume bearer tokens y valores de cookies completos antes de que lleguen a logs o respuestas.
@@ -64,14 +208,15 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
   conserva registro, credenciales, validación y previsualización, y `CloudConnectionService` mantiene la fachada
   pública sin modificar contratos HTTP.
 - La facturación OCI vive en `OciBillingCollector`, que separa FOCUS streaming y Usage API de la fachada SDK; la
-  ruta Usage API está caracterizada offline, pero su canary real sigue bloqueado por IAM (`OCI-001`).
+  ruta Usage API ya pasó un canary read-only real con Tak 2.0. FOCUS sigue como fuente primaria y la capacidad
+  directa `COSTS` continúa sin ser requisito de esta ruta.
 - La generación de ventanas de backfill técnico está aislada en `CloudIngestionBackfillService`; conserva la
   idempotencia por ventana y la fachada de ingesta no cambia.
 - El caso de uso de generación de recomendaciones está aislado en `FinOpsAiRecommendationRunner`; la fachada IA
   conserva contratos públicos y la secuencia evidencia → generación → auditoría → persistencia → trazas.
 
 La superficie de amenazas de la beta está documentada en `docs/MODELO_AMENAZAS_STRIDE.md`, complementando las
-matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público, AWS real y OCI Usage API)
+matrices de autenticación y autorización. Los riesgos externos (DAST, despliegue público y AWS real)
 siguen explicitamente diferenciados de los controles ya verificados.
 
 ## Cierre incremental 2026-08-11
@@ -104,13 +249,14 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - Verificación histórica: backend `test:unit` con 89 archivos, 351 pruebas pasadas y 9 omitidas; escenarios IA
   offline 24/24; typecheck, build y audit de producción aprobados. Frontend typecheck, lint, build y audit de
   producción también pasan. El chunk principal frontend es de aproximadamente 226 kB y el presupuesto de 500 kB
-  queda protegido por `check:bundle`. AWS real y OCI Usage API continúan bloqueados externamente.
+  queda protegido por `check:bundle`. AWS real continúa bloqueado externamente; OCI Usage API ya tiene canary
+  read-only validado en Tak 2.0.
 - La modularización estructural más reciente mantiene contratos públicos y redujo tres hotspots del backend:
   `PrismaValueRealizationRepository` quedó en 47 líneas con portfolio y atribución separados;
   `RecommendationAnalysisService` quedó en 104 líneas con el procesador de corridas/auditoría separado; y
   `PrismaCostAllocationRepository` quedó en 258 líneas con el motor determinístico aislado. Además, los puertos
   de recomendaciones y conexiones cloud componen capacidades cohesivas sin superar 400 líneas. El fitness check
-  backend pasa con 358 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
+  backend pasa con 359 archivos de producción y 1 excepción justificada (`goldenScenarios.ts`); frontend pasa sin excepciones.
 
 ## Ingesta e inventario cloud
 
@@ -121,7 +267,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - Las muestras tecnicas nuevas se enlazan a `cloudResourceId` y se reconcilian muestras anteriores por conexion/recurso.
 - Costos, muestras y recomendaciones tienen `cloudResourceId`/`resourceLinkReason`; el enlace canónico exige `cloudConnectionId + externalResourceId` exactos, sin fuzzy matching.
 - La ingesta persiste el orden inventario → costos/métricas, el resumen de linkage en cada job y el endpoint `/api/v1/ingestion/resource-linkage` muestra cobertura por tabla y por recurso en `Ingesta`.
-- El backfill exacto e idempotente de referencias OCI históricas se aplicó en Supabase: creó 11 identidades derivadas de OCID (4 boot volumes, 2 backups, 2 instancias y 3 VNIC) sin sobrescribir inventario vivo. En la cuenta OCI actual quedaron 8.173/8.173 costos elegibles enlazados (100 %): 36 a recursos vivos y 8.137 a referencias históricas; 555 identificadores de telemetría no soportados y 432 registros sin conexión se conservan como costos financieros, pero quedan fuera del denominador técnico. Las 19.367/19.367 muestras técnicas continúan enlazadas.
+- El backfill exacto e idempotente de referencias OCI históricas se aplicó en Supabase: creó 11 identidades derivadas de OCID (4 boot volumes, 2 backups, 2 instancias y 3 VNIC) sin sobrescribir inventario vivo. El dry-run vigente confirma 8.173/8.173 costos elegibles enlazados (100 %): 36 a recursos vivos y 8.137 a referencias históricas; además clasifica 555 identificadores de telemetría no facturables como `INVENTORY_RESOURCE_NOT_FOUND` y 432 registros sin conexión como `CONNECTION_NOT_AVAILABLE`. Estos últimos se conservan como costos financieros, pero quedan fuera del denominador técnico. Las 19.427/19.427 muestras técnicas continúan enlazadas.
 - La UI de Ingesta distingue recursos vivos, referencias históricas, costos de servicio/cuenta, falta de conexión, identificadores no soportados, recursos válidos pendientes y ambigüedades. Una referencia histórica exacta no se presenta como recurso actualmente activo.
 - El job controlado de inventario OCI más reciente terminó correctamente en 3,4 s: 2 llamadas SDK,
   1 recurso descubierto y 1 recurso persistido. El scheduler ahora encola INVENTORY antes de costos/métricas,
@@ -164,8 +310,16 @@ siguen explicitamente diferenciados de los controles ya verificados.
   contexto. La tasa de aprobación humana no se mezcla con el veredicto del auditor.
 - Las decisiones auditadas crean memorias LOCAL activas. Los patrones recurrentes que cumplen auditoría y muestra
   mínima se guardan como candidatos GLOBAL inactivos (`learningLifecycle=SHADOW`); la compuerta ejecuta golden
-  scenarios y verifica que no haya referencias tenant-specific. No se activan automáticamente porque todavía falta
-  un canary live aislado que demuestre mejora frente a la línea base sin degradaciones.
+  scenarios y verifica que no haya referencias tenant-specific. Las memorias GLOBAL activas se consultan por alcance
+  y no dependen de que el texto coincida en FTS; las LOCAL mantienen aislamiento por tenant y búsqueda full-text.
+- `GlobalLearningPromotionService` exige actor `MASTER_ADMIN`, evidencia `LIVE_COMPARATIVE_CANARY`, mejora estricta
+  sin degradación y deja auditoría durable; el rollback desactiva la memoria sin borrar el historial. El canary live
+  reconstruido el 2026-08-13 obtuvo 3/3 recomendaciones auditadas en ambos brazos, ahorros no negativos y scores
+  baseline 92/candidate 90; la compuerta rechazó correctamente la promoción por ausencia de mejora estricta y
+  `AI-008` permanece abierto. Las corridas anteriores con HTTP 422 son evidencia histórica del proveedor, no el estado
+  actual de la aplicación.
+- Las trazas de contexto conservan referencias sanitizadas a artefactos, memorias, reglas de tenant y conflictos; la
+  generación expone únicamente metadatos de análisis para comparar latencia, tokens y auditoría.
 - El análisis solicitado desde el detalle 360 se aísla por `externalResourceId`: costo, métricas, prompt, auditoría y rúbrica se limitan al recurso exacto. Las oportunidades relacionadas usan el mismo identificador exacto dentro del tenant.
 - El detalle 360 comunica el nivel de evidencia y los bloqueos de las reglas técnicas; una evidencia limitada solo habilita recomendaciones de validación técnica.
 - Las oportunidades persistidas tienen deduplicación por tenant, cuenta, recurso/candidato, tipo y período factual. Un plan rechazado por el auditor no se guarda ni se muestra como plan reutilizable.
@@ -192,7 +346,7 @@ siguen explicitamente diferenciados de los controles ya verificados.
 - `Asignación de costos` muestra suma SPLIT, preview con período anterior, reglas usadas e impacto financiero por destino, costo compartido, confirmación auditada de `UNALLOCATED`, checklist de estado e historial de cierres. La activación exige preview de la misma configuración; la API incorpora cierre, historial, detalle y comparación de versiones.
 - La interfaz añade un resumen financiero por destino que combina costo cerrado vigente (o costo live identificado como no cerrado), período anterior, variación, presupuesto consumido y ahorro potencial/aprobado/verificado/acumulado sin duplicar el motor financiero.
 - El historial de cierres permite cargar bajo demanda el detalle y comparar versiones, incluyendo hashes, responsable, totales y resultados por destino. El botón `Previsualizar` no persiste reglas: el frontend distingue explícitamente la acción del formulario antes de llamar a la API.
-- El repositorio contiene 61 migraciones Prisma; las migraciones `202608040001_shared_cost_allocation_closures` a `202608040008_cost_metrics_tenant_period_index`, las ocho de ciclo de vida de autenticación, las migraciones `202608110009` a `202608110011` y `202608120002` a `202608120005` ya están aplicadas y verificadas en Supabase principal. Las tablas nuevas tienen RLS, índices de tenant/período/estado, índices de expiración auth, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
+- El repositorio local contiene 70 migraciones y Supabase registra las seis migraciones nuevas del goal después de `202608120008_revoke_login_tenant_api_grants`. Las migraciones portables de helpers, la restauración del DELETE de cleanup auth y la revocación explícita de grants API fueron verificadas desde cero en schemas aislados y en `public`. Las tablas nuevas tienen RLS, índices de tenant/período/estado, índices de expiración auth, FK tenant-aware, cierres inmutables, acceso directo revocado para roles API y compuerta de preview antes de activar.
 - Los presupuestos por destino reutilizan el cierre cerrado como única fuente de actual; no recalculan distribución. Antes del cierre, el actual queda explícitamente no disponible y el preview conserva el valor como proyectado. `Valor realizado` expone el resumen por destino y solo atribuye ahorro cuando coinciden tenant, moneda, recurso canónico, hash de métrica y período; sin evidencia exacta no atribuye ahorro.
 - Las líneas de cada cierre conservan un snapshot inmutable de recurso canónico, fuente, monto, destino, regla y hash de métrica. Cierres anteriores a `202608040004` pueden no tener líneas históricas y deben tratarse como agregados sin evidencia de atribución por línea.
 - El detalle operativo del modelo, invariantes y API está en `docs/COST_ALLOCATION_SHARED_CLOSURES.md`.
@@ -236,13 +390,16 @@ Estado de cierre:
   cancelación, modelo de rango y paneles; `MetricasTecnicas.tsx` quedó en 216 líneas sin perder granularidades.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` (106 archivos aprobados, 440 pruebas pasadas y 10 omitidas),
-  `npm run test:ai:offline` (24/24), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
+- Backend: `npm run test:all` (109 archivos aprobados, 451 pruebas pasadas y 11 omitidas),
+  `npm run test:ai:offline` (25/25), typecheck y build sin errores. `npm audit --omit=dev` permanece sin
   vulnerabilidades altas.
+- Integración PostgreSQL aislada completa: `npm run test:integration:isolated` pasó 10 archivos/17 pruebas, además de
+  limpieza auth y heartbeat/readiness, y eliminó su schema en `finally`. Verificó 1 registro expirado eliminado por
+  cada categoría, retuvo registros futuros y evitó la cascada de un refresh vigente asociado a una sesión con TTL inconsistente.
 - Integración PostgreSQL aislada de limpieza auth: `npm run test:integration:auth-cleanup` pasó y eliminó su schema
   en `finally`; verificó 1 registro expirado eliminado por cada categoría, retuvo registros futuros y evitó la
   cascada de un refresh vigente asociado a una sesión con TTL inconsistente.
-- Frontend: lint, typecheck y build aprobados. La revalidación del 2026-08-12 de `test:e2e:full` aplicó las 61
+- Frontend: lint, typecheck y build aprobados. La revalidación del 2026-08-12 de `test:e2e:full` aplicó las 64
   migraciones desde cero en un schema aislado, creó fixtures autenticados y aprobó 7/7 escenarios Playwright,
   incluidos el ciclo HTTP de autenticación/sesiones y la privacidad de recuperación de contraseña;
   el cleanup eliminó los dos tenants y el schema de prueba incluso con la ruta de recuperación para preparación
@@ -251,6 +408,12 @@ Estado de cierre:
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
   ahorros no negativos, trazabilidad y `persist=false` aprobados con el modelo `gpt-5.4-mini`.
   Latencia de generación: 54.662 s; estimación de contexto/trazas: 4.093 tokens; recomendaciones: 3.
+- Canary comparativo de aprendizaje global: autenticación aislada corregida con `202608120006_schema_portable_rls_helpers`,
+  consulta directa de contexto GLOBAL verificada y promoción controlada implementada; la corrida reconstruida con el
+  `dist` vigente produjo 3/3 recomendaciones aprobadas en baseline y candidate, con scores 92 y 90 respectivamente.
+  No se activó memoria GLOBAL porque el candidato no superó estrictamente la línea base; el reporte sanitizado quedó en
+  `.test-artifacts/ai-audit/learning-2026-08-13T02-48-49-920Z.json`. El siguiente paso es repetir el canary con una
+  corrida estable y evidencia de mejora, no relajar la compuerta.
 - Canary OCI read-only de onboarding: identidad, inventario, métricas y Object Storage disponibles;
   1 recurso Compute leído en una llamada, preview FOCUS sin errores (20 objetos descubiertos, 5 retornados);
   la capacidad de costos directa quedó denegada y el resultado fue `PARTIAL`, consistente con el bloqueo
@@ -274,6 +437,8 @@ Estado de cierre:
   e inmutabilidad de cierres.
 - CI ejecuta integración aislada PostgreSQL/API en GitHub Actions. Docker local sigue siendo opcional para
   desarrollo; Supabase se valida mediante migraciones Prisma antes de cambios de esquema.
+- Los artefactos de contenedor backend/frontend incluyen ejecución no root, healthchecks y `.dockerignore`; el build
+  local de imágenes no está verificado porque Docker CLI no está instalado en esta estación.
 
 ## Pendientes principales
 
@@ -299,3 +464,32 @@ Estado de cierre:
 - El 2026-08-03 el canary runtime RLS pasó contra Supabase principal: usuario `finops_runtime`, dos tenants,
   consultas tenant-scoped, conteo cross-tenant cero, contexto de worker y tablas operativas verificadas.
   La activación operativa permanente permanece diferida por no existir todavía un destino de despliegue.
+
+## Corte de implementación 2026-08-14 — Estabilización empresarial
+
+- Se incorporó la estadística nativa de OCI Monitoring y AWS CloudWatch en
+  resource_metric_samples; la UI permite elegir MEAN, MIN, MAX, percentiles,
+  SUM, COUNT, RATE o LATEST sin perder el drilldown raw.
+- GET /api/v1/technical-metrics/resources filtra en PostgreSQL por recursos
+  con costo positivo, estado, proveedor y texto de búsqueda. El cálculo de
+  lineage permanece acotado al tenant y no se realiza filtrado pesado en React.
+- El administrador maestro puede emitir invitaciones de cliente de un solo uso
+  y el cliente puede aceptar el enlace para crear su cuenta en el tenant exacto.
+  La configuración del agente y la administración MSP no están disponibles para
+  roles cliente.
+- Telegram admite códigos de auto-vinculación de diez minutos generados desde
+  Perfil y consumidos mediante /start <código> en el webhook autenticado.
+  Los códigos se almacenan únicamente como hash.
+- Se aplicaron al Supabase principal las migraciones 202608140001 a
+  202608140006: estadísticas nativas, invitaciones, auto-vinculación Telegram,
+  tipo de entrega de invitación, índices FK/RLS y consolidación de políticas de
+  refresh. Después se aplicaron el ciclo de vida de credenciales OCI, la
+  configuración de ingesta, la eliminación de la unicidad estadística antigua
+  y la idempotencia por fingerprint. El detalle de verificación está en
+  docs/GOAL_EMPRESARIAL_ESTABILIZACION.md.
+- La candidata de la cuenta empresarial OCI tuvo inicialmente un rechazo de firma
+  durante la validación; ese intento no desplazó credenciales activas ni ejecutó
+  ingestas. Después de corregir/renovar las credenciales, la conexión Tak 2.0 quedó
+  validada y permitió inventario, Usage API y Monitoring reales. Las credenciales
+  compartidas en el chat no se reutilizan y deben revocarse/rotarse fuera del
+  repositorio. AWS permanece en standby.

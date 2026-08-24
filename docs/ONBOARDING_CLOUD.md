@@ -1,6 +1,6 @@
 # Onboarding cloud por tenant
 
-> Documento operativo autoritativo. Estado verificado: 2026-07-16.
+> Documento operativo autoritativo. Estado verificado: 2026-08-16.
 
 ## Alcance y arquitectura
 
@@ -12,13 +12,14 @@ El flujo normal se realiza en **Ingesta > Configurar cuentas cloud**:
 
 1. Seleccionar el tenant activo.
 2. Crear una conexión OCI o AWS.
-3. Guardar una credencial read-only.
-4. Validar capacidades por separado.
-5. Configurar costos, FOCUS y métricas.
-6. Previsualizar FOCUS sin ingerir.
-7. Activar la sincronización inicial y el backfill.
-8. Corregir o reintentar únicamente las fuentes fallidas.
-9. Consultar Dashboard, Inventario y Métricas técnicas.
+3. Guardar una credencial read-only como candidata cifrada.
+4. El backend confirma rápidamente el almacenamiento y devuelve `nextAction=VALIDATE`; la UI inicia la validación en una segunda operación no bloqueante.
+5. La firma se valida antes de consultar capacidades y la candidata solo se activa si la autenticación remota es aceptada.
+6. Configurar costos, FOCUS y métricas.
+7. Previsualizar FOCUS sin ingerir.
+8. Activar la sincronización inicial y el backfill.
+9. Corregir o reintentar únicamente las fuentes fallidas.
+10. Consultar Dashboard, Inventario y Métricas técnicas.
 
 El estado es derivado de conexión, credenciales, validación, configuración y jobs. No se persiste
 un estado monolítico de onboarding.
@@ -39,8 +40,13 @@ pertenencia; una conexión de otro tenant se responde como no encontrada.
 ## Credenciales
 
 Las credenciales se cifran con AES-256-GCM mediante `CredentialCipher`. La respuesta solo contiene
-ID, propósito, estado, etiqueta, principal externo y fechas. Nunca devuelve private key,
-passphrase, ExternalId, access keys, session tokens ni payload cifrado.
+ID, propósito, estado, etiqueta, principal externo, estado/mensaje de validación y fechas. Nunca devuelve
+private key, passphrase, ExternalId, access keys, session tokens ni payload cifrado.
+
+El reemplazo usa un ciclo seguro: `PENDING`/`INVALID` no se usa para ingesta; la credencial `ACTIVE`
+anterior permanece disponible hasta que una solicitud firmada confirme la candidata. Una candidata
+rechazada queda retenida cifrada para revocación manual, sin desplazar la activa. Un fallo transitorio
+queda `PENDING` y puede reintentarse desde la UI.
 
 ### AWS
 
@@ -58,7 +64,10 @@ La trust policy debe restringir el principal operador y exigir el ExternalId aco
 
 ### OCI
 
-FinOps recibe `tenancyId`, `userId`, `fingerprint`, `privateKey`, región y, si aplica, passphrase.
+FinOps recibe `tenancyId`, `userId`, `privateKey`, región y, si aplica, passphrase. El fingerprint
+se deriva automáticamente desde la clave pública RSA del PEM y se conserva junto con el secreto
+cifrado; si se envía un fingerprint legado, se compara y se rechaza cualquier discrepancia. Se
+aceptan saltos de línea escapados, CRLF y el marcador opcional `OCI_API_KEY`, que no se entrega al SDK.
 La llave PEM se cifra inmediatamente. El usuario/grupo debe tener policies read-only para las
 capacidades utilizadas:
 
@@ -70,20 +79,48 @@ capacidades utilizadas:
 
 El onboarding no crea usuarios, grupos, policies, compartments, buckets ni recursos cloud.
 
+### Candidatas, idempotencia y errores de entrada
+
+El endpoint de almacenamiento valida localmente el formato PEM, el tipo RSA, el tamaño mínimo,
+la passphrase y la correspondencia del Tenancy OCID antes de cifrar. Para OCI deriva el fingerprint
+desde la clave pública y lo guarda como identidad técnica no secreta. Si se vuelve a enviar la misma
+clave para la misma conexión y propósito, se reutiliza la candidata viva (`PENDING`, `ACTIVE` o
+`INVALID`) en lugar de crear un duplicado. Los errores de campos incluyen una etapa, campo afectado
+y código de acción seguros; nunca incluyen la clave, la passphrase ni el payload cifrado.
+
+La UI ofrece selector de archivo `.pem`/`.key` o pegado manual, limpia el contenido sensible después
+de guardarlo y muestra ayuda contextual accesible mediante hover, foco y clic. Las opciones de
+métricas, fuente de costos y control de jobs permanecen dentro de una sección técnica avanzada
+opcional para que el flujo principal de conexión sea autoexplicativo.
+
 ## Validación de capacidades
 
-`POST /api/v1/cloud-connections/:id/validate` comprueba cada capacidad de forma independiente:
+`POST /api/v1/cloud-connections/:id/credentials/:credentialId/validate` permite reintentar una
+candidata `PENDING` o `INVALID` sin tocar la credencial activa. `POST /api/v1/cloud-connections/:id/validate`
+comprueba la credencial activa y cada capacidad de forma independiente:
 
 | Capacidad | Resultado posible | Efecto |
 |---|---|---|
-| IDENTITY | AVAILABLE / DENIED / ERROR | Confirma firma e identidad |
-| INVENTORY | AVAILABLE / DENIED / ERROR | Habilita `cloud_resources` |
-| COSTS | AVAILABLE / DENIED / ERROR | Habilita API directa |
-| METRICS | AVAILABLE / DENIED / NOT_CONFIGURED / ERROR | Habilita muestras técnicas |
-| STORAGE | AVAILABLE / DENIED / NOT_CONFIGURED / ERROR | Habilita FOCUS |
+| Autenticación | VERIFIED / REJECTED / RETRYABLE_ERROR / NOT_CONFIGURED | Decide si la candidata puede promoverse |
+| IDENTITY | AVAILABLE / DENIED / ERROR | Comprueba identidad; un 403 puede significar firma válida sin policy suficiente |
+| INVENTORY | AVAILABLE / DENIED / BLOCKED / ERROR | Habilita `cloud_resources` |
+| COSTS | AVAILABLE / DENIED / BLOCKED / ERROR | Habilita API directa |
+| METRICS | AVAILABLE / DENIED / BLOCKED / NOT_CONFIGURED / ERROR | Habilita muestras técnicas |
+| STORAGE | AVAILABLE / DENIED / BLOCKED / NOT_CONFIGURED / ERROR | Habilita FOCUS |
 
-Una conexión puede quedar parcialmente operativa. Para activarla se exige identidad disponible y
-al menos una capacidad de datos disponible. Un permiso ausente no invalida los demás.
+Una conexión puede quedar parcialmente operativa. Para activarla se exige autenticación verificada y
+al menos una capacidad de datos disponible. Si OCI devuelve un error de firma HTTP, las demás
+capacidades quedan `BLOCKED` y no se realizan llamadas redundantes. Un permiso ausente después de
+una firma válida no invalida automáticamente los demás recursos.
+
+Una API key OCI recién registrada puede devolver temporalmente un rechazo de firma antes de quedar
+disponible para solicitudes firmadas. Durante los primeros cinco minutos desde el almacenamiento,
+FinOps conserva la candidata `PENDING` y la UI realiza tres reintentos no bloqueantes (10, 30 y 60
+segundos). La candidata sigue siendo fail-closed: solo pasa a `ACTIVE` después de una respuesta
+firmada aceptada; fuera de la ventana, un rechazo persistente queda `INVALID`.
+
+La comprobación de `COSTS` usa OCI Usage API con granularidad diaria y rangos alineados a días UTC
+completos. El día UTC parcial actual se excluye para cumplir la precisión exigida por el SDK.
 
 ## Configuración de fuentes
 
@@ -142,6 +179,7 @@ requiere atención.
 | `PATCH /api/v1/cloud-connections/:id/status` | Habilitar/deshabilitar |
 | `POST /api/v1/cloud-connections/:id/credentials` | Guardar/reemplazar credencial |
 | `DELETE /api/v1/cloud-connections/:id/credentials/:credentialId` | Revocar localmente |
+| `POST /api/v1/cloud-connections/:id/credentials/:credentialId/validate` | Reintentar candidata pendiente/rechazada |
 | `POST /api/v1/cloud-connections/:id/validate` | Validar capacidades |
 | `PUT /api/v1/cloud-connections/:id/billing-source` | AUTO/FOCUS/PROVIDER_API |
 | `POST /api/v1/ingestion/focus-sources` | Configurar ubicación/objeto FOCUS |
@@ -155,9 +193,9 @@ requiere atención.
 
 ## Verificación actual
 
-### OCI real
+### OCI real de referencia
 
-Canary read-only del 2026-07-16:
+El último canary read-only histórico del 2026-07-16 registró:
 
 - identidad: disponible;
 - inventario: disponible;
@@ -170,6 +208,14 @@ Canary read-only del 2026-07-16:
 - arranque del proceso de prueba: ~45 s por importación de `oci-sdk`.
 
 La denegación de Usage API no bloquea FOCUS ni las demás capacidades.
+
+La prueba live de la conexión empresarial `Tak 2` se ejecutó el 2026-08-16 mediante la ruta de
+validación de candidata. El PEM fue leído, normalizado, cifrado y su fingerprint derivado sin
+errores de parsing; la solicitud firmada de OCI fue rechazada por autenticación. La candidata pasó
+de `PENDING` a `INVALID/REJECTED`, no desplazó ninguna credencial activa y no se ejecutaron ingestas
+ni mutaciones sobre recursos cloud. El siguiente intento debe comparar, en OCI, el User OCID, el
+Tenancy OCID, el API key asociado al fingerprint derivado y el contenido de la clave privada; no se
+debe copiar una clave privada en el repositorio, en `.env.example` ni en logs.
 
 ### AWS
 
@@ -192,10 +238,13 @@ cuenta/rol AWS real disponible en este entorno; no se considera validación prod
 |---|---|---|
 | Sin credencial | No existe una credencial activa | Guardar credencial read-only |
 | Requiere validación | Credencial nueva o rotada | Ejecutar Validar acceso |
+| Candidata rechazada | La firma OCI no coincide con la API key registrada | Comparar usuario, tenancy, fingerprint derivado y clave pública; revocar la candidata cuando corresponda |
+| Candidata pendiente | Proveedor no respondió o agotó timeout | Reintentar validación; la credencial activa anterior sigue operativa |
 | COSTS denegado | Policy de Usage/Cost Explorer insuficiente | Conceder lectura o usar FOCUS |
 | Métricas no configuradas | Falta definición vinculada a recurso | Agregar definición Monitoring/CloudWatch |
 | Memoria ausente | Agente del proveedor no instalado | Instalar agente o no usar esa señal |
 | FOCUS sin objetos | Bucket/prefix incorrecto o sin permisos | Ejecutar preview y corregir ubicación |
+| Canary no inicia por `CREDENTIAL_ENCRYPTION_KEY` | El backend no puede descifrar candidatos guardados | Configurar la misma clave de cifrado del entorno que creó las credenciales; no generar otra sobre datos existentes |
 | Jobs fallidos | Error recuperable del proveedor/configuración | Corregir y reintentar esa fuente |
 | Datos desactualizados | Backend/worker apagado en desarrollo | Ejecutar scheduler/worker manualmente |
 
@@ -207,10 +256,29 @@ npm test
 npm run build
 npm run test:api:onboarding
 npm run test:canary:oci-onboarding
+npx tsx scripts/validate-oci-credential.ts <connection-id>
 ```
 
-El canary OCI exige configuración local válida y solo ejecuta lecturas. No imprime secretos ni
-modifica recursos cloud.
+Para revisar credenciales creadas antes del ciclo seguro, primero ejecuta el dry-run:
+
+```powershell
+npm run oci:reconcile-credentials
+```
+
+Después de revisar la lista y confirmar que corresponde a firmas OCI rechazadas, aplica la
+clasificación manual:
+
+```powershell
+npm run oci:reconcile-credentials -- --apply
+```
+
+El script no descifra secretos ni contiene IDs fijos. Solo marca como `INVALID` credenciales OCI
+operativas cuya evidencia histórica indica rechazo de firma; nunca las elimina.
+
+El canary OCI exige configuración local válida y solo ejecuta lecturas. La validación explícita de
+una candidata (`validate-oci-credential.ts`) sí actualiza el estado de esa credencial en la BD:
+promueve solo una candidata cuya autenticación sea aceptada y conserva como `INVALID` una rechazada.
+Ninguno de los dos scripts modifica recursos cloud ni imprime secretos.
 
 La integración y Playwright completo también fueron verificados contra un schema PostgreSQL
 efímero `finops_e2e_*`. El cliente Prisma configura ese schema tanto para queries generadas como

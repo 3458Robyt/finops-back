@@ -1,5 +1,236 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-19 — Ingesta OCI/FOCUS y métricas técnicas enterprise
+
+- Se consolidó la consulta de OCI Monitoring por tenancy: las definiciones confirmadas
+  de varios compartimentos se consultan con `compartmentIdInSubtree=true` y solo se
+  divide por compartimento cuando OCI devuelve una denegación compatible con fallback.
+- El rate limiter de Monitoring ahora usa un bucket único por tenancy, compartido por
+  descubrimiento y backfill, para que la concurrencia de jobs/regiones no multiplique la
+  tasa contra OCI.
+- FOCUS se autodetecta en el almacenamiento administrado por OCI (`bling`, tenancy y
+  `FOCUS Reports`), filtra objetos y filas por la ventana pedida antes de persistir y
+  cae a OCI Usage API en `AUTO` cuando no existe un reporte para ese periodo. Nunca se
+  suman ambas fuentes.
+- La validación OCI quedó paralela y cancelable con deadline; el cliente Usage API usa
+  una configuración de circuit breaker compatible con el SDK generado. El canary
+  controlado de Tak 2.0 reporta disponibles Identity, Inventory, Costs, Metrics y
+  Storage.
+- Corte real de Supabase Tak 2.0: 994 recursos normalizados, 663 definiciones (296
+  confirmadas), 82.400 muestras (20.600 MEAN/MIN/MAX/P95), 1.324 resúmenes, 602 líneas
+  FOCUS y 621 costos de Usage API. Dos jobs concurrentes procesaron 19.776 muestras
+  cada uno con 776 llamadas y 100 % de enlace a recursos.
+- Se dejó documentado que el backfill empresarial aún conserva 129 jobs técnicos
+  `PENDING` y que la persistencia remota continúa como deuda de rendimiento.
+- Verificación: `npm run test:all` aprobó 116 archivos, 495 pruebas y 11 omitidas;
+  IA offline 25/25, frontend build/release hygiene y `graphify update .` aprobados.
+
+### 2026-08-17 — Bloqueo externo confirmado en OCI empresarial
+
+- Se revalidó en modo read-only la conexión `Tak 2` del tenant `TAK Colombia`
+  usando el mismo backend y proveedor OCI que ya validan correctamente la
+  cuenta personal. OCI continúa rechazando la firma HTTP antes de consultar
+  inventario, costos, métricas o Storage.
+- La conexión empresarial conserva únicamente la candidata anterior en estado
+  `INVALID/REJECTED`; no se persistió una nueva API key. Reintentar la misma
+  candidata no puede corregir el problema.
+- Diagnóstico: bloqueo externo de autenticación OCI, no un fallo del parser ni
+  del backend. Debe verificarse en el usuario empresarial exacto la pareja de
+  clave pública/fingerprint, User OCID, Tenancy OCID y región. La ausencia de
+  policies produciría un rechazo posterior de autorización, no este rechazo de
+  firma.
+- Acción requerida: crear o registrar una API signing key en el mismo usuario
+  OCI empresarial, comparar el fingerprint mostrado por OCI con el que muestra
+  FinOps y guardar el nuevo `.pem` en la conexión. No compartir la clave
+  privada; si el fingerprint cambia, FinOps creará una candidata nueva y la
+  validará sin desplazar la credencial anterior.
+
+### 2026-08-17 — Alta OCI personal estabilizada y Usage API verificada
+
+- Se comprobó sin exponer el secreto que el fingerprint derivado por FinOps
+  coincide exactamente con el `.pem` recién descargado. La primera firma fue
+  rechazada de forma transitoria y el mismo candidato fue aceptado en el
+  reintento, quedando `ACTIVE/VERIFIED` sin volver a cargar la clave.
+- Las API keys OCI nuevas ahora conservan estado `PENDING/RETRYABLE_ERROR`
+  durante una ventana de propagación de cinco minutos. La UI reintenta en
+  segundo plano a los 10, 30 y 60 segundos; nunca promueve la credencial hasta
+  que OCI verifica la firma y las claves antiguas o incompatibles siguen
+  terminando como `INVALID` fuera de la ventana.
+- Se corrigió la validación y recolección de OCI Usage API con granularidad
+  `DAILY`: las fechas se normalizan a días UTC completos, evitando el error del
+  SDK por horas, minutos o fracciones distintas de cero.
+- Canary real read-only de la conexión personal: autenticación `VERIFIED`;
+  `IDENTITY`, `INVENTORY`, `COSTS` y `METRICS` en `AVAILABLE`; `STORAGE` en
+  `NOT_CONFIGURED`. No se ejecutó ingesta ni se expuso la clave.
+- Verificación: 113 archivos/477 pruebas backend aprobadas (11 omitidas),
+  typecheck y build backend; typecheck, lint, build y bundle fitness frontend.
+
+### 2026-08-16 — Cierre del onboarding OCI y validación de candidata empresarial
+
+- Se separó el almacenamiento cifrado de credenciales de la validación remota:
+  `POST /credentials` responde con la candidata `PENDING` y `nextAction=VALIDATE`;
+  la UI inicia la verificación en una segunda operación no bloqueante. Las
+  candidatas rechazadas permanecen `INVALID` sin desplazar la credencial activa.
+- Se corrigió la causa raíz del fallo de TAK Colombia: los métodos del repositorio
+  Prisma se invocaban sin su `this` concreto. El contrato ahora exige los métodos
+  de ciclo de vida y existe una regresión que prueba el binding real.
+- Se añadió fingerprint OCI derivado desde la clave pública, validación PEM/RSA
+  previa al cifrado, deduplicación de candidatas vivas y migración
+  `202608160004_cloud_credential_fingerprint_idempotency`, aplicada en Supabase.
+  Se reconciliaron cuatro fingerprints existentes sin registrar secretos.
+- La UI de onboarding tiene cuatro pasos, selector de archivo PEM/KEY, ayuda
+  contextual accesible por hover/foco/clic, errores con campo y acción segura y
+  controles de ingesta avanzada colapsados por defecto. Los primitives se
+  extrajeron para mantener el componente principal bajo el límite arquitectónico.
+- El canary OCI se corrigió para cargar `CREDENTIAL_ENCRYPTION_KEY` desde la
+  configuración tipada y omitir FOCUS cuando STORAGE no está disponible. La
+  validación live de la candidata empresarial se ejecutó en modo read-only para
+  OCI: el parsing/fingerprint fueron correctos, pero el proveedor rechazó la
+  autenticación; la candidata quedó `INVALID/REJECTED` y no hubo ingestas ni
+  cambios en recursos cloud.
+- Verificación: Supabase tiene 74 migraciones aplicadas y Advisors de seguridad
+  sin lints; backend 112 archivos/474 pruebas aprobadas (11 omitidas), typecheck,
+  build, arquitectura y release hygiene; frontend typecheck, lint, build, bundle
+  fitness y Playwright smoke aprobados. AWS sigue en standby.
+
+### 2026-08-16 — Ingesta OCI personal, estadísticas nativas y corrección de unicidad
+
+- Se desplegaron en Supabase `202608160002_oci_ingestion_configuration` y
+  `202608160003_drop_legacy_metric_unique`. El índice único legado que no incluía
+  `statistic` fue eliminado; la clave efectiva conserva por separado estadística y
+  granularidad.
+- Las 11 definiciones OCI de la conexión personal usan MEAN, MIN, MAX y P95. El
+  backfill de 90 días terminó sin trabajos `PENDING` o `RUNNING`: 56.427 muestras
+  MEAN y 37.210 de cada estadística nativa MIN/MAX/P95. Las estadísticas nativas
+  están disponibles desde 2026-05-18 y MEAN conserva histórico desde 2026-05-04.
+- OCI conserva métricas en una ventana móvil de aproximadamente 90 días. Las
+  futuras ventanas se alinean al límite de 30 minutos para evitar duplicados por
+  deriva de minutos. FOCUS sigue como fuente de costos; la capacidad directa
+  `COSTS` de OCI sigue denegada por IAM.
+- Verificación final: typecheck, 112 archivos de prueba (472 pasadas y 11 omitidas),
+  arquitectura y build backend; build frontend y actualización de Graphify aprobados.
+
+### 2026-08-14 — Migraciones Supabase, RLS y rendimiento
+
+- Se aplicaron mediante el MCP de Supabase las migraciones `202608140001` a
+  `202608140006`: estadísticas nativas, invitaciones de cliente,
+  auto-vinculación Telegram, correo de invitación, índices FK y optimización de
+  políticas RLS.
+- La verificación remota confirmó 19.427 muestras técnicas, tablas nuevas
+  vacías, índices FK presentes y Advisors de seguridad sin lints.
+- El Advisor de rendimiento quedó sin advertencias: se eliminaron los RLS
+  initplans por fila y la política permisiva redundante de refresh tokens. Los
+  117 avisos INFO de índices no usados se conservan hasta tener tráfico
+  representativo.
+- `npm run test:canary:runtime-rls` pasó con `finops_runtime`, dos tenants,
+  tablas nuevas visibles solo dentro del contexto y cero recomendaciones
+  cross-tenant.
+- `npx prisma migrate status` confirma que las 70 migraciones locales están
+  registradas como aplicadas en Supabase; el historial se alineó mediante
+  `migrate resolve` sin volver a ejecutar el SQL.
+
+### 2026-08-13 — Verificación vigente de clasificación y linaje OCI
+
+- El dry-run read-only de `npx tsx scripts/reconcile-resource-links.ts --batch-size=1000` confirmó que el backfill es idempotente: no hubo candidatos ni actualizaciones nuevas.
+- En la cuenta OCI con datos operativos se mantienen 8.173/8.173 costos elegibles enlazados exactamente: 36 recursos vivos y 8.137 referencias históricas. Los 555 identificadores de telemetría no facturables se clasifican como `INVENTORY_RESOURCE_NOT_FOUND` y los 432 registros sin conexión como `CONNECTION_NOT_AVAILABLE`; no se presentan como fallos de enlace elegible.
+- Las 19.427 muestras técnicas examinadas permanecen enlazadas. La clasificación conserva todos los costos financieros y no usa fuzzy matching.
+
+### 2026-08-13 — Revalidación PostgreSQL aislada y corrección de fixture cross-tenant
+
+- La primera revalidación de `npm run test:integration:isolated` encontró una violación correcta del guard de tenant en
+  `recommendation_analysis_runs`: el fixture seleccionaba un usuario con `findFirst` sin filtrar rol y podía usar un
+  `VIEWER` para reintentar un flujo cross-tenant.
+- Se restringió el fixture al usuario `MASTER_ADMIN`. La corrida posterior pasó 10 archivos/17 pruebas, auth cleanup,
+  heartbeat/readiness y limpieza final; no quedaron schemas `finops_e2e_*` residuales.
+- La suite remota tarda varios minutos por Supabase; se conserva el límite ampliado y se evita paralelizar operaciones
+  destructivas contra schemas de prueba.
+
+### 2026-08-13 — Revalidación del canary global y alineación de evidencia IA
+
+- Se reconstruyó `dist` antes de ejecutar el canary; así se evitó evaluar un runtime compilado con lógica anterior.
+- El canary comparativo aislado con `AI_CANARY_SCOPE=learning` autenticó contra un schema efímero y produjo 3/3
+  recomendaciones aprobadas en baseline y candidate, con ahorros no negativos. El score fue 92 para baseline y 90
+  para candidate, por lo que `evaluateGlobalLearningCanary` bloqueó la promoción por no demostrar mejora estricta.
+- Ninguna memoria GLOBAL se activó. El resultado es correcto y fail-closed; una respuesta válida pero peor no es evidencia
+  de aprendizaje exitoso. El reporte sanitizado quedó en `.test-artifacts/ai-audit/learning-2026-08-13T02-48-49-920Z.json`.
+- Se corrigió una inconsistencia entre readiness, normalización, rúbrica y auditor: un `SERVICE_COST_REVIEW` puede ser
+  `COST_ONLY` sin métricas técnicas únicamente si declara `reviewScope=FINANCIAL`, `financialReviewOnly=true`, revisión
+  manual y `operationalAuthorization=NONE`; las acciones técnicas continúan exigiendo validación técnica.
+- Se agregaron regresiones para la revisión financiera y el normalizador técnico. Typecheck, build y 33 pruebas dirigidas
+  de readiness/normalización/golden scenarios pasaron.
+
+### 2026-08-12 — Compuertas CI de release y cleanup
+
+- El workflow backend ejecuta explícitamente `npm run check:release-hygiene` antes de los checks de código y
+  elimina los fixtures de smoke mediante un paso `always()` contra el PostgreSQL efímero de Docker.
+- Esto evita que una ejecución CI deje credenciales temporales, tenants E2E o datos de prueba en el entorno de
+  integración; la base principal de Supabase no participa en ese flujo.
+- Al corte, las referencias Git locales muestran la rama backend 201 commits por delante de su upstream de feature
+  y 235 por delante de `origin/main`; frontend está 38/48 por delante. No se publica ni se abre PR hasta revisar y
+  autorizar esa acumulación, y los cambios locales del goal permanecen sin commit.
+- El workflow añadió builds de las imágenes Docker de backend y frontend; la estación local no tiene Docker CLI, por
+  lo que la aceptación de contenedores queda delegada a CI/destino operativo.
+
+### 2026-08-12 — Smoke API aislado y onboarding autenticado
+
+- Se añadió `npm run test:api:smoke:isolated`, un runner acotado que crea el schema `finops_e2e_api_*`, aplica las
+  64 migraciones, crea fixtures temporales, inicia el API con `DB_RUNTIME_ENFORCE=true` y deshabilita workers no
+  requeridos durante la prueba.
+- El smoke general pasó 35 verificaciones HTTP, incluyendo login, salud, costos, asignación, presupuestos,
+  recomendaciones, métricas, trazas, notificaciones, cambio de tenant y rechazo 401 sin autenticación.
+- El smoke de onboarding pasó lecturas operativas, 13 mutaciones denegadas al rol `VIEWER`, cambio de tenant del
+  `MASTER_ADMIN` para comprobar que el onboarding cross-tenant responde 404 y la inspección de que no se exponen
+  credenciales. El schema y el manifiesto con contraseña temporal se eliminaron en `finally`.
+
+### 2026-08-12 — Hardening final de grants API y despliegue Supabase
+
+- La verificación de privilegios posterior a `202608120006` y `202608120007` encontró que
+  `finops_login_tenant_id()` conservaba grants explícitos para `anon`, `authenticated` y `service_role`, y que
+  el guard de inmutabilidad podía conservar `PUBLIC` en schemas aislados. Se amplió la migración
+  `202608120008_revoke_login_tenant_api_grants` para revocar ambos casos y conservar solo `finops_runtime`.
+- La migración `202608120008` se aplicó en Supabase principal. `npx prisma migrate status` confirma 64/64 migraciones;
+  la consulta de ACL confirma cero grants de helpers `finops_*` a `PUBLIC`, `anon`, `authenticated` o `service_role`.
+  Los helpers críticos conservan ejecución para `finops_runtime`.
+- El runner aislado incorporó esta verificación de grants y la suite completa volvió a pasar: 10 archivos/17 pruebas,
+  auth cleanup, heartbeat/readiness, cleanup de schema y cero schemas E2E residuales.
+
+### 2026-08-12 — Suite PostgreSQL aislada completa y corrección de limpieza auth
+
+- Se añadió `npm run test:integration:isolated`: crea un schema efímero permitido, aplica las 64 migraciones
+  locales desde cero, ejecuta 10 archivos/17 pruebas PostgreSQL serialmente y después valida los runners de
+  limpieza auth y heartbeat/readiness. El schema `finops_e2e_suite_msqr8fcg` se eliminó en `finally` y la
+  inspección posterior confirmó cero schemas `finops_e2e_*` residuales.
+- La primera corrida expuso que la migración portable `202608120006` había reconstruido la policy de refresh
+  sin conservar la rama `finops_auth_cleanup_worker()` para `DELETE`; la migración `202608120007` restauró ese
+  permiso únicamente para tokens expirados. Auth cleanup pasó con `refreshTokens=1`, reset=1, MFA=1 y sesiones=1.
+- La batería PostgreSQL pasó completamente: `Test Files 10 passed`, `Tests 17 passed`; cost allocation verificó
+  10.000 costos y mantuvo el plan indexado. El runner especializado de heartbeat también pasó con RLS, readiness,
+  lease y transición a `STOPPED`.
+- La base principal de Supabase quedó con 64 migraciones aplicadas hasta `202608120008`; el head local y remoto
+  están alineados. No se ejecutaron pruebas destructivas contra datos de negocio.
+
+### 2026-08-12 — Canary live comparativo fail-closed y trazabilidad de aprendizaje
+
+- Se corrigió la visibilidad de memorias GLOBAL activas: ahora se seleccionan por alcance aunque el texto de consulta
+  no coincida en FTS; las memorias LOCAL conservan filtro tenant y búsqueda full-text. Se añadió regresión de
+  integración para excluir candidatos `SHADOW` y memorias LOCAL de otros tenants.
+- Las trazas de contexto ahora conservan referencias sanitizadas a `artifactIds`, `memoryIds`, `tenantRuleIds` y
+  conflictos. El endpoint de generación expone solo metadatos sanitizados de análisis (hash, conteos, tokens, modelo
+  y resumen del auditor), sin payloads ni secretos.
+- El canary comparativo aislado encontró y corrigió dos problemas de portabilidad del entorno: helpers de autenticación
+  que apuntaban a `public.*` y la política RLS de refresh pre-auth. La migración `202608120006_schema_portable_rls_helpers`
+  genera helpers calificados con el schema actual y permite crear el refresh únicamente para el usuario/tenant del login.
+- Se implementó `GlobalLearningPromotionService`: requiere `MASTER_ADMIN`, evidencia live comparativa estricta,
+  mejora no regresiva y un incremento de calidad; la promoción deja auditoría durable y el canary revierte el candidato.
+- La ejecución live del 2026-08-12 autenticó correctamente, pero el proveedor devolvió HTTP 422 en los dos brazos de
+  generación, con cero recomendaciones válidas. Esa corrida histórica no activó ninguna memoria GLOBAL; la revalidación
+  del 2026-08-13 está documentada al inicio de este archivo y mantiene `AI-008` abierto por falta de mejora estricta.
+- Verificación local posterior: `npm run test:all` pasó con 108 archivos, 447 pruebas pasadas y 11 omitidas; IA
+  offline 24/24, typecheck, build, arquitectura (359/1) y release hygiene (619) aprobados. El canary live se omite
+  por defecto y exige `AI_LIVE_TESTS=true`.
+- `npm run test:integration` ahora se abstiene con resultado explícito cuando no existen `TEST_DATABASE_URL` y
+  `ALLOW_DESTRUCTIVE_TEST_DATABASE=true`; con ambas variables ejecuta la batería contra la base aislada autorizada.
+
 ### 2026-08-12 — Aprendizaje global en shadow y compuerta de promoción
 
 - Se corrigió el salto directo de patrones recurrentes a memorias GLOBAL activas. La memoria LOCAL auditada sigue
@@ -7,10 +238,11 @@
 - `learningPromotionEvaluator.ts` exige auditoría con score mínimo 90, al menos 5 eventos y 2 tenants, ausencia de
   identificadores tenant-specific y todos los golden scenarios sin regresión. El resultado queda dentro del metadata
   del candidato y el resumen expone `shadowMemories`.
-- Se añadió promoción explícita por `sourceLearningEventId`, aunque permanece deshabilitada para nuevos candidatos
-  porque aún no existe evidencia de un canary live comparando calidad con y sin la memoria. Esto queda registrado como
-  `AI-008`; no se afirma una mejora causal del LLM usando únicamente escenarios offline.
-- Backend `typecheck` y pruebas dirigidas de aprendizaje/promoción: 10/10; frontend lint/build: aprobados.
+- Se añadió promoción explícita por `sourceLearningEventId`, inicialmente deshabilitada para nuevos candidatos hasta
+  completar el canary live comparativo. El resultado posterior y el bloqueo fail-closed quedan documentados en la
+  entrada más reciente de este archivo y en `AI-008`.
+- Backend `typecheck` y pruebas dirigidas de aprendizaje/promoción: 17/17 en la corrida focalizada; frontend lint/build:
+  aprobados.
 
 ### 2026-08-12 — Runners de integración aislada acotados y revalidación PostgreSQL
 
@@ -296,7 +528,7 @@
 - Las memorias activas del agente pueden desactivarse de forma reversible mediante endpoint protegido; la operación registra auditoría y no elimina el evento de aprendizaje original.
 - La trazabilidad genera `finops-opportunity-rules-v1` antes de la IA para detectar vínculos pendientes, datos desactualizados, evidencia técnica débil y brechas de etiquetas. El catálogo no emite ahorros.
 - Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó `test:unit` con 94 archivos aprobados, 4 omitidos, 364 pruebas y 10 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
-- Pendiente: E2E completo con el entorno de aplicación aislado, canaries SMTP/Telegram y revisión de seguridad operativa productiva. La integración PostgreSQL desde migraciones cero ya pasó 5 archivos/6 pruebas en schema efímero y el schema fue eliminado. Graphify y commits separados quedaron completados; AWS real y OCI Usage API permanecen bloqueados externamente.
+- Pendiente: E2E completo con el entorno de aplicación aislado, canaries SMTP/Telegram y revisión de seguridad operativa productiva. La evidencia histórica de 5 archivos/6 pruebas fue ampliada por la suite vigente `test:integration:isolated`, que pasó 10 archivos/17 pruebas más auth cleanup y heartbeat/readiness en schema efímero. Graphify y commits separados quedaron completados; AWS real y OCI Usage API permanecen bloqueados externamente.
 
 ### 2026-08-12 — Calibración observable del agente IA
 
@@ -310,13 +542,14 @@
 - Se retiraron los fallbacks `NVIDIA_*`/`NIM_*` del lector de configuración y se añadió una regresión que falla cerrado cuando solo existen variables heredadas; el contrato vigente es `AI_*`.
 - Se alineó el timeout runtime del auditor de aprendizaje con el contrato de 15 segundos y se añadió validación productiva de límites para evitar bloqueos prolongados.
 
-> **Estado vigente 2026-08-12:** las entradas inferiores son bitácora histórica. La fase de distribución
+> **Estado vigente 2026-08-13:** las entradas inferiores son bitácora histórica. La fase de distribución
 > compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
 > la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
 > permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
 
-> **Fuente de conteos vigente:** `npm run test:unit` ejecutado el 2026-08-12: 105 archivos aprobados, 4 omitidos,
-> 436 pruebas pasadas y 10 omitidas; `npm run test:ai:offline`: 24/24. Las cifras menores en entradas
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-13: 109 archivos aprobados, 5 omitidos,
+> 451 pruebas pasadas y 11 omitidas; `npm run test:ai:offline`: 25/25. La integración PostgreSQL aislada completa
+> pasó 10 archivos/17 pruebas y los runners especializados de auth cleanup y heartbeat/readiness. Las cifras menores en entradas
 > fechadas son snapshots históricos y no representan regresiones.
 
 ### 2026-08-11 — Cierre estructural, operación y validación reproducible
@@ -962,8 +1195,8 @@ CPU/memoria/IOPS desde FOCUS; estas métricas provienen de monitorización/agent
 Marco determinista para medir la calidad del agente **sin llamar al modelo** ni depender de
 credenciales — base para endurecer prompts con medición en vez de a ciegas. Solo backend, puro, additivo.
 - `ai/evaluation/qualityRubric.ts`: funciones puras. `evaluateRecommendationDrafts` (controles:
-  count, accountScoping, severityValid, evidenceLevel, **focusHonesty** —COST_ONLY exige
-  requiresTechnicalValidation—, savingsRealism, spanishText) y `evaluateExecutionPlan` (requiredArrays,
+  count, accountScoping, severityValid, evidenceLevel, **focusHonesty** —COST_ONLY exige validación técnica o una
+  marca explícita de revisión financiera manual—, savingsRealism, spanishText) y `evaluateExecutionPlan` (requiredArrays,
   scopeAccount, **noAutoExecution**). Reusa `isRecord` de `ai/jsonReadHelpers`.
 - `ai/evaluation/goldenScenarios.ts`: 4 escenarios sintéticos (bueno con consumo; FOCUS-only honesto;
   cuenta inventada → rechazo del parser; ahorro irreal → reprobado por rúbrica). Datos marcados demo.
@@ -1293,3 +1526,44 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
   paneles cohesivos. El contrato HTTP solo se amplió con campos compatibles de clasificación.
 - Evidencia: backend `test:all` 81 archivos/321 pruebas y 19 escenarios IA offline; integración de linaje 5/5
   con mediana de readiness de 352,34 ms; frontend typecheck, lint y build; audit productivo backend sin vulnerabilidades.
+
+### 2026-08-14 — Estabilización empresarial, portal cliente y Telegram
+
+- Se preservan estadísticas nativas en métricas técnicas: OCI genera consultas
+  percentile/last y AWS normaliza estadísticas de CloudWatch; la selección de
+  estadística queda disponible en la UI.
+- El inventario se filtra en SQL por costo positivo, estado, proveedor y texto,
+  manteniendo lineage tenant-scoped y evitando filtrado masivo en el navegador.
+- Se implementaron invitaciones de cliente con código efímero hasheado, portal
+  de aceptación, restricciones de navegación por rol y entrega SMTP directa
+  opcional sin persistir el token en el payload durable.
+- Se implementó auto-vinculación de Telegram con /start <código>, auditoría y
+  RLS worker-scoped.
+- Cobertura añadida: pruebas de invitaciones, entrega SMTP segura, OCI/AWS nativo,
+  filtros de inventario y webhook Telegram. Las migraciones 202608140001–004 están creadas
+  localmente y pendientes de despliegue controlado en Supabase.
+- No se hizo canary real contra la credencial empresarial compartida; requiere
+  revocación/rotación antes de usarla. AWS y OCI Usage API siguen bloqueados por
+  dependencias externas.
+
+### 2026-08-18 — Verificación real Tak 2.0 e IA con evidencia
+
+- Se completó una sincronización real de Tak 2.0: 953 recursos normalizados,
+  3.267 filas de OCI Usage API, 3.158 filas proyectadas y 30 referencias históricas
+  para OCID válidos ausentes del inventario vivo. Los costos no enlazables se
+  clasifican explícitamente; no se crean recursos sintéticos para forzar relaciones.
+- Se consolidaron 21.536 muestras técnicas con vínculo a recursos, 197 definiciones
+  confirmadas respaldadas por inventario y 660 definiciones descubiertas/persistidas.
+  La cuenta no entrega actualmente cobertura suficiente de `oci_computeagent` ni
+  `oci_vmi_resource_utilization`, por lo que las recomendaciones de CPU/memoria no
+  se presentan como ejecutables.
+- Se reforzó la compuerta determinística y el auditor IA para que la evidencia débil
+  se convierta en revisión técnica obligatoria. El canary live aislado pasó con dos
+  recomendaciones aprobadas, sin ahorros negativos y trazas con 4.025 tokens
+  estimados.
+- Se modularizaron hotspots de ingesta y frontend para cumplir la regla arquitectónica;
+  backend `test:all` y frontend typecheck/lint/build/arquitectura quedaron aprobados.
+- La persistencia de muestras sigue siendo el cuello de botella en Supabase remoto
+  (aprox. 256,8 s para 15.848 y 318,2 s para 13.044). La suite PostgreSQL aislada
+  completa quedó abierta por sesiones `idle in transaction` durante cleanup; se
+  registraron `QA-003` y `PERF-004` en `docs/DEUDA_TECNICA.md`.

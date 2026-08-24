@@ -1,6 +1,6 @@
 # ☁️ FinOps Inteligente: Core Backend & API RESTful
 
-> **Estado vigente (2026-08-12):** beta funcional avanzada con OCI real, FOCUS,
+> **Estado vigente (2026-08-14):** beta funcional avanzada con OCI real, FOCUS,
 > métricas técnicas, IA gobernada, auditoría, aprendizaje reversible, presupuestos,
 > asignación y realización de valor. AWS real y OCI Usage API permanecen en standby
 > por dependencias externas; la operación 24/7 se activa únicamente al definir un
@@ -28,13 +28,13 @@ El proyecto está estructurado bajo los principios **SOLID** y **Clean Architect
 
 ### Estructura de Directorios
 
-\`\`\`text
+```text
 src/
 ├── domain/           # Modelos y contratos de dominio
 ├── application/      # Casos de uso, Orquestación de Ingesta, Servicios de IA
 ├── infrastructure/   # Adaptadores OCI/AWS, repositorios PostgreSQL y cifrado
 └── presentation/     # Controladores Express, middlewares y rutas REST
-\`\`\`
+```
 
 ## Stack Tecnológico
 
@@ -55,18 +55,18 @@ src/
 ### Instalación
 
 1. Clona el repositorio:
-   \`\`\`bash
+   ```bash
    git clone https://github.com/tu-usuario/finops-inteligente-backend.git
    cd finops-inteligente-backend
-   \`\`\`
+   ```
 
 2. Instala las dependencias:
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. Configura las variables de entorno. Copia `.env.example` a `.env` y completa los valores. Variables mínimas para arrancar:
-   \`\`\`env
+   ```env
    PORT=3000
    DATABASE_URL=postgresql://finops:finops@localhost:5432/finops
    JWT_SECRET=al_menos_32_caracteres_aleatorios
@@ -78,45 +78,54 @@ src/
    DB_RUNTIME_ENFORCE=false
    DB_RUNTIME_ROLE=finops_runtime
    CORS_ORIGIN=http://localhost:5173
-   \`\`\`
+   ```
    El archivo `.env.example` documenta el conjunto completo (AWS, OCI, Telegram, ajustes de IA y analítica). El `.env` está en `.gitignore` y nunca debe commitearse.
 
 4. Levanta la base de datos con Docker:
-   \`\`\`bash
+   ```bash
    docker-compose up -d
-   \`\`\`
+   ```
 
 ### Scripts de Ejecución
 
-- \`npm run dev\`: Inicia el servidor en modo desarrollo con recarga (`tsx watch`).
-- \`npm run build\`: Genera el cliente Prisma y compila TypeScript a `/dist`.
-- \`npm run start\`: Inicia el servidor desde `/dist` (producción).
-- \`npm run test\`: Ejecuta la suite de pruebas con Vitest. Para excluir el worktree anidado: `npx vitest run --exclude '**/.claude/**'`.
-- \`npm run typecheck\`: Verificación de tipos sin emitir (`tsc --noEmit`); ejecuta `prisma generate` antes.
-- \`npm run prisma:migrate\` / \`npm run db:seed\`: Migraciones y datos de ejemplo.
-- \`npm run import:oci-focus\`: Importa el dataset FOCUS de OCI.
-- \`npm run test:integration:docker\`: Ejecuta las pruebas de integración contra PostgreSQL de prueba en Docker (requiere Docker instalado).
-- \`npm run test:integration:agent-quality\`: Ejecuta la calibración IA contra un schema efímero de Supabase, con limpieza automática.
-- \`npm run test:integration:auth-cleanup\`: Verifica desde migraciones cero la limpieza bounded de credenciales auth y su RLS de mantenimiento.
-- \`npm run test:api:smoke\`: Smoke test de la API contra el backend configurado.
-- \`npm run test:api:onboarding\`: Verifica API, roles, aislamiento y exposición de secretos del onboarding.
- - \`npm run test:canary:oci-onboarding\`: Canary OCI real read-only cuando existe configuración local.
- - \`npm run test:ai:offline\`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
+- `npm run dev`: Inicia el servidor en modo desarrollo con recarga (`tsx watch`).
+- `npm run build`: Genera el cliente Prisma y compila TypeScript a `/dist`.
+- `npm run start`: Inicia el servidor desde `/dist` (producción).
+- `npm run test`: Ejecuta la suite de pruebas con Vitest. Para excluir el worktree anidado: `npx vitest run --exclude '**/.claude/**'`.
+- `npm run typecheck`: Verificación de tipos sin emitir (`tsc --noEmit`); ejecuta `prisma generate` antes.
+- `npm run prisma:migrate` / `npm run db:seed`: Migraciones y datos de ejemplo.
+- `npm run import:oci-focus`: Importa el dataset FOCUS de OCI.
+- `npm run test:integration:docker`: Ejecuta las pruebas de integración contra PostgreSQL de prueba en Docker (requiere Docker instalado).
+- `npm run test:integration:agent-quality`: Ejecuta la calibración IA contra un schema efímero de Supabase, con limpieza automática.
+- `npm run test:integration:auth-cleanup`: Verifica desde migraciones cero la limpieza bounded de credenciales auth y su RLS de mantenimiento.
+- `npm run test:api:smoke`: Smoke test de la API contra el backend configurado.
+- `npm run test:api:smoke:isolated`: Crea un schema efímero, inicia el backend con RLS runtime y ejecuta smoke API/onboarding autenticado con cleanup.
+- `npm run test:integration:isolated`: Aplica todas las migraciones en un schema efímero y ejecuta la batería PostgreSQL completa, auth cleanup y heartbeat/readiness; limpia siempre el schema.
+- `npm run test:api:onboarding`: Verifica API, roles, aislamiento y exposición de secretos del onboarding.
+- `npm run test:canary:oci-onboarding`: Canary OCI real read-only cuando existe configuración local.
+- `npm run test:ai:offline`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
 
 Las integraciones aisladas que crean schemas `finops_e2e_*` tienen cleanup en `finally` y límites de conexión,
 consulta y proceso. `TEST_COMMAND_TIMEOUT_MS` permite ajustar el límite entre 30 segundos y 10 minutos
-(180 segundos por defecto) cuando el proveedor PostgreSQL remoto tenga una latencia de migración elevada.
+(180 segundos por defecto para los runners individuales; la suite completa `test:integration:isolated` usa un
+límite predeterminado de 600 segundos, siempre dentro del máximo de 10 minutos) cuando el proveedor PostgreSQL
+remoto tenga una latencia elevada.
 
 El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La guía de permisos,
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local recomendada es `npm run test:all`: el corte vigente cubre 106 archivos aprobados,
-4 omitidos, 440 pruebas pasadas y 10 omitidas, además de typecheck, arquitectura, escenarios IA offline
-24/24 y build; el fitness check backend mantiene una sola excepción justificada para los escenarios golden
+La verificación local recomendada es `npm run test:all`: el corte vigente cubre 110 archivos aprobados,
+5 omitidos, 462 pruebas pasadas y 11 omitidas, además de typecheck, arquitectura (365 archivos/1 excepción),
+escenarios IA offline 25/25, release hygiene y build; el fitness check backend mantiene una sola excepción justificada para los escenarios golden
 de IA. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración aisladas
 cuando existe un `TEST_DATABASE_URL` dedicado. Las cifras de snapshots históricos en documentos fechados no
 representan el estado vigente.
+
+La integración PostgreSQL reproducible completa se ejecuta con `npm run test:integration:isolated`: crea un
+schema `finops_e2e_*`, despliega las 64 migraciones locales, ejecuta 10 archivos/17 pruebas y los runners
+especializados de limpieza auth y heartbeat/readiness, y elimina el schema en `finally`. No debe apuntarse a la
+BD principal ni interpretarse como validación de AWS/OCI externo.
 
 ## Manejo de Errores y Seguridad
 

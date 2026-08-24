@@ -38,6 +38,16 @@ npm run dev
 npm run test:api:smoke
 ```
 
+Para una prueba reproducible sin depender de una API levantada ni de datos compartidos, usar el runner aislado:
+
+```bash
+npm run test:api:smoke:isolated
+```
+
+Este runner crea un schema `finops_e2e_*`, aplica todas las migraciones, crea credenciales temporales mediante
+fixtures, inicia el backend con RLS runtime obligatorio, ejecuta el smoke general y el de onboarding, y elimina
+schema/fixtures en `finally`. No debe apuntar a la base principal.
+
 4. Ejecutar auditoria IA offline:
 
 ```bash
@@ -104,7 +114,17 @@ La auditoria offline valida escenarios dorados y rubricas deterministicas. La au
 
 ## Última evidencia local
 
-Al 2026-08-12, `npm run test:all` pasó con 106 archivos, 440 pruebas y 10 omitidas; `npm run test:ai:offline`
-pasó 24/24. La rúbrica incluye alcance tenant/recurso, frescura y suficiencia técnica, idioma español,
+Al 2026-08-13, `npm run test:all` pasó con 109 archivos, 451 pruebas y 11 omitidas; `npm run test:ai:offline`
+pasó 25/25. La rúbrica incluye alcance tenant/recurso, frescura y suficiencia técnica, idioma español,
 ahorro máximo determinístico, ausencia de ejecución automática y ausencia de payloads de tool, SQL, shell o código.
-El canary live sigue dependiendo de la configuración explícita del proveedor y no se usa para pruebas destructivas.
+El canary live requiere `AI_LIVE_TESTS=true`, crea un schema aislado y no es destructivo. El canary comparativo
+de aprendizaje global reconstruido el 2026-08-13 autenticó después de corregir helpers/RLS portables; baseline y
+candidate produjeron 3/3 recomendaciones aprobadas y ahorros no negativos, pero candidate obtuvo 90 frente a 92 de
+baseline. La promoción fue rechazada por no demostrar mejora estricta y `AI-008` sigue abierto. Las corridas HTTP 422
+anteriores se conservan como historial del proveedor.
+La suite PostgreSQL aislada `npm run test:integration:isolated` pasó 10 archivos/17 pruebas y validó desde cero
+las migraciones, la limpieza auth, el heartbeat y el readiness; no modifica la BD principal.
+El 2026-08-12 `npm run test:api:smoke:isolated` también pasó: 35 verificaciones generales de API, creación y
+evaluación idempotente de presupuesto/asignación, cambio de tenant, rechazo de acceso no autenticado, lecturas
+operativas de onboarding, 13 mutaciones denegadas al viewer, aislamiento cross-tenant y redacción de payloads
+sensibles. El schema `finops_e2e_api_*` y el manifiesto con contraseña temporal fueron eliminados.

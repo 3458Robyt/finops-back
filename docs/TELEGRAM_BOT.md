@@ -5,7 +5,7 @@
 - Chatbot FinOps desde Telegram usando el mismo motor IA del backend.
 - Recordatorios de ahorro bajo demanda con `/recordatorios`.
 - Consultas de recomendaciones, costos y oportunidades.
-- Vinculacion manual por administrador desde la app.
+- Vinculación autoasistida por el usuario desde Perfil; la vinculación manual queda como respaldo administrativo.
 - Sin aprobacion/rechazo de recomendaciones desde Telegram en esta version.
 
 ## Variables
@@ -50,12 +50,15 @@ cierra por sí solo el canary de la cola durable de producción.
 
 ## Vincular Usuario
 
-1. El usuario abre el bot en Telegram.
-2. Envia `/start`.
-3. El bot responde el `Chat ID`.
-4. Un administrador entra a la app en `Agente IA > Telegram`.
-5. El admin pega `email` del usuario FinOps y `Chat ID`.
-6. Opcionalmente envia un mensaje de prueba.
+1. El usuario entra en `Perfil` dentro de FinOps y genera un código de auto-vinculación.
+2. Abre el bot configurado y envía `/start <código>` antes de que expire (10 minutos).
+3. El webhook valida el secreto, consume el código una sola vez y vincula el chat al usuario y tenant exactos.
+4. El usuario puede comprobar el estado desde Perfil; el administrador puede enviar un mensaje de prueba desde la gestión de Telegram.
+
+### Respaldo administrativo
+
+Si el usuario no puede usar el código, un administrador autorizado puede vincular el chat desde `Agente IA > Telegram`.
+El Chat ID no es una credencial: la operación exige autenticación, tenant compartido y queda auditada.
 
 ## Comandos
 
