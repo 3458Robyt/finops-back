@@ -10,6 +10,47 @@
 > mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
 > y operación productiva activable cuando exista destino de despliegue.
 
+## Corte de desarrollo 2026-08-23 — PostgreSQL local y cierre operativo de ingesta
+
+Para desarrollo, la base operativa se puede ejecutar ahora en PostgreSQL 17 nativo
+(`127.0.0.1:5433/finops_local`). Supabase permanece como origen de clonación,
+staging y rollback; no se sustituyó ni se modificó por esta operación. La razón de
+usar PostgreSQL local es controlar el almacenamiento durante backfills grandes sin
+perder un snapshot reproducible.
+
+### Entregado
+
+- Clon reproducible del esquema `public` y datos de aplicación, con dump inmutable,
+  SHA-256, manifiesto y migraciones Prisma posteriores a la restauración.
+- Persistencia durable de `ingestion_job_parts` e `ingestion_coverage_segments`;
+  nuevas métricas, objetos y filas FOCUS conservan `ingestion_job_id` cuando la
+  fuente lo permite.
+- Streaming de métricas OCI por lotes acotados, estadísticas nativas MEAN/MIN/MAX/P95,
+  progreso por parte, resumen incremental y control de concurrencia sin cargar todo
+  el periodo en memoria.
+- Scheduler con advisory lock transaccional, recuperación técnica configurable de
+  1–90 días (90 por defecto) y worker local coordinado por `dev:local`.
+- Verificación local con 8 tenants, 10 conexiones, 737.609 muestras técnicas y
+  9.762 filas FOCUS heredadas; la conexión personal alcanzó 183.561 muestras del
+  4 de mayo al 23 de agosto de 2026. La prueba de una ventana nueva produjo 44
+  llamadas y 44 muestras sin jobs pendientes.
+
+### Límites y siguiente orden
+
+1. Completar la cobertura de costos de la cuenta personal cuando exista la policy
+   `COSTS` o se publiquen objetos FOCUS actuales; el estado actual es `PARTIAL`.
+2. Revalidar las demás conexiones antes de programar backfills: el scheduler omite
+   conexiones sin validación/capacidades vigentes por diseño.
+3. Medir el backfill empresarial en el PostgreSQL local por ventanas y conservar
+   cobertura por job antes de considerar completa una fecha.
+4. Mantener el worker/scheduler manual durante desarrollo; la operación 24/7,
+   secret manager externo, observabilidad centralizada y alertas siguen diferidos
+   hasta definir un destino de despliegue.
+5. AWS real continúa bloqueado hasta disponer de una cuenta y rol de prueba.
+
+Los comandos y la política de snapshots están en
+`docs/OPERACION_POSTGRES_LOCAL_INGESTA.md`.
+
 ## Corte de implementación 2026-08-19 — ingesta OCI/FOCUS y métricas nativas
 
 La implementación del flujo de ingesta se validó con datos reales de `Tak 2.0` y dejó

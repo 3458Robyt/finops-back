@@ -1,10 +1,38 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-19
+Fecha: 2026-08-23
 
 ## Resumen
 
 La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/PostgreSQL como base principal, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas.
+
+## Corte de desarrollo verificable 2026-08-23 — clon PostgreSQL local
+
+Durante desarrollo existe una base local PostgreSQL 17 en
+`127.0.0.1:5433/finops_local`. El origen Supabase permanece intacto y se conserva
+como staging/rollback. El clon contiene el esquema `public` y los datos de la
+aplicación; no contiene servicios internos de Supabase. La restauración crea un
+snapshot inmutable y aplica las migraciones Prisma pendientes antes de habilitar
+los workers.
+
+- El clon conserva 8 tenants, 10 conexiones, 737.609 muestras técnicas y 9.762
+  filas FOCUS heredadas. Los jobs `PENDING/RUNNING` importados se archivaron como
+  `CANCELLED` para evitar reanudar leases de otro entorno.
+- Los jobs nuevos registran partes y segmentos de cobertura. Las muestras y filas
+  FOCUS nuevas quedan vinculadas a su `ingestion_job_id` para distinguir datos
+  realmente persistidos de jobs solamente encolados.
+- El scheduler y worker local se ejecutan con `npm run dev:local`; el scheduler
+  tiene advisory lock transaccional, y las métricas técnicas pueden recuperar hasta
+  90 días sin duplicar ventanas ya cubiertas.
+- La cuenta personal OCI procesó una ventana con 44 llamadas, 44 muestras y
+  MEAN/MIN/MAX/P95. La conexión personal conserva 183.561 muestras entre el 4 de
+  mayo y el 23 de agosto de 2026.
+- La capacidad `COSTS` de la cuenta personal sigue sin autorización y no se
+  descubrieron objetos FOCUS actuales en la ventana probada. Por tanto, la
+  facturación local se mantiene `PARTIAL` y no se presenta como un histórico
+  completo.
+
+La operación está documentada en `docs/OPERACION_POSTGRES_LOCAL_INGESTA.md`.
 
 ## Corte operativo verificable 2026-08-19 — ingesta OCI, FOCUS y métricas nativas
 

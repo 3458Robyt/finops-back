@@ -1,5 +1,41 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-23 — PostgreSQL local y operación durable de ingesta
+
+- Se creó un entorno PostgreSQL 17 nativo en `127.0.0.1:5433/finops_local` para
+  desarrollo. Docker/virtualización no están disponibles en esta estación, por
+  lo que se dejó un script reproducible de arranque/parada en
+  `scripts/local/start-postgres17.ps1`; Supabase no se modifica y conserva el
+  origen de clonación y rollback.
+- Se clonó el esquema `public` y los datos de aplicación desde Supabase a una
+  instantánea inmutable con SHA-256. El clon conserva 8 tenants, 10 conexiones,
+  737.609 muestras técnicas y 9.762 filas FOCUS heredadas. Los jobs heredados
+  `PENDING/RUNNING` se archivaron como `CANCELLED` para no reanudar leases
+  antiguos; no se eliminaron datos de negocio.
+- El clon aplica automáticamente las migraciones Prisma pendientes después de
+  restaurar el dump. La migración `202608230001_ingestion_coverage_and_parts`
+  agrega partes de job, segmentos de cobertura y procedencia por job para
+  métricas, objetos y filas FOCUS, con RLS e índices tenant-scoped.
+- La ingesta técnica OCI ahora transmite lotes acotados, conserva MEAN/MIN/MAX/P95,
+  actualiza el progreso por parte y evita cargar todo el periodo en memoria. El
+  scheduler usa un advisory lock transaccional para impedir duplicados y permite
+  recuperar hasta 90 días mediante `INGESTION_SCHEDULER_METRIC_CATCHUP_DAYS`.
+- Se habilitó la operación local coordinada con `npm run dev:local`: backend,
+  scheduler y worker se ejecutan mientras la aplicación está abierta; el worker
+  usa concurrencia configurable y los jobs dejan cobertura, muestras vinculadas
+  y metadatos de origen verificables.
+- Verificación real local: la cuenta personal OCI procesó una ventana con 44
+  llamadas, 44 muestras y las cuatro estadísticas nativas; no quedaron jobs
+  `PENDING/RUNNING`. La conexión personal conserva 183.561 muestras entre el 4
+  de mayo y el 23 de agosto de 2026.
+- Límite conocido: la cuenta personal no tiene capacidad `COSTS` autorizada y no
+  se descubrieron objetos FOCUS actuales en su ventana, por lo que la facturación
+  permanece `PARTIAL`; no se declara que los reportes FOCUS estén completos.
+- Evidencia técnica: `npm run typecheck`, `npm run test:unit`, `npm run build`,
+  `npm run check:architecture`, `npm run check:release-hygiene`, build del
+  frontend y canary local de RLS pasaron. El runbook operativo está en
+  `docs/OPERACION_POSTGRES_LOCAL_INGESTA.md`.
+
 ### 2026-08-19 — Ingesta OCI/FOCUS y métricas técnicas enterprise
 
 - Se consolidó la consulta de OCI Monitoring por tenancy: las definiciones confirmadas
