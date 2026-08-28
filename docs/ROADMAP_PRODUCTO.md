@@ -10,6 +10,92 @@
 > mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
 > y operación productiva activable cuando exista destino de despliegue.
 
+## Roadmap vigente — corte 2026-08-28
+
+### Completado y verificado localmente
+
+- Núcleo multi-tenant, onboarding OCI, inventario normalizado, costos FOCUS/Usage
+  API, métricas técnicas con estadísticas nativas, uPlot, rollups y raw
+  conservado para drilldown.
+- Recomendaciones IA gobernadas: evidencia determinística previa, auditor IA,
+  decisiones, planes separados por recomendación, trazabilidad y aprendizaje
+  por aprobación/rechazo sin bloquear la operación humana.
+- Presupuestos, asignación de costos, ejecución manual, ahorro verificado,
+  realización de valor, notificaciones y RLS runtime.
+- Backfill técnico raw-first y proyección asíncrona: 2.123.297 muestras raw y
+  3.105.765 rollups para Tak 2.0 en el último corte local, con cobertura
+  `COVERED`/`PARTIAL`/`NO_DATA` auditable.
+- Seguridad y calidad local: 20 helpers FinOps sin exposición a roles API,
+  0 vulnerabilidades altas de producción, arquitectura 399/1 excepción,
+  suite unitaria 512/11 y suite PostgreSQL aislada aprobadas.
+
+### Cierre técnico inmediato
+
+1. Aplicar las migraciones locales 202608280001–007 en el destino PostgreSQL
+   definitivo. Supabase está read-only; no reintentar ni declarar el despliegue
+   hasta que el administrador habilite escritura o se seleccione otro destino.
+2. Auditar y continuar el backfill de Tak 2.0 por cobertura diaria y por job;
+   no declarar 90/90 mientras existan `NO_DATA`, `PARTIAL`, jobs pendientes o
+   ausencia de FOCUS actual.
+3. Mantener FOCUS como fuente primaria y completar el canary de OCI Usage API
+   solo con la policy oficial y permisos externos; evitar duplicar fuentes.
+4. Mantener el worker y scheduler manuales durante desarrollo. Antes de operar
+   24/7, ejecutar el diseño de despliegue, secret manager, rate limiting
+   compartido, healthchecks, logging/alertas y rehearsal de backup/restore.
+5. Ejecutar canary IA live con fixtures `persist=false` y registrar latencia,
+   tokens, auditoría y abstenciones; no exponer secretos ni cerrar la calidad
+   por una indisponibilidad del proveedor. El intento del 2026-08-28 recibió
+   HTTP 503 en `/ai/chat`; repetirlo cuando el proveedor esté disponible.
+
+### Bloqueados externamente o diferidos
+
+- AWS real: requiere cuenta, rol `AssumeRole` y permisos de prueba.
+- OCI Usage API: requiere policy de `usage-report` y canary read-only si la
+  cuenta actual no puede administrarla.
+- IA live: `AI-001` queda bloqueado temporalmente por indisponibilidad HTTP 503
+  del proveedor; los escenarios offline y las compuertas determinísticas siguen
+  siendo la validación vigente.
+- Mensajería SMTP/Telegram real: requiere proveedores y credenciales de prueba.
+- Operación productiva, secret manager externo, observabilidad centralizada,
+  Azure/GCP, distribución de costos compartidos y chargeback financiero.
+
+> **Fuente temporal:** las secciones de corte fechado que aparecen debajo son
+> bitácora histórica. Para el estado y el trabajo pendiente se deben usar este
+> bloque, `docs/ESTADO_ACTUAL_FINOPS.md` y `docs/DEUDA_TECNICA.md`.
+
+## Corte de implementación 2026-08-24 — backfill, moneda y rendimiento de lecturas
+
+### Entregado en este corte
+
+- PostgreSQL local queda como base de desarrollo para backfills grandes; Supabase
+  permanece intacta como staging/rollback.
+- El planificador de gaps técnicos ya trabaja oldest-first por ventanas de seis
+  horas, con cuatro workers concurrentes, persistencia bounded, reintentos
+  controlados y outcomes explícitos (`DATA_WRITTEN`/`NO_DATA`).
+- La persistencia de métricas conserva MEAN, MIN, MAX y P95 como observaciones
+  independientes; el clon local verificado contiene 1.871.897 muestras raw entre
+  el 4 de mayo y el 24 de agosto de 2026.
+- `resource_metric_rollups` conserva ventanas agregadas de 30 minutos, una hora
+  y un día sin sustituir las muestras raw. El overview de `Tak 2.0` bajó de
+  aproximadamente 23,4 s a 0,75 s en su resumen y a 264 ms en una repetición
+  local con buffers calientes; percentiles y drilldown mantienen el camino
+  exacto raw.
+- La visualización de costos dejó de asumir USD: el backend entrega totales nativos,
+  convierte a la moneda de reporte mediante `fx_rates`, conserva huecos como
+  `null` y la UI advierte conversiones faltantes.
+
+### Estado abierto verificable
+
+1. La cobertura de Tak 2.0 debe seguir verificándose por cobertura diaria y por
+   job. El backfill local tiene 22 jobs técnicos `PENDING` porque el worker no
+   permanece activo cuando se apaga la aplicación; no declararlo como ingesta
+   24/7 ni como cobertura completa hasta procesarlos con `npm run dev:local`.
+2. La cuenta personal no tiene capacidad `COSTS` autorizada y su FOCUS actual no
+   está disponible; el estado de facturación sigue siendo `PARTIAL`.
+3. FOCUS de Tak 2.0 tiene evidencia histórica, pero no se afirma completitud de
+   reportes actuales hasta verificar objetos y filas por periodo.
+4. AWS real continúa bloqueado hasta contar con una cuenta y rol de prueba.
+
 ## Corte de desarrollo 2026-08-23 — PostgreSQL local y cierre operativo de ingesta
 
 Para desarrollo, la base operativa se puede ejecutar ahora en PostgreSQL 17 nativo

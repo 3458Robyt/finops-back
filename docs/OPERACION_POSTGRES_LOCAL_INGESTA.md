@@ -1,5 +1,22 @@
 # PostgreSQL local e ingesta FinOps
 
+> **Corte vigente 2026-08-28.** Este runbook conserva los pasos operativos y
+> distingue el estado actual de los cortes históricos que aparecen más abajo.
+
+## Estado actual
+
+- PostgreSQL 17 local está activo en `127.0.0.1:5433/finops_local` y tiene las
+  migraciones aplicadas hasta
+  `202608280007_restore_auth_cleanup_refresh_visibility`.
+- La base observa aproximadamente 14.678 MB. Tak 2.0 tiene 2.123.297 muestras
+  raw y 3.105.765 rollups; el backfill no está completo: la ventana de auditoría
+  conserva `COVERED`, `PARTIAL` y `NO_DATA` explícitos.
+- `npm run dev:local` sigue siendo una operación manual de desarrollo. El
+  scheduler y los workers no se ejecutan cuando se cierra la aplicación.
+- Supabase se conserva como staging/rollback, pero actualmente está read-only;
+  las migraciones locales pendientes no pueden aplicarse allí hasta habilitar
+  escritura o elegir otro destino.
+
 ## Objetivo
 
 La fase de desarrollo usa PostgreSQL 17 nativo en `127.0.0.1:5433` (no un
@@ -84,7 +101,7 @@ escritas por el job, no mediante un escaneo histórico de toda la conexión.
 El script de reconstrucción de resúmenes sigue disponible para mantenimiento
 controlado y auditorías.
 
-## Estado verificado del clon
+## Estado verificado del clon (corte histórico — 2026-08-23)
 
 Verificación local realizada el 23 de agosto de 2026:
 
@@ -118,3 +135,47 @@ Verificación local realizada el 23 de agosto de 2026:
 
 Un fallo de OCI no se debe resolver borrando jobs o datos: se conserva el
 error, se valida la causa y se reintenta únicamente la parte faltante.
+
+## Proyección de métricas para lectura rápida
+
+La tabla `resource_metric_rollups` es una proyección derivada y no reemplaza
+`resource_metric_samples`. Conserva ventanas de 30 minutos, una hora y un día
+con `avg`, `min`, `max`, `latest`, `sum`, conteo de muestras y timestamps de los
+extremos. La vista de métricas consulta esta proyección para granularidades
+agregadas; `raw` y el drilldown siguen leyendo las muestras exactas.
+
+Después de aplicar migraciones o restaurar un clon, reconstruirla una vez:
+
+```powershell
+npm run metrics:rebuild-rollups
+```
+
+Los jobs técnicos nuevos actualizan únicamente las ventanas afectadas al
+finalizar, por lo que no deben ejecutar un escaneo histórico completo. Si la
+proyección todavía no existe o está vacía, el lector usa temporalmente la
+agregación SQL de las muestras raw para mantener compatibilidad.
+
+La lectura del resumen interactivo usa además el lector
+`PrismaResourceMetricSummaryReader`, basado en la ventana diaria de esa
+proyección. Así el panel no calcula percentiles y agrupaciones sobre millones
+de muestras en cada cambio de filtro. Los valores `avg`, `min`, `max` y
+`latest` se combinan desde los rollups; las estadísticas percentiles del
+detalle/serie (`P50`, `P90`, `P95`, `P99`) siguen consultando el flujo exacto
+de muestras raw para no presentar un percentil aproximado como si fuera
+exacto.
+
+En el clon local verificado el 24 de agosto de 2026 hay 1.871.897 muestras
+raw entre el 4 de mayo y el 24 de agosto y 2.861.231 filas de rollup. El
+benchmark del resumen del tenant `Tak 2.0` pasó de una consulta raw de
+aproximadamente 23,4 segundos a 0,75 segundos con la proyección diaria; el
+tiempo total del overview, que también carga inventario, estadísticas y
+contexto de costos, fue de 264 ms en una repetición local con buffers
+calientes. Estos valores son
+una línea base local y deben repetirse contra el destino remoto antes de
+definir un SLA.
+
+Para desarrollo local, `npm run dev:local` inicia API, worker y scheduler en la
+misma ventana. El wrapper configura un lease de job de 120 segundos (renovable
+cada minuto) para que un worker caído pueda recuperarse sin dejar trabajos
+aparentemente congelados durante varios minutos. En producción el lease debe
+definirse explícitamente según la latencia máxima del proveedor.

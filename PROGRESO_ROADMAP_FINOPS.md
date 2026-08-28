@@ -1,5 +1,66 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-28 — Consolidación del cierre técnico de la beta
+
+- Se verificó el estado local de PostgreSQL 17 con migraciones hasta
+  `202608280007_restore_auth_cleanup_refresh_visibility`. La migración final
+  restaura la visibilidad interna que el worker de limpieza necesita para no
+  borrar sesiones expiradas que todavía tienen refresh tokens vigentes.
+- La suite PostgreSQL aislada pasó completa: **10 archivos, 17 pruebas, cleanup
+  de autenticación y heartbeat**, con schema temporal eliminado en `finally`.
+  También se corrigió el runner para que Prisma use el schema efímero y
+  `timezone=UTC`; antes los fixtures se creaban en `public` o desplazaban las
+  fechas por la zona horaria local.
+- La verificación local vigente reporta **2.123.297 muestras raw**, **3.105.765
+  rollups**, 36 recursos, 108 métricas, 11 namespaces y cuatro estadísticas
+  (`MEAN`, `MIN`, `MAX`, `P95`) para Tak 2.0. En 2026-05-30..2026-08-30 hay
+  44.304 ventanas `COVERED`, 16.157 `PARTIAL` y 71.593 `NO_DATA`; el backfill
+  no se declara completo.
+- Se confirmó que Tak 2.0 no tiene FOCUS en la ventana actual: conserva 602
+  filas históricas de 2024 y 711 costos `PROVIDER_API` en COP. La facturación
+  actual permanece parcial y las fuentes no se suman nominalmente.
+- Seguridad y calidad: 20 helpers FinOps sin grants a roles API ni `search_path`
+  inseguro, `npm audit --omit=dev --audit-level=high` sin vulnerabilidades,
+  arquitectura 399/1 excepción, suite unitaria 512 aprobadas y 11 omitidas;
+  frontend typecheck/lint/build aprobados.
+- Supabase sigue read-only, por lo que las migraciones locales 202608280001–007
+  están pendientes allí. AWS real y OCI Usage API siguen bloqueados por
+  dependencias externas; el trabajo 24/7 se mantiene diferido durante el
+  desarrollo manual.
+- El canary IA live se reintentó de forma aislada el 2026-08-28 con
+  `persist=false`; el proveedor respondió HTTP 503 en `/ai/chat`. El schema y
+  los fixtures se eliminaron en `finally`, no se expuso la clave y `AI-001`
+  queda bloqueado hasta que el proveedor vuelva a estar disponible.
+
+> Las entradas fechadas a continuación son bitácora histórica. No sustituyen
+> este corte vigente ni el estado autoritativo en `docs/ESTADO_ACTUAL_FINOPS.md`.
+
+### 2026-08-24 — Corrección de cobertura técnica y normalización monetaria
+
+- El backfill de `Tak 2.0` continúa ejecutándose en PostgreSQL local con ventanas
+  oldest-first de seis horas, cuatro jobs concurrentes, persistencia acotada y
+  reintentos de hasta tres intentos. En el corte de esta actualización hay
+  **1.298.248 muestras**, **63 días con datos** y cobertura temporal entre el 21 de
+  mayo y el 18 de agosto de 2026; todavía existen jobs técnicos activos, por lo
+  que no se declara completado el rango de 90 días.
+- Las muestras ya conservan las estadísticas OCI por separado: **325.011 MEAN,
+  325.011 MIN, 324.844 MAX y 324.555 P95**. Los días posteriores al 18 de agosto
+  permanecen sin evidencia del proveedor o siguen esperando sus ventanas de
+  ingesta; se mantienen como gaps explícitos, no como ceros inventados.
+- La ingesta trata `Server is busy at this moment` y respuestas 5xx/transitorias
+  como reintentables. El scheduler usa `maxAttempts=3`, evita reencolar ventanas
+  confirmadas como `NO_DATA` y conserva el progreso por job/parte. Las ventanas
+  fallidas con hash de configuración obsoleto se reencolan y el worker las reclama
+  por `target_start` oldest-first para no dejar gaps históricos detrás de jobs nuevos.
+- El historial de costos ahora agrupa por moneda nativa, convierte a la moneda de
+  reporte del tenant mediante tasas TRM persistidas y muestra periodos ausentes o
+  sin tasa como cortes/advertencias. No se suman nominalmente COP y USD.
+- En el corte local hay **2.819 MB** de base; Tak 2.0 tiene costos en COP y la
+  cuenta personal en USD. La réplica local es la fuente de desarrollo; Supabase no
+  fue modificada en este trabajo.
+- Verificación: frontend `npm run build` y bundle fitness pasaron; backend
+  `npm run test:all` pasó con **119 archivos, 508 pruebas y 11 omitidas**.
+
 ### 2026-08-23 — PostgreSQL local y operación durable de ingesta
 
 - Se creó un entorno PostgreSQL 17 nativo en `127.0.0.1:5433/finops_local` para
@@ -1603,3 +1664,33 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
   (aprox. 256,8 s para 15.848 y 318,2 s para 13.044). La suite PostgreSQL aislada
   completa quedó abierta por sesiones `idle in transaction` durante cleanup; se
   registraron `QA-003` y `PERF-004` en `docs/DEUDA_TECNICA.md`.
+
+### 2026-08-24 — Estabilización de dashboard, métricas y jobs
+
+- El dashboard dejó de depender exclusivamente de los últimos 90 días de
+  calendario: usa el último periodo disponible y comunica la fecha de corte y
+  la antigüedad del dato.
+- Se añadió la proyección aditiva `resource_metric_rollups` para acelerar las
+  series técnicas agregadas desde PostgreSQL sin eliminar muestras raw. La
+  proyección conserva `avg`, `min`, `max`, `latest`, `sum`, conteo, timestamps de
+  extremos y granularidades de origen; el raw/drilldown permanece exacto.
+- La ingesta actualiza los rollups solo para las ventanas afectadas por cada
+  job técnico. El comando de mantenimiento es
+  `npm run metrics:rebuild-rollups`.
+- Los workers OCI ahora reciben `AbortSignal`, consultan cancelación durante la
+  persistencia y la readiness diferencia `WAITING_FOR_WORKER`, `RUNNING`,
+  `CANCEL_REQUESTED` y `STALE`. El wrapper local inicia API, worker y scheduler
+  juntos y usa lease local de 120 segundos.
+- La UI técnica mantiene un cache LRU/TTL acotado, cancela requests obsoletos,
+  pagina series con uPlot y conserva la serie cargada al solicitar páginas
+  posteriores.
+- El resumen interactivo dejó de ejecutar la agregación raw pesada: usa el
+  lector diario `PrismaResourceMetricSummaryReader` y reserva la consulta raw
+  exacta para percentiles y evidencia. En `Tak 2.0`, el resumen bajó de
+  aproximadamente 23,4 s a 0,75 s; el overview completo quedó en 264 ms en
+  una repetición local con buffers calientes.
+- La reconstrucción local quedó verificada: 1.871.897 muestras raw y
+  2.861.231 rollups derivados, con cobertura raw del 4 de mayo al 24 de agosto
+  de 2026. El build frontend y los typechecks backend/frontend quedaron
+  aprobados; falta cerrar la batería completa de validación y repetir la
+  medición contra un destino remoto representativo.

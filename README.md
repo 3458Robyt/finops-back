@@ -1,14 +1,16 @@
 # ☁️ FinOps Inteligente: Core Backend & API RESTful
 
-> **Estado vigente (2026-08-14):** beta funcional avanzada con OCI real, FOCUS,
+> **Estado vigente (2026-08-28):** beta funcional avanzada con OCI real, FOCUS,
 > métricas técnicas, IA gobernada, auditoría, aprendizaje reversible, presupuestos,
-> asignación y realización de valor. AWS real y OCI Usage API permanecen en standby
-> por dependencias externas; la operación 24/7 se activa únicamente al definir un
+> asignación y realización de valor. PostgreSQL local es la base de desarrollo;
+> Supabase está conservada como staging/rollback y actualmente responde read-only.
+> AWS real, OCI Usage API y el canary IA live permanecen condicionados por
+> dependencias externas; la operación 24/7 se activa únicamente al definir un
 > destino de despliegue. Para conocer el estado verificable, consulta
 > [`docs/ESTADO_ACTUAL_FINOPS.md`](docs/ESTADO_ACTUAL_FINOPS.md) y
 > [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md).
 
-![Node.js](https://img.shields.io/badge/Node.js-22.x-green) ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-blue) ![Tests](https://img.shields.io/badge/Tests-Vitest-success)
+![Node.js](https://img.shields.io/badge/Node.js-22.x-green) ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue) ![Tests](https://img.shields.io/badge/Tests-Vitest-success)
 
 Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps Inteligente**, desarrollada para **TAK Colombia**. El sistema centraliza la ingesta de facturación multicloud, orquesta el análisis predictivo mediante Agentes de Inteligencia Artificial (LLMs) y expone una API RESTful segura para el consumo de interfaces web y chatbots.
 
@@ -17,7 +19,7 @@ Este repositorio contiene el núcleo lógico (Backend) de la plataforma **FinOps
 El backend actúa como el motor principal para transformar los procesos manuales y reactivos de gestión de costos en la nube hacia una cultura proactiva. Sus responsabilidades incluyen:
 - **Ingesta estandarizada:** Jobs persistentes para inventario, costos FOCUS/API directa y métricas técnicas de OCI/AWS.
 - **Análisis Inteligente:** Procesamiento de datos mediante IA generativa para detectar oportunidades y sugerir acciones de *rightsizing*.
-- **Persistencia:** Almacenamiento de métricas financieras y de contexto en PostgreSQL (Supabase en producción; PostgreSQL local vía Docker para desarrollo).
+- **Persistencia:** Almacenamiento de métricas financieras y de contexto en PostgreSQL (PostgreSQL local para desarrollo y destino desplegado configurable).
 - **Seguridad y Trazabilidad:** Gestión de roles (JWT), encriptación de credenciales cloud y registro de auditoría de optimizaciones.
 
 
@@ -143,7 +145,8 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 
 ### Pendientes de hardening antes de producción
 - Activar `DB_RUNTIME_ENFORCE=true` solo al desplegar el backend con el rol `finops_runtime`; el canary,
-  las migraciones RLS, el hardening de funciones y los índices FK ya están aplicados y verificados en Supabase.
+  las migraciones RLS, el hardening de funciones y los índices FK están aplicados y verificados localmente.
+  Supabase está read-only y requiere habilitar escritura antes de aplicar las migraciones pendientes.
 - Rotación de claves JWT/cifrado y gestión de secretos vía un gestor externo; `.env` es solo para desarrollo.
 - Observabilidad centralizada con retención, alertas y métricas de latencia.
 - Las pruebas de integración contra schema efímero y el cleanup automático ya están verificados;

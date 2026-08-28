@@ -1,5 +1,11 @@
 # Informe de cierre técnico del Goal — FinOps Inteligente
 
+> **Documento histórico.** Este informe corresponde al corte 2026-08-13. No
+> sustituye el estado vigente de 2026-08-28; úsese únicamente como evidencia de
+> aquella entrega. Las fuentes actuales son `docs/ESTADO_ACTUAL_FINOPS.md`,
+> `docs/ROADMAP_PRODUCTO.md`, `docs/DEUDA_TECNICA.md` y
+> `PROGRESO_ROADMAP_FINOPS.md`.
+
 **Corte:** 2026-08-13
 **Alcance:** `finops-backend` y `finops-app` únicamente  
 **Estado:** beta consolidada para desarrollo; publicación y operación productiva aún no activadas

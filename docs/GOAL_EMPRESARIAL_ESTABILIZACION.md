@@ -2,6 +2,11 @@
 
 Fecha de implementación: 2026-08-14
 
+> **Documento histórico:** este goal conserva la evidencia de su corte de
+> implementación. Los estados actuales de migraciones, proveedor IA y entorno
+> de ejecución se consultan en `docs/ESTADO_ACTUAL_FINOPS.md` y
+> `docs/DEUDA_TECNICA.md`.
+
 Este documento registra la implementación del goal de estabilización de la beta,
 sin declarar como verificada una cuenta cloud real cuya credencial haya sido
 expuesta en una conversación. La fuente de verdad del estado general sigue

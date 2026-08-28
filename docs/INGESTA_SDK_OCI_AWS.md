@@ -6,6 +6,32 @@
 
 Este documento resume la configuracion operativa actual para ingesta productiva de costos, consumo facturado y metricas tecnicas. La regla de diseno se mantiene: FOCUS/Data Exports alimenta costos y uso facturado; Monitoring/CloudWatch alimenta CPU, red, disco y memoria cuando el proveedor o agente la entregue.
 
+## Estado vigente — 2026-08-28
+
+- El camino de desarrollo activo es PostgreSQL local 17 en
+  `127.0.0.1:5433/finops_local`; el worker raw-first persiste por lotes y el
+  projection worker actualiza rollups de forma asíncrona. La última auditoría
+  de Tak 2.0 registra 2.123.297 muestras raw, 3.105.765 rollups y cuatro
+  estadísticas nativas (`MEAN`, `MIN`, `MAX`, `P95`).
+- La cobertura se mide por ventana, stream y job con estados `COVERED`, `PARTIAL`
+  y `NO_DATA`; no se asume que una métrica declarada disponible tenga muestras
+  para cada periodo. El scheduler oldest-first y la concurrencia están acotados
+  para respetar los límites del proveedor.
+- Tak 2.0 no tiene FOCUS actual en la ventana de 90 días. Sus 602 filas FOCUS
+  son históricas de 2024 y hay 711 costos `PROVIDER_API` en COP. FOCUS sigue
+  siendo la fuente primaria y Usage API solo actúa como redundancia/fallback,
+  sin sumar ambas fuentes.
+- Las migraciones de hardening e índices locales 202608280001–007 están
+  aplicadas. Supabase está read-only y no se debe afirmar que esas migraciones
+  estén allí hasta que el destino permita escritura.
+- AWS tiene adaptador y pruebas unitarias, pero el canary real sigue bloqueado
+  hasta disponer de una cuenta y rol. Las credenciales bootstrap configuradas
+  por la plataforma sirven para obtener credenciales temporales mediante
+  `AssumeRole`; no son las credenciales de los tenants.
+
+> Las validaciones fechadas debajo conservan benchmarks y hallazgos históricos.
+> Para el estado actual prevalece este bloque y `docs/ESTADO_ACTUAL_FINOPS.md`.
+
 ## Estado verificado
 
 ### Validación 2026-08-03
@@ -243,7 +269,7 @@ INGESTION_SCHEDULER_METRIC_WINDOW_MINUTES=30
 INGESTION_SCHEDULER_METRIC_COOLDOWN_MINUTES=25
 INGESTION_SCHEDULER_BILLING_WINDOW_HOURS=24
 INGESTION_SCHEDULER_BILLING_COOLDOWN_HOURS=6
-INGESTION_SCHEDULER_MAX_ATTEMPTS=1
+INGESTION_SCHEDULER_MAX_ATTEMPTS=3
 ```
 
 Operacion recomendada para MVP productivo:

@@ -1,10 +1,127 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-23
+Fecha: 2026-08-28
 
 ## Resumen
 
-La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/PostgreSQL como base principal, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas.
+La plataforma ya tiene backend Node.js/TypeScript, frontend React, PostgreSQL local como base primaria de desarrollo y Supabase conservada como staging/rollback, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas. El corte vigente distingue lo verificado localmente de las operaciones externas bloqueadas por permisos o por el estado read-only de Supabase.
+
+## Corte vigente verificable — 2026-08-28
+
+La evidencia actual de desarrollo corresponde a PostgreSQL 17 local en
+`127.0.0.1:5433/finops_local`, con migraciones aplicadas hasta
+`202608280007_restore_auth_cleanup_refresh_visibility`. El tamaño observado es
+aproximadamente **14.678 MB**; el crecimiento proviene del backfill técnico y de
+las proyecciones derivadas, no de una nueva copia de servicios internos de
+Supabase.
+
+### Ingesta y cobertura de Tak 2.0
+
+- La conexión empresarial de `Tak 2.0` contiene **2.123.297 muestras raw** y
+  **3.105.765 rollups**. El raw conserva **36 recursos**, **108 nombres de
+  métrica**, **11 namespaces** y las cuatro estadísticas OCI verificadas
+  (`MEAN`, `MIN`, `MAX` y `P95`). El rango observado va del 21 de mayo al 18 de
+  agosto de 2026; esto no equivale a 90 días completos.
+- Para la ventana de auditoría 2026-05-30..2026-08-30 hay **44.304 ventanas
+  COVERED**, **16.157 PARTIAL** y **71.593 NO_DATA**. Los estados explícitos
+  distinguen ausencia real de datos, cobertura parcial y datos completos; no se
+  convierten gaps en ceros.
+- El estado actual de jobs técnicos es **229 SUCCESS, 88 PENDING, 2 RUNNING,
+  45 FAILED, 97 CANCELLED y 1 SKIPPED**. Los workers son manuales durante el
+  desarrollo y los jobs pendientes no deben interpretarse como datos ya
+  descargados.
+- No hay filas FOCUS de Tak 2.0 en la ventana actual de 90 días. Se conservan
+  **602 filas FOCUS históricas** de 2024 y **711 filas de costos
+  `PROVIDER_API`** en COP entre el 18 de julio y el 22 de agosto de 2026. FOCUS
+  continúa siendo la fuente operativa primaria; la completitud actual de
+  facturación queda declarada como parcial.
+
+### Verificación técnica del corte
+
+- `npm run test:unit`: **120 archivos aprobados, 512 pruebas aprobadas y 11
+  omitidas**.
+- `npm run test:integration:isolated`: **10 archivos PostgreSQL, 17 pruebas y
+  los dos scripts especializados aprobados**; el schema temporal se eliminó en
+  `finally`.
+- `npm run check:architecture`: **399 archivos de producción**, una excepción
+  declarada para fixtures IA.
+- `npm audit --omit=dev --audit-level=high`: **0 vulnerabilidades**. Frontend
+  typecheck, lint, build y bundle fitness también pasan.
+- El canary local de RLS confirma **20 helpers FinOps**, ejecución runtime para
+  los 20, cero exposición a roles API y cero `search_path` inseguro.
+
+### Límites externos vigentes
+
+- Supabase conserva sus datos, pero está en `read-only`: las migraciones locales
+  202608280001–007 no pueden aplicarse remotamente hasta que el administrador
+  habilite escritura o se disponga de un destino alternativo. No se afirma que
+  estén desplegadas allí.
+- AWS real permanece bloqueado por falta de cuenta/rol de prueba. OCI Usage API
+  queda como redundancia pendiente de policy/canary externo; FOCUS no depende de
+  ese bloqueo.
+- La operación 24/7, secret manager externo, observabilidad centralizada y
+  alertas productivas siguen diferidos hasta definir un destino de despliegue.
+- La última ejecución del canary IA live aislado, el 2026-08-28, recibió HTTP
+  `503 Service temporarily unavailable` del proveedor configurado en `/ai/chat`.
+  No se persistieron fixtures ni se expuso la clave; por eso `AI-001` permanece
+  bloqueado externamente aunque los escenarios offline sigan aprobados.
+
+> **Nota histórica:** los cortes fechados que aparecen debajo de este aviso
+> conservan evidencia y decisiones anteriores; no sustituyen el corte vigente
+> anterior.
+
+## Corte de estabilizacion de lecturas y jobs — 2026-08-24
+
+- El dashboard consulta el ultimo periodo de costos realmente disponible cuando
+  los 90 dias calendario no contienen datos; la respuesta expone `dataAsOf` y
+  `staleDays` para no presentar una grafica vacia como si fuera un fallo de
+  datos.
+- La lectura agregada de metricas tecnicas usa la proyeccion PostgreSQL
+  `resource_metric_rollups` (30m/hora/dia), preserva min/max/latest y conserva
+  `resource_metric_samples` como fuente canonica para `raw` y drilldown.
+- La proyeccion tiene reconstruccion controlada mediante
+  `npm run metrics:rebuild-rollups` y refresco incremental por job técnico; la
+  migracion es aditiva y no elimina muestras existentes.
+- El worker local coopera con cancelaciones, aborta retries/llamadas OCI y la
+  readiness informa si existe worker, cuantos jobs estan en cola y cuales son
+  stale. `npm run dev:local` inicia API, scheduler y worker juntos.
+- El frontend usa `uPlot`, cancela solicitudes obsoletas y mantiene un cache LRU
+  acotado de series; al paginar, la serie completa queda cacheada sin duplicar
+  solicitudes al cambiar rapidamente de metrica.
+- El resumen interactivo de `Tak 2.0` pasó de aproximadamente 23,4 s con la
+  agregación raw a 0,75 s mediante el lector diario; el overview completo
+  quedó en 264 ms en una repetición local con buffers calientes. Los percentiles del
+  detalle/serie siguen consultando raw para conservar exactitud.
+- La reconstrucción local quedó verificada con 1.871.897 muestras raw y
+  2.861.231 rollups derivados, con cobertura raw del 4 de mayo al 24 de agosto
+  de 2026.
+
+## Corte de implementación verificable 2026-08-24 — cobertura y monedas
+
+- La base de desarrollo activa es `127.0.0.1:5433/finops_local`; Supabase no fue
+  modificada. El tamaño local observado es **2.819 MB**.
+- `Tak 2.0` tiene **1.298.248 muestras técnicas**, **63 días con datos**, desde
+  `2026-05-21 04:00 -05` hasta `2026-08-18 18:00 -05`. El catch-up todavía está
+  procesando ventanas; la cifra es un corte parcial y no equivale a 90/90 días.
+- Distribución de estadísticas de Tak 2.0: **MEAN 325.011, MIN 325.011, MAX
+  324.844 y P95 324.555**. Las estadísticas se conservan separadas y pueden
+  filtrarse sin reconstruirlas en el navegador.
+- El scheduler procesa oldest-first en bloques de seis horas con concurrencia 4,
+  backoff/reintentos limitados y persistencia por lotes. Las ventanas fallidas con
+  configuración obsoleta se reencolan; el worker también ordena por `target_start`.
+  Los periodos sin datos confirmados quedan marcados como `NO_DATA`; no se
+  convierten a ceros ni se reencolan indefinidamente.
+- La gráfica de costos usa la moneda de reporte del tenant, conserva importes
+  nativos, convierte COP/USD con tasas TRM persistidas y muestra gaps o periodos
+  sin tasa como advertencia. No se suman monedas nominalmente distintas.
+- Costos observados: `Tak 2.0` en COP (1.313 filas, hasta 2026-08-22), `OCI
+  Personal Demo` en USD (9.160 filas, 2026-02-26 a 2026-05-05). FOCUS de Tak 2.0
+  conserva 602 filas históricas; no se afirma que exista un FOCUS actual completo.
+- La cuenta personal conserva 183.781 muestras entre 2026-05-04 y 2026-08-24.
+
+El backfill empresarial continúa en segundo plano durante el desarrollo. La
+fecha y los conteos anteriores del documento se conservan como historia, no como
+estado vigente.
 
 ## Corte de desarrollo verificable 2026-08-23 — clon PostgreSQL local
 
