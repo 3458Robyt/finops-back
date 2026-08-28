@@ -31,6 +31,10 @@
   `persist=false`; el proveedor respondió HTTP 503 en `/ai/chat`. El schema y
   los fixtures se eliminaron en `finally`, no se expuso la clave y `AI-001`
   queda bloqueado hasta que el proveedor vuelva a estar disponible.
+- Los PR de backend y frontend quedaron publicados en `feat/shared-cost-allocation`
+  y sus workflows CI terminaron en verde. Se corrigió el build de contenedor del
+  backend para Prisma sin secretos y el build del frontend para no depender de
+  Git dentro de la imagen.
 
 > Las entradas fechadas a continuación son bitácora histórica. No sustituyen
 > este corte vigente ni el estado autoritativo en `docs/ESTADO_ACTUAL_FINOPS.md`.

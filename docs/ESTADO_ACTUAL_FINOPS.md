@@ -47,6 +47,8 @@ Supabase.
   declarada para fixtures IA.
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilidades**. Frontend
   typecheck, lint, build y bundle fitness también pasan.
+- Los workflows CI de los PR de backend y frontend terminaron en verde después
+  de hacer los builds de contenedor independientes del repositorio Git.
 - El canary local de RLS confirma **20 helpers FinOps**, ejecución runtime para
   los 20, cero exposición a roles API y cero `search_path` inseguro.
 
