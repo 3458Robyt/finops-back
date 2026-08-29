@@ -45,10 +45,12 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
   queda una excepción documentada para fixtures IA.
 - `npm run check:release-hygiene`, `npm audit --omit=dev --audit-level=high` y
   build backend: aprobados; producción reporta **0 vulnerabilidades**.
-- Frontend typecheck, lint y build/bundle: aprobados. Playwright local con
-  mocks: 10 aprobadas y 3 omitidas cuando no existe el manifest de fixtures.
-  La prueba específica de análisis/recomendaciones tiene 8/8 aprobadas e
-  incluye chat en español y generación directa auditada.
+- Frontend typecheck, lint y build/bundle: aprobados. La suite E2E completa
+  con fixtures PostgreSQL aislados terminó **13/13** y eliminó tenants,
+  manifest y schema en `finally`; la ejecución rápida sin manifest conserva
+  10 aprobadas y 3 omitidas. La prueba específica de
+  análisis/recomendaciones tiene 8/8 aprobadas e incluye chat en español y
+  generación directa auditada.
 
 ### Estabilización adicional de lecturas, auditoría y toolchain — 2026-08-29
 
@@ -70,6 +72,9 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
 - La integración PostgreSQL aislada completó **10 archivos y 17 pruebas**, más
   los canaries de limpieza de autenticación y heartbeat; ambos schemas se
   eliminaron mediante `finally`.
+- La suite E2E completa reprodujo el cambio de tenant con backend real de
+  fixtures: el cliente ya ignora respuestas 401 de peticiones antiguas durante
+  la rotación y evita expulsar al usuario después de cambiar de tenant.
 
 ### Límites de esta verificación
 

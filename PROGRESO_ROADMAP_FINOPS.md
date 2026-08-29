@@ -19,8 +19,9 @@
   OCI específico registraron mediana ~2,3 s y peor proceso 4,2 s.
 - Verificación: **537/548 pruebas unitarias** con 11 omitidas, IA offline 25/25,
   arquitectura 405 archivos, integración PostgreSQL aislada 10 archivos/17
-  pruebas, audit de producción 0 vulnerabilidades y frontend typecheck/lint/
-  build/bundle aprobados.
+  pruebas, E2E completo con fixtures **13/13** (incluido cambio de tenant),
+  audit de producción 0 vulnerabilidades y frontend typecheck/lint/build/bundle
+  aprobados.
 
 ### 2026-08-29 — Estabilización P0/P1, gobernanza IA y preparación AWS
 

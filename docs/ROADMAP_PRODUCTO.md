@@ -24,8 +24,9 @@
   con manifiestos. Falta únicamente ejecutar contra una cuenta real.
 - Probado: backend 537 pruebas unitarias aprobadas, 25 escenarios IA offline,
   arquitectura 405 archivos sin violaciones de límite y una excepción
-  documentada; Playwright mock 10/10; la suite Playwright real de
-  solo lectura está implementada pero requiere credenciales locales.
+  documentada; Playwright fixture-based completo 13/13 y ejecución rápida
+  10/10; la suite Playwright real de solo lectura está implementada pero
+  requiere credenciales locales.
 
 ### Siguiente orden consecuente
 
