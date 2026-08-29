@@ -1,6 +1,6 @@
 # PostgreSQL local e ingesta FinOps
 
-> **Corte vigente 2026-08-28.** Este runbook conserva los pasos operativos y
+> **Corte vigente 2026-08-29.** Este runbook conserva los pasos operativos y
 > distingue el estado actual de los cortes históricos que aparecen más abajo.
 
 ## Estado actual
@@ -16,6 +16,9 @@
 - Supabase se conserva como staging/rollback, pero actualmente está read-only;
   las migraciones locales pendientes no pueden aplicarse allí hasta habilitar
   escritura o elegir otro destino.
+- Los trabajos `RUNNING` que queden sin heartbeat ya no permanecen bloqueados
+  indefinidamente: el claim y la consola master ejecutan la reconciliación de
+  leases vencidos con reintento, fallo final o cancelación explícita.
 
 ## Objetivo
 

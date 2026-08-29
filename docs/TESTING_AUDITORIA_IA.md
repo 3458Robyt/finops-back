@@ -5,6 +5,12 @@ Este proyecto separa las pruebas en dos capas:
 - Deterministicas: no llaman al proveedor IA y sirven para CI/regresion rapida.
 - Live: llaman al proveedor IA real y usan fixtures aislados en una base de pruebas dedicada.
 
+La política de aceptación IA no depende únicamente del veredicto textual del
+modelo: una recomendación o plan solo se acepta si el auditor devuelve
+`APPROVED`, alcanza al menos 80/100, no tiene bloqueadores ni cambios requeridos
+y todos sus checks pasan. Si alguna condición falla, el artefacto se rechaza o
+se omite sin persistirlo.
+
 ## Base de datos de pruebas
 
 No se deben crear fixtures contra `DATABASE_URL` productiva. La ruta recomendada es
@@ -74,6 +80,26 @@ cd ../finops-app
 npm run test:e2e
 ```
 
+La suite anterior usa mocks para poder ejecutarse sin modificar datos externos.
+Para probar la aplicación desplegada contra una cuenta real en modo solo
+lectura, usar la suite separada:
+
+```powershell
+$env:E2E_REAL_BASE_URL='http://127.0.0.1:5173'
+$env:E2E_REAL_ADMIN_EMAIL='cuenta-de-prueba'
+$env:E2E_REAL_ADMIN_PASSWORD='secreto-local'
+# Solo si la cuenta exige MFA:
+$env:E2E_REAL_MFA_CODE='000000'
+npm run test:e2e:real
+```
+
+Estas variables deben existir únicamente en el entorno local o en un gestor de
+secretos. La suite recorre los módulos en 390, 1024, 1366 y 1920 px, verifica
+tenant switching, filtros de métricas, errores de red, overflow y errores de
+página. Rechaza cualquier mutación distinta de login, refresh o cambio de
+tenant. No pulsa botones de generación persistente, aprobación, ejecución,
+creación o borrado.
+
 8. Limpiar fixtures de la base de pruebas:
 
 ```bash
@@ -98,9 +124,10 @@ Los artefactos quedan fuera de git:
 - `test-results/`
 - `playwright-report/`
 
-El smoke E2E del frontend (`npm run test:e2e:smoke`) no necesita API ni BD y se ejecuta en CI. El E2E
-completo (`npm run test:e2e`) es un flujo de entorno, requiere backend y fixtures, y no debe llamarse en
-CI sin credenciales y proveedor IA de prueba.
+El E2E frontend mock (`npm run test:e2e`) no necesita API ni BD compartida y se ejecuta en CI; las pruebas
+que dependen de fixtures se omiten de forma explícita cuando no existe el manifiesto aislado. El flujo
+con backend, PostgreSQL y fixtures se ejecuta con `npm run test:e2e:full`. Ninguna de las dos suites debe
+apuntarse a la base principal ni ejecutarse en CI sin las credenciales y servicios que correspondan.
 
 ## Criterios de auditoria IA
 
@@ -114,7 +141,7 @@ La auditoria offline valida escenarios dorados y rubricas deterministicas. La au
 
 ## Última evidencia local
 
-Al 2026-08-13, `npm run test:all` pasó con 109 archivos, 451 pruebas y 11 omitidas; `npm run test:ai:offline`
+Al 2026-08-29, `npm run test:all` pasó con 123 archivos, 529 pruebas y 11 omitidas; `npm run test:ai:offline`
 pasó 25/25. La rúbrica incluye alcance tenant/recurso, frescura y suficiencia técnica, idioma español,
 ahorro máximo determinístico, ausencia de ejecución automática y ausencia de payloads de tool, SQL, shell o código.
 El canary live requiere `AI_LIVE_TESTS=true`, crea un schema aislado y no es destructivo. El canary comparativo

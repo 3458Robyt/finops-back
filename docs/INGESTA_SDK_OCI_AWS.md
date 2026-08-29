@@ -6,7 +6,22 @@
 
 Este documento resume la configuracion operativa actual para ingesta productiva de costos, consumo facturado y metricas tecnicas. La regla de diseno se mantiene: FOCUS/Data Exports alimenta costos y uso facturado; Monitoring/CloudWatch alimenta CPU, red, disco y memoria cuando el proveedor o agente la entregue.
 
-## Estado vigente — 2026-08-28
+## Estado vigente — 2026-08-29
+
+- La recuperación de jobs stale está implementada en el repositorio de leases:
+  un trabajo `RUNNING` vencido vuelve a `PENDING` si conserva intentos,
+  termina como `FAILED` si agotó reintentos o pasa a `CANCELLED` si recibió una
+  cancelación. La consola master puede ejecutar la reconciliación global sin
+  entrar tenant por tenant.
+- El adaptador AWS ya no es solo un contrato: coordina STS `AssumeRole` con
+  External ID, regiones, EC2/EBS, CloudWatch, Cost Explorer y FOCUS S3. El
+  descubrimiento de CloudWatch y manifiestos FOCUS está acotado, pagina cursores
+  y destruye clientes SDK después de operar. Sigue faltando un canary con una
+  cuenta AWS real.
+- Los clientes específicos de OCI permanecen separados del paquete paraguas;
+  la compilación usa solo los módulos OCI realmente utilizados. El objetivo de
+  rendimiento debe medirse con cinco arranques en frío cuando se disponga del
+  entorno de despliegue.
 
 - El camino de desarrollo activo es PostgreSQL local 17 en
   `127.0.0.1:5433/finops_local`; el worker raw-first persiste por lotes y el
@@ -17,8 +32,9 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
   y `NO_DATA`; no se asume que una métrica declarada disponible tenga muestras
   para cada periodo. El scheduler oldest-first y la concurrencia están acotados
   para respetar los límites del proveedor.
-- Tak 2.0 no tiene FOCUS actual en la ventana de 90 días. Sus 602 filas FOCUS
-  son históricas de 2024 y hay 711 costos `PROVIDER_API` en COP. FOCUS sigue
+- Tak 2.0 conserva 148.916 filas FOCUS locales hasta el 26 de agosto de 2026;
+  el backfill reciente cubrió la ventana operativa local de 90 días. Los costos
+  no vinculables a inventario se conservan y se auditan aparte. FOCUS sigue
   siendo la fuente primaria y Usage API solo actúa como redundancia/fallback,
   sin sumar ambas fuentes.
 - Las migraciones de hardening e índices locales 202608280001–007 están

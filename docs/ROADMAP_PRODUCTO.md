@@ -1,6 +1,6 @@
 # Roadmap de Producto — FinOps Inteligente
 
-> **Consolidación técnica 2026-08-11:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
+> **Consolidación técnica inicial 2026-08-11:** la beta integrada ya tiene núcleo FinOps, OCI real, IA
 > gobernada, métricas técnicas, presupuestos, asignación, realización de valor y RLS verificados.
 > Los pendientes se gestionan en `docs/DEUDA_TECNICA.md` con estados `ABIERTO`, `BLOQUEADO`,
 > `DIFERIDO` o `CERRADO`. FOCUS sigue como fuente operativa primaria; OCI Usage API es
@@ -10,7 +10,38 @@
 > mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
 > y operación productiva activable cuando exista destino de despliegue.
 
-## Roadmap vigente — corte 2026-08-28
+## Roadmap vigente — corte 2026-08-29
+
+### Cierre de la iteración P0/P1
+
+- Estabilizado: reconciliación de leases stale de ingesta, administración
+  central y runtime local explícito para que la interfaz no dispare backfills.
+- Gobernado: compuerta única de auditoría IA con score mínimo 80/100, checks
+  determinísticos, abstención ante evidencia débil, botón de generación durable
+  en Dashboard/Consola y pruebas de chat/generación.
+- Preparado para AWS: STS AssumeRole/External ID, regiones, EC2/EBS, nombres
+  de recursos, CloudWatch con discovery/paginación, Cost Explorer y FOCUS S3
+  con manifiestos. Falta únicamente ejecutar contra una cuenta real.
+- Probado: backend 529 pruebas unitarias aprobadas, 25 escenarios IA offline,
+  arquitectura 403/403 y Playwright mock 10/10; la suite Playwright real de
+  solo lectura está implementada pero requiere credenciales locales.
+
+### Siguiente orden consecuente
+
+1. Ejecutar la suite real de Playwright contra Tak 2.0 en modo solo lectura y
+   registrar errores por módulo, tenant, viewport y endpoint.
+2. Auditar el backfill local de Tak 2.0 con cobertura diaria y por job, y
+   resolver INVENTORY_RESOURCE_NOT_FOUND completando el inventario sin
+   eliminar costos válidos.
+3. Repetir el canary IA live aislado cuando el proveedor esté disponible y
+   registrar latencia, tokens, score del auditor, bloqueadores y abstenciones.
+4. Aplicar migraciones al destino definitivo cuando deje de ser read-only;
+   después ejecutar el canary de OCI Usage API sin duplicar FOCUS.
+5. Con una cuenta AWS autorizada, ejecutar el canary de STS/EC2/EBS/CloudWatch/
+   Cost Explorer/FOCUS y ajustar únicamente con métricas reales de latencia,
+   rate limits y cobertura.
+6. Antes de beta operativa, activar secret manager, rate limiting compartido,
+   observabilidad, healthchecks, backup/restore y workers supervisados.
 
 ### Completado y verificado localmente
 
@@ -26,8 +57,8 @@
   3.105.765 rollups para Tak 2.0 en el último corte local, con cobertura
   `COVERED`/`PARTIAL`/`NO_DATA` auditable.
 - Seguridad y calidad local: 20 helpers FinOps sin exposición a roles API,
-  0 vulnerabilidades altas de producción, arquitectura 399/1 excepción,
-  suite unitaria 512/11 y suite PostgreSQL aislada aprobadas.
+  0 vulnerabilidades altas de producción, arquitectura 403/1 excepción,
+  suite unitaria 529/11 y suite PostgreSQL aislada aprobadas.
 
 ### Cierre técnico inmediato
 
@@ -198,7 +229,9 @@ recomendación técnica segura.
 - Compuerta de evidencia y normalizador de recomendaciones reforzados para impedir
   recomendaciones ejecutables cuando faltan métricas técnicas o el vínculo de
   recurso es débil.
-- Canary live aislado de chat/recomendaciones/auditoría IA aprobado con proveedor real.
+- En el corte 2026-08-18 el canary live aislado de chat/recomendaciones/auditoría IA
+  había sido aprobado; el estado posterior y vigente conserva el bloqueo cuando
+  el proveedor devuelve HTTP 503.
 - Backend y frontend verificados con typecheck, pruebas unitarias/offline, lint,
   arquitectura y build.
 

@@ -1,5 +1,99 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-29 — Estabilización P0/P1, gobernanza IA y preparación AWS
+
+- La ingesta ahora reconcilia leases vencidos dentro del claim y desde la
+  consola de administración: reencola trabajos recuperables, cierra intentos
+  agotados y respeta cancelaciones. El proceso local de desarrollo inicia los
+  workers IA/proyección de forma explícita, mientras la ingesta cloud continúa
+  siendo opt-in.
+- La auditoría IA dejó de aceptar únicamente el texto APPROVED: exige score
+  mínimo 80, checks completos sin fallos y cero bloqueadores/cambios requeridos
+  para recomendaciones y planes. El botón de generación en Dashboard y
+  Consola usa readiness y corridas durables.
+- AWS quedó preparado sin simular acceso real: STS/External ID, regiones,
+  inventario EC2/EBS con tags, discovery y paginación CloudWatch, Cost Explorer,
+  FOCUS S3 con manifiestos y destrucción de clientes SDK. El canary real sigue
+  bloqueado hasta tener una cuenta autorizada.
+- Se agregó una suite Playwright real de solo lectura, separada de fixtures,
+  con cuatro resoluciones, guardia contra mutaciones y filtros técnicos. La
+  suite mock específica de análisis/chat terminó 8/8; la suite local general
+  terminó 10 aprobadas y 3 omitidas por fixtures ausentes.
+- Verificación final de código: backend test:all con 529 pruebas aprobadas y 11
+  omitidas, AI offline 25/25, arquitectura 403 archivos, release hygiene,
+  audit de producción, frontend build y bundle aprobados.
+
+### 2026-08-28 — Corrección de la leyenda y valores interactivos del histórico de costos
+
+- La leyenda nativa de uPlot ahora se monta en un contenedor externo dentro del
+  flujo normal del componente, en lugar de dibujarse dentro del área fija de
+  la gráfica. Así conserva el valor dinámico del punto bajo el cursor sin
+  superponerse con los avisos y elementos posteriores de la tarjeta.
+- El espacio de la gráfica y la leyenda queda separado, la serie mantiene su
+  color real y la moneda seleccionada, y se conserva el cursor interactivo.
+- Se eliminó la leyenda duplicada del encabezado del dashboard. Verificación:
+  `npm run typecheck`, `npm run lint` y `npm run build` del frontend aprobados.
+
+### 2026-08-28 — Backfill FOCUS de 90 días completado localmente
+
+- Después de corregir el descubrimiento, se ejecutó un backfill real de costos
+  FOCUS para Tak 2.0 en PostgreSQL local, desde 2026-05-29 hasta 2026-08-27
+  (UTC). El job terminó en `SUCCESS` sin warnings: **785 objetos, 180.397
+  filas leídas, 146.361 filas nuevas persistidas y 794 llamadas a OCI**.
+- La ventana operativa quedó con **90 de 90 días con datos FOCUS**. El panel ya
+  no debería mostrar 85 periodos faltantes cuando el backend apunta a la base
+  local y se recarga la sesión.
+- El total local de Tak 2.0 quedó en **148.916 filas FOCUS** hasta el 26 de
+  agosto de 2026. **67.179** costos no pudieron vincularse a un recurso del
+  inventario (`INVENTORY_RESOURCE_NOT_FOUND`), pero sí se conservaron para el
+  análisis financiero; esto es una deuda de inventario, no un fallo de descarga.
+- El backend activo fue reiniciado con `scripts/local/run-local.ps1 -Mode dev`
+  y quedó conectado a `127.0.0.1:5433/finops_local`. Supabase no fue
+  modificado; sus migraciones siguen pendientes.
+
+### 2026-08-28 — Corrección de descubrimiento de reportes FOCUS OCI
+
+- Se reprodujo el problema contra la conexión OCI empresarial: Object Storage
+  sí contiene **8.909 objetos FOCUS `.csv.gz`**, con datos hasta el 26 de agosto
+  de 2026. El proveedor devolvía únicamente los primeros 1.000 objetos, que
+  eran los más antiguos, por lo que una ventana reciente terminaba sin objetos
+  FOCUS y caía silenciosamente a OCI Usage API.
+- El descubrimiento ahora filtra la fecha del objeto contra la ventana del job
+  durante la paginación, continúa después de las páginas históricas y aumenta
+  el límite seguro por ubicación a 10.000 objetos. También acepta nombres de
+  campos OCI con guiones (`namespace-name`, `bucket-name`, `object-name`) y sus
+  equivalentes camelCase.
+- Canary real de solo lectura después del cambio: para 2026-08-25 se
+  descubrieron **9 objetos y 1.845 filas FOCUS**, en dos lotes, sin warnings.
+  No se descargaron secretos ni se expusieron credenciales. Luego se ejecutó
+  una prueba end-to-end en PostgreSQL local con una ventana 2026-08-25..27:
+  job exitoso, **11 objetos, 2.346 filas leídas, 1.953 filas FOCUS y métricas
+  de costo insertadas**, 20 llamadas y cero warnings.
+- El primer intento de crear ese job usando directamente el `DATABASE_URL`
+  del entorno (Supabase) falló con `P2022: projection_status ... does not
+  exist`, porque allí siguen pendientes las migraciones de cobertura/proyección.
+  El entorno local reproducible está actualizado y la prueba se realizó allí;
+  no se aplicaron migraciones ni se modificó Supabase en esta sesión.
+- Verificación del cambio: suite unitaria **120 archivos, 517 pruebas
+  aprobadas y 11 omitidas**, typecheck, build y arquitectura **399/399**
+  aprobados.
+
+### 2026-08-28 — Corrección responsive y legibilidad de métricas técnicas
+
+- La gráfica técnica ya no usa la leyenda nativa de uPlot. Se añadió una
+  leyenda compacta/expandible con búsqueda, nombres reales de recursos y acceso
+  al identificador completo mediante tooltip; el contenedor del gráfico dejó de
+  tener una altura fija que provocaba solapamientos.
+- El overview de métricas resuelve `cloud_resources` por identidad exacta y no
+  depende del límite de 200 recursos. Las filas históricas sin ID canónico solo
+  reutilizan el inventario cuando el identificador externo es único.
+- La navegación global ahora usa rail/barra adaptable, scroll interno de
+  módulos y menú ``Más`` en móvil. El chat limita el desplazamiento al historial
+  y mantiene el compositor en la parte inferior.
+- Pruebas del corte: backend **120 archivos, 517 pruebas aprobadas y 11
+  omitidas**; frontend typecheck/lint/build/arquitectura aprobados; E2E
+  fixture-based responsive, chat y leyenda **7/7**.
+
 ### 2026-08-28 — Consolidación del cierre técnico de la beta
 
 - Se verificó el estado local de PostgreSQL 17 con migraciones hasta
@@ -16,12 +110,13 @@
   (`MEAN`, `MIN`, `MAX`, `P95`) para Tak 2.0. En 2026-05-30..2026-08-30 hay
   44.304 ventanas `COVERED`, 16.157 `PARTIAL` y 71.593 `NO_DATA`; el backfill
   no se declara completo.
-- Se confirmó que Tak 2.0 no tiene FOCUS en la ventana actual: conserva 602
-  filas históricas de 2024 y 711 costos `PROVIDER_API` en COP. La facturación
-  actual permanece parcial y las fuentes no se suman nominalmente.
+- El corte previo a la corrección todavía mostraba solo las 602 filas FOCUS
+  históricas de 2024 y 711 costos `PROVIDER_API` en COP; la causa era el límite
+  de descubrimiento de 1.000 objetos, no la ausencia de reportes en OCI. La
+  prueba end-to-end posterior quedó registrada en la entrada FOCUS superior.
 - Seguridad y calidad: 20 helpers FinOps sin grants a roles API ni `search_path`
   inseguro, `npm audit --omit=dev --audit-level=high` sin vulnerabilidades,
-  arquitectura 399/1 excepción, suite unitaria 512 aprobadas y 11 omitidas;
+  arquitectura 399/1 excepción, suite unitaria 517 aprobadas y 11 omitidas;
   frontend typecheck/lint/build aprobados.
 - Supabase sigue read-only, por lo que las migraciones locales 202608280001–007
   están pendientes allí. AWS real y OCI Usage API siguen bloqueados por

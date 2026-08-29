@@ -1,12 +1,132 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-28
+Fecha: 2026-08-29
+
+## Corte de implementación verificable — 2026-08-29
+
+Este corte registra el cierre de la iteración de estabilización P0/P1. Las
+operaciones externas que requieren credenciales, permisos o un destino remoto
+siguen identificadas como bloqueadas; no se presentan como verificadas.
+
+### Entregado en código
+
+- La cola de ingesta recupera leases RUNNING vencidos: reencola trabajos con
+  intentos disponibles, cierra como FAILED los agotados y respeta
+  cancelaciones. La consola de administración incorpora
+  POST /api/v1/master-admin/ingestion-jobs/reconcile y la consulta de jobs
+  reconcilia estados stale antes de listar.
+- npm run dev:local mantiene la ingesta cloud opt-in, pero deja disponibles en
+  desarrollo el API, la proyección de métricas, el aprendizaje y las corridas
+  de análisis. Abrir la interfaz no dispara backfills por accidente.
+- La aprobación IA exige veredicto APPROVED, puntuación mínima 80/100,
+  ausencia de bloqueadores/cambios requeridos y todos los checks aprobados.
+  La regla se aplica tanto a recomendaciones como a planes de ejecución; una
+  salida ambigua no se persiste.
+- Dashboard y Consola Técnica tienen el botón gobernado de generación de
+  recomendaciones. Primero consulta readiness, encola una corrida durable y
+  muestra candidatos, descartes, auditoría y resultado sin persistir desde la
+  interfaz por fuera del flujo controlado.
+- AWS queda preparado para una cuenta futura: AssumeRole con External ID,
+  descubrimiento de regiones, inventario EC2/EBS con nombres/tags, CloudWatch
+  con descubrimiento acotado, paginación de GetMetricData, Cost Explorer y
+  FOCUS en S3 con CSV/CSV.GZIP y manifiestos. Los clientes SDK se destruyen
+  después de cada operación; no se simula una cuenta real.
+- La suite real de Playwright de solo lectura quedó separada en
+  playwright.real.config.ts y e2e-real/readonly.spec.ts. Exige variables
+  locales explícitas, trabaja con un worker, recorre módulos en cuatro
+  resoluciones, ejercita filtros técnicos y rechaza mutaciones no autorizadas.
+
+### Verificación de esta iteración
+
+- Backend npm run test:all: 123 archivos aprobados, 529 pruebas aprobadas y 11
+  omitidas; la evaluación IA offline adicional aprobó 25 pruebas.
+- npm run check:architecture: 403 archivos de producción, sin violaciones; queda
+  una excepción documentada para fixtures IA.
+- npm run check:release-hygiene, npm audit --omit=dev --audit-level=high y build
+  backend: aprobados; producción reporta 0 vulnerabilidades.
+- Frontend typecheck, lint y build/bundle: aprobados. Playwright local con
+  mocks: 10 aprobadas y 3 omitidas cuando no existe el manifest de fixtures.
+  La prueba específica de análisis/recomendaciones tiene 8/8 aprobadas e
+  incluye chat en español y generación directa auditada.
+
+### Límites que siguen vigentes
+
+- La suite real de Playwright no se ejecutó en este entorno porque no hay
+  variables de una cuenta administrativa real configuradas. Se ejecuta con
+  npm run test:e2e:real después de definirlas; nunca se deben pegar
+  credenciales en código o fixtures.
+- AWS real permanece bloqueado hasta disponer de cuenta, role ARN, External ID
+  y permisos de prueba. OCI Usage API y el canary IA live dependen igualmente
+  de permisos/proveedor externos.
+- Supabase continúa sin recibir cambios mientras el destino permanezca
+  read-only; PostgreSQL local es el destino reproducible de desarrollo.
+- Workers 24/7, secret manager externo, rate limiting distribuido,
+  observabilidad centralizada, backup/restore operativo y mensajería real se
+  mantienen diferidos hasta definir infraestructura de despliegue.
+
+## Backfill FOCUS de 90 días — 2026-08-28
+
+- Se completó en PostgreSQL local el backfill real de costos FOCUS de Tak 2.0
+  para la ventana UTC 2026-05-29..2026-08-27: **785 objetos, 180.397 filas
+  leídas, 146.361 filas insertadas, 794 llamadas OCI y cero warnings**.
+- La cobertura diaria verificada es **90/90 días**, por lo que el aviso de 85
+  periodos faltantes correspondía al estado anterior de la base, antes del
+  backfill completo.
+- Tak 2.0 conserva ahora **148.916 filas FOCUS** hasta 2026-08-26. Se
+  mantienen separadas de cualquier fuente `PROVIDER_API`.
+- 67.179 filas quedaron sin recurso inventariado (`INVENTORY_RESOURCE_NOT_FOUND`)
+  y requieren completar el inventario OCI; no se eliminaron ni se excluyeron
+  del análisis financiero.
+- El backend de desarrollo se dejó ejecutándose contra
+  `127.0.0.1:5433/finops_local`. Supabase permanece sin cambios y requiere
+  aplicar sus migraciones antes de ejecutar allí este flujo.
+
+## Corrección de ingesta FOCUS OCI — 2026-08-28
+
+- El proveedor OCI sí tiene reportes FOCUS disponibles. La conexión
+  empresarial consultada contiene **8.909 objetos `.csv.gz`** en
+  `FOCUS Reports`, con objetos hasta el 26 de agosto de 2026.
+- La causa de que no aparecieran costos recientes era el límite anterior de
+  1.000 objetos: Object Storage entrega primero los objetos históricos y la
+  aplicación nunca llegaba a los reportes actuales. Además, el filtrado por
+  fecha se ejecutaba después de alcanzar ese límite.
+- El descubrimiento ahora pagina más allá del histórico, filtra objetos por la
+  ventana solicitada antes de descargarlos, admite hasta 10.000 objetos por
+  ubicación y entiende aliases de campos OCI con guiones. Un canary real de
+  solo lectura recuperó **9 objetos y 1.845 filas FOCUS** para el 25 de agosto,
+  sin advertencias.
+- La primera validación de persistencia contra el `DATABASE_URL` directo del
+  entorno devolvió `P2022` porque Supabase aún no tiene
+  `ingestion_jobs.projection_status`. El entorno local reproducible sí está
+  actualizado: un job real posterior al cambio terminó correctamente con
+  **11 objetos, 2.346 filas leídas, 1.953 filas FOCUS insertadas, 1.953
+  proyecciones de costo, 20 llamadas y cero warnings**. No se aplicaron
+  migraciones automáticamente a Supabase.
+
+## Ajuste de experiencia y lectura de métricas — 2026-08-28
+
+- La gráfica principal de métricas técnicas usa una leyenda propia compacta y
+  expandible; la leyenda nativa de uPlot permanece desactivada para que nunca
+  se superponga con las oportunidades, KPIs o tablas inferiores.
+- Las series muestran el nombre de `cloud_resources` cuando existe. El lookup
+  del overview ahora resuelve las identidades exactas de las métricas sin el
+  límite arbitrario de 200 recursos; para filas legacy sin `cloudResourceId`
+  solo usa un nombre externo cuando ese identificador es único, evitando
+  asociar el nombre de otra conexión.
+- La navegación se adapta al espacio disponible: rail de iconos entre 1024 y
+  1279 px, barra completa desde 1280 px, scroll interno por altura y menú
+  secundario en móvil. El shell evita el scroll horizontal global.
+- El Asistente IA usa un layout flex de altura disponible: solo el historial
+  tiene scroll y el compositor permanece anclado al final del módulo.
+- Verificación adicional: backend con **517 pruebas unitarias aprobadas**;
+  frontend typecheck, lint, build, bundle y arquitectura aprobados; E2E con
+  fixtures para responsive, chat y leyenda **7/7**.
 
 ## Resumen
 
 La plataforma ya tiene backend Node.js/TypeScript, frontend React, PostgreSQL local como base primaria de desarrollo y Supabase conservada como staging/rollback, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas. El corte vigente distingue lo verificado localmente de las operaciones externas bloqueadas por permisos o por el estado read-only de Supabase.
 
-## Corte vigente verificable — 2026-08-28
+## Corte histórico verificable — 2026-08-28
 
 La evidencia actual de desarrollo corresponde a PostgreSQL 17 local en
 `127.0.0.1:5433/finops_local`, con migraciones aplicadas hasta
@@ -30,15 +150,17 @@ Supabase.
   45 FAILED, 97 CANCELLED y 1 SKIPPED**. Los workers son manuales durante el
   desarrollo y los jobs pendientes no deben interpretarse como datos ya
   descargados.
-- No hay filas FOCUS de Tak 2.0 en la ventana actual de 90 días. Se conservan
-  **602 filas FOCUS históricas** de 2024 y **711 filas de costos
-  `PROVIDER_API`** en COP entre el 18 de julio y el 22 de agosto de 2026. FOCUS
-  continúa siendo la fuente operativa primaria; la completitud actual de
-  facturación queda declarada como parcial.
+- En la base local ya se conservan **148.916 filas FOCUS** de Tak empresa/Tak
+  2.0, desde el 4 de junio de 2024 hasta el 26 de agosto de 2026. El backfill
+  reciente dejó 90/90 días cubiertos en la ventana operativa y los costos
+  `PROVIDER_API` permanecen separados. FOCUS continúa siendo la fuente
+  operativa primaria y el flujo reciente está probado end-to-end en local;
+  Supabase todavía requiere aplicar sus migraciones pendientes antes de usarla
+  como destino de jobs.
 
 ### Verificación técnica del corte
 
-- `npm run test:unit`: **120 archivos aprobados, 512 pruebas aprobadas y 11
+- `npm run test:unit`: **120 archivos aprobados, 517 pruebas aprobadas y 11
   omitidas**.
 - `npm run test:integration:isolated`: **10 archivos PostgreSQL, 17 pruebas y
   los dos scripts especializados aprobados**; el schema temporal se eliminó en
@@ -71,6 +193,10 @@ Supabase.
 > **Nota histórica:** los cortes fechados que aparecen debajo de este aviso
 > conservan evidencia y decisiones anteriores; no sustituyen el corte vigente
 > anterior.
+
+> El bloque fechado 2026-08-29 es la única fotografía autoritativa de esta
+> revisión. Los bloques posteriores conservan bitácora histórica y pueden
+> contener cifras de una base o proveedor que luego cambió.
 
 ## Corte de estabilizacion de lecturas y jobs — 2026-08-24
 
