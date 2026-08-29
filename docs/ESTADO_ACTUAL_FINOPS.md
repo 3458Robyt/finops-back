@@ -38,16 +38,50 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
 
 ### Verificación de esta iteración
 
-- Backend npm run test:all: 123 archivos aprobados, 529 pruebas aprobadas y 11
-  omitidas; la evaluación IA offline adicional aprobó 25 pruebas.
-- npm run check:architecture: 403 archivos de producción, sin violaciones; queda
-  una excepción documentada para fixtures IA.
-- npm run check:release-hygiene, npm audit --omit=dev --audit-level=high y build
-  backend: aprobados; producción reporta 0 vulnerabilidades.
+- Backend `npm run test:all` queda compuesto por la verificación vigente:
+  **125 archivos unitarios aprobados, 537 pruebas aprobadas y 11 omitidas**;
+  la evaluación IA offline adicional aprobó **25/25** pruebas.
+- `npm run check:architecture`: **405 archivos de producción**, sin violaciones;
+  queda una excepción documentada para fixtures IA.
+- `npm run check:release-hygiene`, `npm audit --omit=dev --audit-level=high` y
+  build backend: aprobados; producción reporta **0 vulnerabilidades**.
 - Frontend typecheck, lint y build/bundle: aprobados. Playwright local con
   mocks: 10 aprobadas y 3 omitidas cuando no existe el manifest de fixtures.
   La prueba específica de análisis/recomendaciones tiene 8/8 aprobadas e
   incluye chat en español y generación directa auditada.
+
+### Estabilización adicional de lecturas, auditoría y toolchain — 2026-08-29
+
+- La cobertura técnica calcula resumen, métricas y días mediante una única
+  consulta SQL materializada; el catálogo de estadísticas combina raw y rollups
+  para no ocultar opciones mientras se reconstruye la proyección.
+- Las lecturas técnicas exitosas envían cache privado corto y la gráfica uPlot
+  conserva un tooltip externo con timestamp y valores exactos, sin volver a
+  montar leyendas ni buscar cada recurso repetidamente.
+- El repositorio de corridas de análisis fue separado de sus mappers para
+  mantener la regla de arquitectura; los scripts E2E ahora esperan la última
+  migración local `202608290002_recommendation_candidate_audits`.
+- Se agregó una limpieza de desarrollo explícita y segura para jobs fallidos y
+  schemas E2E permitidos. El dry-run local con el par `asd/asd` encontró 0 jobs
+  y 0 schemas; no se ejecutó `--apply` ni se modificó el remoto.
+- La importación fría del proveedor OCI específico se midió cinco veces tras
+  eliminar el paquete paraguas `oci-sdk`: mediana aproximada **2,3 s** y peor
+  medición de proceso **4,2 s**, dentro del objetivo de 10 s.
+- La integración PostgreSQL aislada completó **10 archivos y 17 pruebas**, más
+  los canaries de limpieza de autenticación y heartbeat; ambos schemas se
+  eliminaron mediante `finally`.
+
+### Límites de esta verificación
+
+- Supabase sigue en modo `read-only` y con historial de migraciones divergente;
+  el clon local sí tiene aplicadas las **95 migraciones** hasta
+  `202608290002_recommendation_candidate_audits`. No se reintentaron escrituras
+  remotas.
+- La auditoría de dependencias completa puede mostrar vulnerabilidades altas
+  únicamente en herramientas de desarrollo transitivas (`esbuild`, `nanoid` y
+  `postcss`); la auditoría de producción continúa en cero.
+- No se ejecutó un canary live de IA, AWS, Usage API ni Playwright real: siguen
+  dependiendo de proveedor, cuenta o credenciales externas.
 
 ### Límites que siguen vigentes
 

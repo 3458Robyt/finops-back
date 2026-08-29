@@ -1,5 +1,27 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-08-29 — Optimización de lecturas técnicas, toolchain y verificación de migraciones
+
+- Las consultas de cobertura dejaron de lanzar tres barridos independientes de
+  `resource_metric_samples`: resumen, métricas y días se calculan desde una
+  relación filtrada materializada. El catálogo de estadísticas combina raw y
+  rollups para no ocultar métricas durante una reconstrucción parcial.
+- Las respuestas de lectura técnica tienen cache privado corto; uPlot conserva
+  tooltip externo con valores exactos y etiquetas de recursos calculadas una sola
+  vez. No se reducen granularidades ni se descarta información raw.
+- Se separaron los mappers de corridas de análisis para cumplir la compuerta de
+  arquitectura. Los runners E2E ahora validan la migración vigente
+  `202608290002_recommendation_candidate_audits`.
+- Se agregó una limpieza de artefactos de desarrollo en dry-run por defecto y se
+  verificó localmente con 0 jobs y 0 schemas coincidentes; no se modificó ninguna
+  base remota.
+- El paquete OCI paraguas no está en uso. Los cinco arranques fríos del módulo
+  OCI específico registraron mediana ~2,3 s y peor proceso 4,2 s.
+- Verificación: **537/548 pruebas unitarias** con 11 omitidas, IA offline 25/25,
+  arquitectura 405 archivos, integración PostgreSQL aislada 10 archivos/17
+  pruebas, audit de producción 0 vulnerabilidades y frontend typecheck/lint/
+  build/bundle aprobados.
+
 ### 2026-08-29 — Estabilización P0/P1, gobernanza IA y preparación AWS
 
 - La ingesta ahora reconcilia leases vencidos dentro del claim y desde la

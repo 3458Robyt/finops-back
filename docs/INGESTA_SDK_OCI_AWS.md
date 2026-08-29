@@ -19,9 +19,11 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
   y destruye clientes SDK después de operar. Sigue faltando un canary con una
   cuenta AWS real.
 - Los clientes específicos de OCI permanecen separados del paquete paraguas;
-  la compilación usa solo los módulos OCI realmente utilizados. El objetivo de
-  rendimiento debe medirse con cinco arranques en frío cuando se disponga del
-  entorno de despliegue.
+  la compilación usa únicamente los módulos OCI realmente utilizados
+  (`oci-common`, `oci-core`, `oci-identity`, `oci-monitoring`,
+  `oci-objectstorage`, `oci-resourcesearch` y `oci-usageapi`). Cinco arranques en
+  frío locales registraron una mediana aproximada de 2,3 s y un peor tiempo de
+  proceso de 4,2 s.
 
 - El camino de desarrollo activo es PostgreSQL local 17 en
   `127.0.0.1:5433/finops_local`; el worker raw-first persiste por lotes y el
@@ -37,9 +39,10 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
   no vinculables a inventario se conservan y se auditan aparte. FOCUS sigue
   siendo la fuente primaria y Usage API solo actúa como redundancia/fallback,
   sin sumar ambas fuentes.
-- Las migraciones de hardening e índices locales 202608280001–007 están
-  aplicadas. Supabase está read-only y no se debe afirmar que esas migraciones
-  estén allí hasta que el destino permita escritura.
+- Las 95 migraciones locales, hasta `202608290002_recommendation_candidate_audits`,
+  están aplicadas. Supabase está read-only y conserva una línea de migraciones
+  divergente; no se debe afirmar que las migraciones locales estén allí hasta
+  que el destino permita escritura y se haga una comparación controlada.
 - AWS tiene adaptador y pruebas unitarias, pero el canary real sigue bloqueado
   hasta disponer de una cuenta y rol. Las credenciales bootstrap configuradas
   por la plataforma sirven para obtener credenciales temporales mediante

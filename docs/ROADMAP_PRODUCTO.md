@@ -22,8 +22,9 @@
 - Preparado para AWS: STS AssumeRole/External ID, regiones, EC2/EBS, nombres
   de recursos, CloudWatch con discovery/paginación, Cost Explorer y FOCUS S3
   con manifiestos. Falta únicamente ejecutar contra una cuenta real.
-- Probado: backend 529 pruebas unitarias aprobadas, 25 escenarios IA offline,
-  arquitectura 403/403 y Playwright mock 10/10; la suite Playwright real de
+- Probado: backend 537 pruebas unitarias aprobadas, 25 escenarios IA offline,
+  arquitectura 405 archivos sin violaciones de límite y una excepción
+  documentada; Playwright mock 10/10; la suite Playwright real de
   solo lectura está implementada pero requiere credenciales locales.
 
 ### Siguiente orden consecuente
@@ -57,12 +58,12 @@
   3.105.765 rollups para Tak 2.0 en el último corte local, con cobertura
   `COVERED`/`PARTIAL`/`NO_DATA` auditable.
 - Seguridad y calidad local: 20 helpers FinOps sin exposición a roles API,
-  0 vulnerabilidades altas de producción, arquitectura 403/1 excepción,
-  suite unitaria 529/11 y suite PostgreSQL aislada aprobadas.
+  0 vulnerabilidades altas de producción, arquitectura 405/1 excepción,
+  suite unitaria 537/11 y suite PostgreSQL aislada aprobadas.
 
 ### Cierre técnico inmediato
 
-1. Aplicar las migraciones locales 202608280001–007 en el destino PostgreSQL
+1. Aplicar las migraciones locales hasta `202608290002_recommendation_candidate_audits` en el destino PostgreSQL
    definitivo. Supabase está read-only; no reintentar ni declarar el despliegue
    hasta que el administrador habilite escritura o se seleccione otro destino.
 2. Auditar y continuar el backfill de Tak 2.0 por cobertura diaria y por job;

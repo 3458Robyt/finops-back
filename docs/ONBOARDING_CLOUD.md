@@ -1,6 +1,6 @@
 # Onboarding cloud por tenant
 
-> Documento operativo autoritativo. Estado verificado: 2026-08-16.
+> Documento operativo autoritativo. Estado verificado: 2026-08-29.
 
 ## Alcance y arquitectura
 
@@ -205,7 +205,9 @@ El último canary read-only histórico del 2026-07-16 registró:
 - preview: 20 objetos descubiertos, sin errores de ubicación;
 - estado: parcialmente operativo;
 - llamadas reales: ~3.5 s; readiness: ~1 s;
-- arranque del proceso de prueba: ~45 s por importación de `oci-sdk`.
+- arranque en frío local del módulo OCI específico: mediana aproximada de 2,3 s
+  en cinco mediciones, con peor tiempo de proceso de 4,2 s; ya no se importa el
+  paquete paraguas `oci-sdk`.
 
 La denegación de Usage API no bloquea FOCUS ni las demás capacidades.
 
