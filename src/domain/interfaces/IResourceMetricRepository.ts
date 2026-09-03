@@ -1,3 +1,9 @@
+import type {
+  ResourceEvidenceStatus,
+  ResourceFreshness,
+} from '../models/ResourceLinkage.js';
+import type { MetricStatistic } from './ICloudIngestionProvider.js';
+
 /**
  * Estado del ciclo de vida de un recurso cloud inventariado.
  *
@@ -5,6 +11,20 @@
  * `TERMINATED`, `UNKNOWN`).
  */
 export type CloudResourceStatus = 'ACTIVE' | 'STOPPED' | 'TERMINATED' | 'UNKNOWN';
+export type CloudResourceCostFilter = 'ALL' | 'WITH_COST';
+
+export interface CloudResourceFilters {
+  readonly costFilter?: CloudResourceCostFilter;
+  readonly statuses?: readonly CloudResourceStatus[];
+  readonly provider?: string;
+  readonly query?: string;
+}
+
+export interface CloudResourceIdentity {
+  readonly cloudResourceId?: string;
+  readonly cloudConnectionId?: string;
+  readonly externalResourceId: string;
+}
 
 /**
  * Resumen de un recurso cloud inventariado de un tenant.
@@ -14,6 +34,7 @@ export type CloudResourceStatus = 'ACTIVE' | 'STOPPED' | 'TERMINATED' | 'UNKNOWN
  */
 export interface CloudResourceItem {
   readonly id: string;
+  readonly cloudConnectionId?: string;
   readonly provider: string;
   readonly externalResourceId: string;
   readonly name?: string;
@@ -23,6 +44,15 @@ export interface CloudResourceItem {
   readonly status: CloudResourceStatus;
   readonly firstSeenAt: Date;
   readonly lastSeenAt: Date;
+  readonly lineage?: {
+    readonly status: ResourceEvidenceStatus;
+    readonly linkedCostCount: number;
+    readonly linkedMetricSampleCount: number;
+    readonly linkedRecommendationCount: number;
+    readonly latestCostAt?: Date;
+    readonly latestMetricAt?: Date;
+    readonly freshness: ResourceFreshness;
+  };
 }
 
 /**
@@ -36,12 +66,14 @@ export interface CloudResourceItem {
 export interface ResourceMetricSampleItem {
   readonly id: string;
   readonly provider: string;
+  readonly cloudConnectionId?: string;
   readonly externalResourceId: string;
   readonly cloudResourceId?: string;
   /** Nombre de la métrica técnica (p. ej. `cpu_utilization`, `memory_used`). */
   readonly metricName: string;
   /** Unidad de la métrica (p. ej. `Percent`, `Bytes`, `IOPS`), si se conoce. */
   readonly metricUnit?: string;
+  readonly statistic: MetricStatistic;
   /** Valor observado de la métrica. */
   readonly value: number;
   /** Instante de la observación. */
@@ -54,8 +86,21 @@ export interface TechnicalMetricSampleFilters {
   readonly startDate?: Date;
   readonly endDate?: Date;
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
   readonly metricNames?: readonly string[];
+  readonly statistic?: MetricStatistic;
   readonly limit: number;
+}
+
+export interface TechnicalMetricStatisticFilters {
+  readonly startDate?: Date;
+  readonly endDate?: Date;
+  readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
+  readonly providerNamespace?: string;
+  readonly regionId?: string;
+  readonly dimensionsHash?: string;
+  readonly metricNames?: readonly string[];
 }
 
 export type TechnicalMetricSeriesBucket = 'raw' | '30m' | 'hour' | 'day';
@@ -64,7 +109,9 @@ export interface TechnicalMetricSeriesFilters {
   readonly startDate?: Date;
   readonly endDate?: Date;
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
   readonly metricNames?: readonly string[];
+  readonly statistic?: MetricStatistic;
   readonly bucket: TechnicalMetricSeriesBucket;
   readonly cursor?: string;
   readonly pageSize: number;
@@ -73,8 +120,16 @@ export interface TechnicalMetricSeriesFilters {
 export interface TechnicalMetricSeriesRepositoryPoint {
   readonly bucketStart: Date;
   readonly externalResourceId: string;
+  readonly cloudResourceId?: string;
+  readonly providerNamespace?: string;
+  readonly regionId?: string;
+  readonly dimensionsHash?: string;
   readonly metricName: string;
   readonly metricUnit?: string;
+  readonly statistic: MetricStatistic;
+  readonly value: number;
+  readonly aggregationSemantics: string;
+  readonly sourceGranularitiesSeconds: readonly number[];
   readonly avg: number;
   readonly min: number;
   readonly max: number;
@@ -96,10 +151,13 @@ export interface TechnicalMetricCoverageFilters {
   readonly startDate?: Date;
   readonly endDate?: Date;
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
+  readonly statistic?: MetricStatistic;
 }
 
 export interface TechnicalMetricCoverageSampleItem {
   readonly externalResourceId: string;
+  readonly cloudResourceId?: string;
   readonly metricName: string;
   readonly sampledAt: Date;
 }
@@ -126,6 +184,9 @@ export interface TechnicalMetricCoverageAggregate {
 
 export interface TechnicalCostContextItem {
   readonly externalResourceId: string;
+  /** Recurso normalizado cuando el costo pasó por el enlace exacto de inventario. */
+  readonly cloudResourceId?: string;
+  readonly cloudConnectionId?: string;
   readonly totalCost: number;
   readonly currency: string;
   readonly metricCount: number;
@@ -135,7 +196,9 @@ export interface TechnicalMetricSummaryFilters {
   readonly startDate?: Date;
   readonly endDate?: Date;
   readonly externalResourceIds?: readonly string[];
+  readonly cloudResourceIds?: readonly string[];
   readonly metricNames?: readonly string[];
+  readonly statistic?: MetricStatistic;
   readonly limit: number;
 }
 
@@ -143,10 +206,15 @@ export interface TechnicalMetricSummaryItem {
   readonly provider: string;
   readonly externalResourceId: string;
   readonly cloudResourceId?: string;
+  readonly cloudConnectionId?: string;
+  readonly providerNamespace?: string;
+  readonly regionId?: string;
+  readonly dimensionsHash?: string;
   readonly resourceType?: string;
   readonly serviceName?: string;
   readonly metricName: string;
   readonly metricUnit?: string;
+  readonly statistic: MetricStatistic;
   readonly sampleCount: number;
   readonly coverageDays: number;
   readonly min: number;
@@ -181,7 +249,22 @@ export interface IResourceMetricRepository {
    * @param limit    - Número máximo de recursos a devolver.
    * @returns Recursos cloud del tenant (posiblemente vacío).
    */
-  listResourcesForTenant(tenantId: string, limit: number): Promise<readonly CloudResourceItem[]>;
+  listResourcesForTenant(
+    tenantId: string,
+    limit: number,
+    filters?: CloudResourceFilters,
+  ): Promise<readonly CloudResourceItem[]>;
+
+  /**
+   * Resuelve únicamente los recursos que participan en una lectura técnica.
+   * Evita depender de un límite arbitrario del inventario más reciente.
+   */
+  listResourcesForTenantByIdentities?(
+    tenantId: string,
+    identities: readonly CloudResourceIdentity[],
+  ): Promise<readonly CloudResourceItem[]>;
+
+  getResourceForTenantById?(tenantId: string, cloudResourceId: string): Promise<CloudResourceItem | undefined>;
 
   /**
    * Lista las muestras de métricas técnicas de un tenant, de la más reciente a
@@ -201,6 +284,11 @@ export interface IResourceMetricRepository {
     filters: TechnicalMetricSampleFilters,
   ): Promise<readonly ResourceMetricSampleItem[]>;
 
+  listMetricStatisticsForTenant?(
+    tenantId: string,
+    filters: TechnicalMetricStatisticFilters,
+  ): Promise<readonly { readonly metricName: string; readonly statistic: MetricStatistic }[]>;
+
   listMetricSeriesForTenant(
     tenantId: string,
     filters: TechnicalMetricSeriesFilters,
@@ -219,9 +307,20 @@ export interface IResourceMetricRepository {
   listCostContextForResources(
     tenantId: string,
     externalResourceIds: readonly string[],
+    cloudResourceIds?: readonly string[],
   ): Promise<readonly TechnicalCostContextItem[]>;
 
   listMetricSummariesForTenant(
+    tenantId: string,
+    filters: TechnicalMetricSummaryFilters,
+  ): Promise<readonly TechnicalMetricSummaryItem[]>;
+
+  /**
+   * Fast overview projection backed by daily rollups. It is intentionally
+   * optional so evidence/audit adapters can continue to provide exact raw
+   * summaries while the UI uses the bounded read model.
+   */
+  listMetricSummariesForTenantFast?(
     tenantId: string,
     filters: TechnicalMetricSummaryFilters,
   ): Promise<readonly TechnicalMetricSummaryItem[]>;

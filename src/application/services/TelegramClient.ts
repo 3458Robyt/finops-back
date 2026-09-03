@@ -15,6 +15,7 @@ export interface TelegramSendMessageInput {
  */
 export interface ITelegramClient {
   sendMessage(input: TelegramSendMessageInput): Promise<void>;
+  verify?(): Promise<void>;
 }
 
 /**
@@ -33,6 +34,7 @@ export class TelegramClient implements ITelegramClient {
   constructor(
     private readonly botToken: string | undefined,
     private readonly enabled: boolean,
+    private readonly timeoutMs = 15_000,
   ) {}
 
   /**
@@ -58,18 +60,71 @@ export class TelegramClient implements ITelegramClient {
       throw new ConfigurationError('TELEGRAM_BOT_TOKEN is required when Telegram is enabled');
     }
 
-    const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: input.chatId,
-        text: input.text,
-        disable_web_page_preview: true,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new FinOpsBaseError(`Telegram sendMessage failed with status ${response.status}`, 'TELEGRAM_SEND_FAILED');
+    if (input.text.trim() === '') {
+      throw new FinOpsBaseError('Telegram message cannot be empty', 'TELEGRAM_INVALID_MESSAGE');
     }
+    if (input.text.length > 4096) {
+      throw new FinOpsBaseError('Telegram message exceeds the provider limit', 'TELEGRAM_MESSAGE_TOO_LONG');
+    }
+
+    const response = await this.request('sendMessage', {
+      chat_id: input.chatId,
+      text: input.text,
+      disable_web_page_preview: true,
+    });
+    if (!response.ok) {
+      throw new FinOpsBaseError(
+        `Telegram sendMessage failed with status ${response.status}`,
+        response.status === 429 ? 'TELEGRAM_RATE_LIMITED' : 'TELEGRAM_SEND_FAILED',
+        response.retryAfter === undefined ? undefined : { retryAfterSeconds: response.retryAfter },
+      );
+    }
+  }
+
+  /** Valida el token y la identidad del bot sin enviar mensajes. */
+  public async verify(): Promise<void> {
+    if (!this.enabled) throw new FinOpsBaseError('Telegram channel is disabled', 'TELEGRAM_DISABLED');
+    const response = await this.request('getMe', {});
+    if (!response.ok) {
+      throw new FinOpsBaseError(`Telegram getMe failed with status ${response.status}`, 'TELEGRAM_VERIFY_FAILED');
+    }
+  }
+
+  private async request(method: string, body: Record<string, unknown>): Promise<{ readonly ok: boolean; readonly status: number; readonly retryAfter?: number }> {
+    if (this.botToken === undefined || this.botToken.trim() === '') {
+      throw new ConfigurationError('TELEGRAM_BOT_TOKEN is required when Telegram is enabled');
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(`https://api.telegram.org/bot${this.botToken}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (error: unknown) {
+      if (controller.signal.aborted) {
+        throw new FinOpsBaseError('Telegram provider request timed out', 'TELEGRAM_TIMEOUT');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    let payload: unknown;
+    try { payload = await response.json(); } catch { payload = undefined; }
+    const record = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+    const parameters = record['parameters'] !== null && typeof record['parameters'] === 'object'
+      ? record['parameters'] as Record<string, unknown>
+      : {};
+    return {
+      ok: response.ok && record['ok'] === true,
+      status: response.status,
+      ...(typeof parameters['retry_after'] === 'number' ? { retryAfter: parameters['retry_after'] } : {}),
+    };
   }
 }

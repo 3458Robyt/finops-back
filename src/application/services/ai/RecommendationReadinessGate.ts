@@ -13,14 +13,19 @@ export interface RecommendationOpportunityCandidate {
   readonly provider: string;
   readonly serviceName: string;
   readonly resourceId?: string;
+  readonly cloudResourceId?: string;
   readonly opportunityType: string;
   readonly evidenceLevelAllowed: 'COST_ONLY' | 'COST_AND_USAGE' | 'COST_USAGE_AND_TECHNICAL';
   readonly requiresTechnicalValidation: boolean;
   readonly maxEstimatedMonthlySavings: number;
   readonly currency: string;
   readonly sourceFacts: readonly string[];
+  /** Referencias agregadas canónicas a la fuente FOCUS/costos usada por el candidato. */
+  readonly costEvidenceRefs: readonly string[];
   readonly technicalEvidenceRefs: readonly string[];
   readonly evidenceStrength?: 'LOW' | 'MEDIUM' | 'HIGH';
+  /** Permite distinguir una revisión financiera de una validación técnica. */
+  readonly reviewScope?: 'FINANCIAL' | 'TECHNICAL';
   readonly ruleMatches?: readonly string[];
   readonly blockers?: readonly string[];
   readonly metricSummary?: unknown;
@@ -45,13 +50,11 @@ export function buildRecommendationReadinessReport(input: {
   readonly technicalEvidenceSnapshot?: RecommendationEvidenceSnapshot;
 }): RecommendationReadinessReport {
   const accountById = new Map(input.snapshot.accounts.map((account) => [account.cloudAccountId, account]));
-  const evidenceByResource = new Map(
-    (input.technicalEvidenceSnapshot?.resources ?? []).map((resource) => [resource.externalResourceId, resource]),
-  );
+  const evidenceResources = input.technicalEvidenceSnapshot?.resources ?? [];
 
   const prioritized = [
     ...buildUsageCandidates(input.snapshot, accountById),
-    ...buildResourceCandidates(input.snapshot, accountById, evidenceByResource),
+    ...buildResourceCandidates(input.snapshot, accountById, evidenceResources),
     ...buildServiceCandidates(input.snapshot, accountById),
   ]
     .sort((left, right) => right.maxEstimatedMonthlySavings - left.maxEstimatedMonthlySavings);
@@ -118,6 +121,7 @@ function buildUsageCandidates(
         `Costo observado del consumo: ${usage.totalCost} ${usage.currency}.`,
         `Costo unitario observado: ${usage.unitCost ?? 'no disponible'} ${usage.currency}/${usage.consumedUnit}.`,
       ],
+      costEvidenceRefs: [costEvidenceRef(snapshot, 'usage', usage.provider, usage.serviceName)],
       technicalEvidenceRefs: [],
       reasons: ['Existe consumo facturado FOCUS con unidad y costo unitario.'],
       forbiddenClaims: ['No afirmes CPU, memoria, IOPS, throughput ni utilizacion tecnica.'],
@@ -128,16 +132,22 @@ function buildUsageCandidates(
 function buildResourceCandidates(
   snapshot: CostAnalyticsSnapshot,
   accountById: ReadonlyMap<string, { readonly cloudAccountId: string; readonly provider: string }>,
-  evidenceByResource: ReadonlyMap<string, RecommendationEvidenceResource>,
+  evidenceResources: readonly RecommendationEvidenceResource[],
 ): RecommendationOpportunityCandidate[] {
   return snapshot.topResources.map((resource, index) => {
     const account = pickAccountForProvider(snapshot, accountById, resource.provider);
-    const evidenceResource = evidenceByResource.get(resource.resourceId);
+    const matchingEvidence = evidenceResources.filter((item) =>
+      item.externalResourceId === resource.resourceId && item.provider === resource.provider,
+    );
+    const evidenceResource = matchingEvidence.length === 1 ? matchingEvidence[0] : undefined;
+    const ambiguous = matchingEvidence.length > 1;
     const ruleEvaluation = evidenceResource?.ruleEvaluation;
     const refsForResource = evidenceResource?.metrics.map((metric) => metric.evidenceRef) ?? [];
     const hasResourceTechnicalEvidence =
       evidenceResource?.linkQuality === 'COST_AND_TECHNICAL' && refsForResource.length > 0;
-    const readiness = ruleEvaluation?.readiness ?? (hasResourceTechnicalEvidence ? 'GENERATABLE' : 'VALIDATION_ONLY');
+    const readiness = ambiguous
+      ? 'BLOCKED_NO_EVIDENCE'
+      : ruleEvaluation?.readiness ?? (hasResourceTechnicalEvidence ? 'GENERATABLE' : 'VALIDATION_ONLY');
     const maxSavingsRate = ruleEvaluation?.maxTechnicalSavingsRate ?? (hasResourceTechnicalEvidence ? technicalSavingsRate : costSavingsRate);
 
     return {
@@ -147,10 +157,11 @@ function buildResourceCandidates(
       provider: resource.provider,
       serviceName: resource.serviceName,
       resourceId: resource.resourceId,
+      ...(evidenceResource?.cloudResourceId !== undefined ? { cloudResourceId: evidenceResource.cloudResourceId } : {}),
       opportunityType: ruleEvaluation?.recommendedActionType ?? (hasResourceTechnicalEvidence ? 'TECHNICAL_OPTIMIZATION' : 'TECHNICAL_VALIDATION_REQUIRED'),
       evidenceLevelAllowed:
         readiness === 'GENERATABLE' && hasResourceTechnicalEvidence ? 'COST_USAGE_AND_TECHNICAL' : 'COST_ONLY',
-      requiresTechnicalValidation: readiness !== 'GENERATABLE',
+      requiresTechnicalValidation: readiness !== 'GENERATABLE' || hasResourceTechnicalEvidence,
       maxEstimatedMonthlySavings: round(
         Math.max(resource.totalCost * maxSavingsRate, 0),
       ),
@@ -161,19 +172,24 @@ function buildResourceCandidates(
         `Cantidad de registros FOCUS asociados: ${resource.metricCount}.`,
         ...(ruleEvaluation?.sourceFacts ?? []),
       ],
+      costEvidenceRefs: [costEvidenceRef(snapshot, 'resource', resource.provider, resource.resourceId)],
       technicalEvidenceRefs: ruleEvaluation?.technicalEvidenceRefs ?? refsForResource,
       ...(ruleEvaluation?.evidenceStrength !== undefined ? { evidenceStrength: ruleEvaluation.evidenceStrength } : {}),
       ...(ruleEvaluation?.ruleMatches !== undefined ? { ruleMatches: ruleEvaluation.ruleMatches } : {}),
       ...(ruleEvaluation?.blockers !== undefined ? { blockers: ruleEvaluation.blockers } : {}),
       ...(ruleEvaluation?.metricSummary !== undefined ? { metricSummary: ruleEvaluation.metricSummary } : {}),
       reasons:
-        ruleEvaluation?.blockers !== undefined && ruleEvaluation.blockers.length > 0
+        ambiguous
+          ? ['El identificador externo coincide con más de un recurso/conexión; se requiere el cloudResourceId canónico.']
+          : ruleEvaluation?.blockers !== undefined && ruleEvaluation.blockers.length > 0
           ? [`Reglas deterministicas detectaron bloqueos: ${ruleEvaluation.blockers.join(', ')}.`]
           : hasResourceTechnicalEvidence
             ? ['Hay evidencia tecnica enlazada al recurso y reglas deterministicas compatibles.']
             : ['Hay costo por recurso, pero falta evidencia tecnica fuerte para ejecutar cambios de capacidad.'],
       forbiddenClaims:
-        ruleEvaluation?.blockers !== undefined && ruleEvaluation.blockers.length > 0
+        ambiguous
+          ? ['No afirmes evidencia técnica ni propongas cambios ejecutables mientras el recurso sea ambiguo.']
+          : ruleEvaluation?.blockers !== undefined && ruleEvaluation.blockers.length > 0
           ? ['No recomiendes rightsizing, apagado o resize como accion ejecutable porque existen bloqueos tecnicos.']
           : hasResourceTechnicalEvidence
             ? ['No extrapoles metricas tecnicas fuera de las referencias citadas.']
@@ -190,21 +206,25 @@ function buildServiceCandidates(
     const account = pickAccountForProvider(snapshot, accountById, service.provider);
     return {
       id: `service-${index + 1}`,
-      readiness: service.metricCount > 0 ? 'VALIDATION_ONLY' : 'BLOCKED_NO_EVIDENCE',
+      // Un SERVICE_COST_REVIEW es una oportunidad financiera basada en FOCUS;
+      // no debe heredar el estado de validación técnica de los recursos.
+      readiness: service.metricCount > 0 ? 'GENERATABLE' : 'BLOCKED_NO_EVIDENCE',
       cloudAccountId: account.cloudAccountId,
       provider: service.provider,
       serviceName: service.serviceName,
       opportunityType: 'SERVICE_COST_REVIEW',
       evidenceLevelAllowed: 'COST_ONLY',
-      requiresTechnicalValidation: true,
+      requiresTechnicalValidation: false,
+      reviewScope: 'FINANCIAL',
       maxEstimatedMonthlySavings: round(Math.max(service.totalCost * costSavingsRate, 0)),
       currency: snapshot.currency,
       sourceFacts: [
         `Servicio ${service.serviceName} costo ${service.totalCost} ${snapshot.currency}.`,
         `Cantidad de registros FOCUS asociados: ${service.metricCount}.`,
       ],
+      costEvidenceRefs: [costEvidenceRef(snapshot, 'service', service.provider, service.serviceName)],
       technicalEvidenceRefs: [],
-      reasons: ['Costo agregado por servicio disponible; requiere analisis tecnico antes de ejecutar cambios.'],
+      reasons: ['Costo agregado por servicio disponible; requiere revisión financiera antes de cualquier decisión operativa.'],
       forbiddenClaims: ['No afirmes metricas tecnicas ni ahorro garantizado.'],
     };
   });
@@ -223,4 +243,18 @@ function pickAccountForProvider(
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+/**
+ * Identificador estable de evidencia agregada de costos. No es un ID de fila:
+ * representa la consulta FOCUS/cost_metrics delimitada por período y alcance,
+ * por lo que puede auditarse sin enviar al modelo datos crudos innecesarios.
+ */
+function costEvidenceRef(
+  snapshot: CostAnalyticsSnapshot,
+  scope: 'usage' | 'resource' | 'service',
+  provider: string,
+  key: string,
+): string {
+  return `cost_metrics:aggregate:${snapshot.periodStart}:${snapshot.periodEnd}:${scope}:${provider}:${key}`;
 }

@@ -1,8 +1,11 @@
-import { AuthorizationError, FinOpsBaseError } from '../../domain/errors/errors.js';
+import { FinOpsBaseError } from '../../domain/errors/errors.js';
+import type { IOutboundMessageRepository } from '../../domain/interfaces/IOutboundMessageRepository.js';
 import type { ITelegramRepository } from '../../domain/interfaces/ITelegramRepository.js';
 import type { AuthContext } from '../../domain/models/AuthContext.js';
 import type { TelegramChatLink } from '../../domain/models/Telegram.js';
+import { requirePermission } from '../../domain/security/AuthorizationPolicy.js';
 import type { ITelegramClient } from './TelegramClient.js';
+import { createOpaqueToken, hashOpaqueToken } from '../auth/opaqueToken.js';
 
 /** Datos de entrada para crear (o actualizar) la vinculación de un chat de Telegram con un usuario. */
 export interface CreateTelegramLinkInput {
@@ -16,8 +19,12 @@ export interface CreateTelegramLinkInput {
   readonly telegramUsername?: string;
 }
 
-/** Roles autorizados a administrar las vinculaciones de Telegram. */
-const adminRoles = new Set<AuthContext['role']>(['ADMIN', 'MASTER_ADMIN', 'OPERATOR_ADMIN']);
+export interface TelegramSelfLinkCodeResult {
+  readonly code: string;
+  readonly expiresAt: Date;
+  readonly startCommand: string;
+  readonly deepLink?: string;
+}
 
 /**
  * Servicio de aplicación que gestiona el ciclo de vida de las vinculaciones
@@ -27,7 +34,8 @@ const adminRoles = new Set<AuthContext['role']>(['ADMIN', 'MASTER_ADMIN', 'OPERA
  *
  * Colaboradores inyectados:
  * - {@link ITelegramRepository}: persistencia de vínculos, usuarios y eventos de auditoría.
- * - {@link ITelegramClient}: envío de mensajes de prueba a Telegram.
+ * - {@link ITelegramClient}: envío directo de compatibilidad y pruebas aisladas.
+ * - {@link IOutboundMessageRepository}: cola durable para entregas reales.
  *
  * Rol dentro del flujo: punto de administración del canal Telegram; todas las
  * operaciones requieren rol administrativo.
@@ -36,7 +44,69 @@ export class TelegramLinkService {
   constructor(
     private readonly repository: ITelegramRepository,
     private readonly telegramClient: ITelegramClient,
+    private readonly botUsername?: string,
+    private readonly outboundRepository?: IOutboundMessageRepository,
+    private readonly telegramEnabled = true,
   ) {}
+
+  /**
+   * Genera un código efímero para que el propio usuario conecte su chat sin
+   * conocer ni compartir el chat ID. El código se almacena como hash y se
+   * devuelve una sola vez al portal autenticado.
+   */
+  public async createSelfLinkCode(actor: AuthContext): Promise<TelegramSelfLinkCodeResult> {
+    requirePermission(actor.role, 'FINOPS_READ');
+
+    const token = createOpaqueToken(10 * 60);
+    await this.repository.createSelfLinkCode({
+      tenantId: actor.tenantId,
+      userId: actor.userId,
+      tokenHash: hashOpaqueToken(token.value),
+      expiresAt: token.expiresAt,
+    });
+
+    const normalizedBotUsername = this.botUsername?.trim().replace(/^@/, '');
+    return {
+      code: token.value,
+      expiresAt: token.expiresAt,
+      startCommand: `/start ${token.value}`,
+      ...(normalizedBotUsername === undefined || normalizedBotUsername === ''
+        ? {}
+        : { deepLink: `https://t.me/${encodeURIComponent(normalizedBotUsername)}?start=${encodeURIComponent(token.value)}` }),
+    };
+  }
+
+  /** Consume el código recibido desde el webhook de Telegram. */
+  public async consumeSelfLinkCode(input: {
+    readonly code: string;
+    readonly chatId: string;
+    readonly telegramUserId?: string;
+    readonly telegramUsername?: string;
+  }): Promise<TelegramChatLink | null> {
+    const code = input.code.trim();
+    const chatId = input.chatId.trim();
+    if (code === '' || chatId === '') return null;
+
+    const link = await this.repository.consumeSelfLinkCode({
+      tokenHash: hashOpaqueToken(code),
+      chatId,
+      ...(input.telegramUserId === undefined ? {} : { telegramUserId: input.telegramUserId.trim() }),
+      ...(input.telegramUsername === undefined ? {} : { telegramUsername: input.telegramUsername.trim().replace(/^@/, '') }),
+    });
+
+    if (link !== null) {
+      await this.repository.createAuditEvent({
+        tenantId: link.tenantId,
+        actorUserId: link.userId,
+        action: 'TELEGRAM_SELF_LINK_CONSUMED',
+        entityType: 'TelegramChatLink',
+        entityId: link.id,
+        metadata: { chatId: link.chatId, userId: link.userId },
+      });
+    }
+
+    return link;
+  }
 
   /**
    * Lista las vinculaciones de Telegram del tenant del actor.
@@ -86,6 +156,11 @@ export class TelegramLinkService {
     }
 
     const existing = await this.repository.findAnyLinkByChatId(chatId);
+
+    const existingForUser = await this.repository.findActiveLinkByUserId(user.id);
+    if (existingForUser !== null && existingForUser.chatId !== chatId) {
+      throw new FinOpsBaseError('Este usuario ya tiene otro chat de Telegram vinculado', 'CONFLICT');
+    }
 
     if (
       existing !== null &&
@@ -189,19 +264,34 @@ export class TelegramLinkService {
       throw new FinOpsBaseError('Telegram link is disabled', 'VALIDATION_ERROR');
     }
 
-    await this.telegramClient.sendMessage({
-      chatId: link.chatId,
-      text: [
-        'Vinculacion Telegram activa.',
-        `Usuario FinOps: ${link.user?.email ?? link.userId}`,
-        'Ya puedes usar /ayuda para ver comandos disponibles.',
-      ].join('\n'),
-    });
+    const text = [
+      'Vinculacion Telegram activa.',
+      `Usuario FinOps: ${link.user?.email ?? link.userId}`,
+      'Ya puedes usar /ayuda para ver comandos disponibles.',
+    ].join('\n');
+
+    const queued = this.outboundRepository !== undefined;
+    if (!queued) {
+      await this.telegramClient.sendMessage({ chatId: link.chatId, text });
+    } else {
+      await this.outboundRepository.create({
+        tenantId: actor.tenantId,
+        userId: link.userId,
+        channel: 'TELEGRAM',
+        messageType: 'TEST',
+        status: this.telegramEnabled ? 'PENDING' : 'SKIPPED',
+        preview: text,
+        body: text,
+        maxAttempts: 3,
+        metadata: { chatId: link.chatId },
+        ...(this.telegramEnabled ? {} : { errorMessage: 'Telegram channel disabled' }),
+      });
+    }
 
     await this.repository.createAuditEvent({
       tenantId: actor.tenantId,
       actorUserId: actor.userId,
-      action: 'TELEGRAM_TEST_MESSAGE_SENT',
+      action: queued ? 'TELEGRAM_TEST_MESSAGE_QUEUED' : 'TELEGRAM_TEST_MESSAGE_SENT',
       entityType: 'TelegramChatLink',
       entityId: link.id,
       metadata: {
@@ -220,8 +310,6 @@ export class TelegramLinkService {
    * @throws {AuthorizationError} Si el rol del actor no está autorizado.
    */
   private requireAdmin(actor: AuthContext): void {
-    if (!adminRoles.has(actor.role)) {
-      throw new AuthorizationError();
-    }
+    requirePermission(actor.role, 'OUTBOUND_MANAGE');
   }
 }

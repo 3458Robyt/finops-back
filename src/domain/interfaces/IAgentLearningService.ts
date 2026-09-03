@@ -1,7 +1,9 @@
 import type {
   AgentLearningStatus,
   RecommendationFeedbackReason,
+  AgentMemory,
 } from '../models/AgentLearning.js';
+import type { AuthContext } from '../models/AuthContext.js';
 
 /**
  * Datos de entrada para procesar la decisión de un usuario sobre una recomendación.
@@ -60,12 +62,36 @@ export interface AgentLearningContext {
 }
 
 /**
+ * Métricas agregadas del ciclo de feedback y aprendizaje del agente.
+ *
+ * Los nombres separan explícitamente la decisión humana (`feedback`) del
+ * veredicto del auditor (`learning`); no debe interpretarse una tasa del
+ * auditor como una tasa de aprobación del cliente.
+ */
+export interface AgentLearningSummaryStats {
+  readonly totalEvents: number;
+  readonly feedbackApproved: number;
+  readonly feedbackRejected: number;
+  readonly learningPending: number;
+  readonly learningApproved: number;
+  readonly learningRejected: number;
+  readonly learningSkipped: number;
+  readonly learningError: number;
+  readonly activeMemories: number;
+  readonly globalMemories: number;
+  /** Candidatos globales en shadow, fuera del contexto activo. */
+  readonly shadowMemories: number;
+}
+
+/**
  * Resumen del estado de aprendizaje de un tenant.
  *
  * Agrupa las memorias consolidadas y los eventos de aprendizaje recientes,
  * útil para paneles de observabilidad del agente.
  */
 export interface AgentLearningSummary {
+  /** Métricas agregadas del feedback humano y de la auditoría del aprendizaje. */
+  readonly stats: AgentLearningSummaryStats;
   /** Memorias consolidadas del agente para el tenant. */
   readonly memories: readonly {
     readonly id: string;
@@ -146,4 +172,7 @@ export interface IAgentLearningService extends IAgentLearningContextProvider {
    * @returns Resumen con memorias y eventos de aprendizaje.
    */
   getLearningSummary(tenantId: string): Promise<AgentLearningSummary>;
+
+  /** Revierte una memoria activa sin eliminar el evento de aprendizaje original. */
+  deactivateMemory?(actor: AuthContext, memoryId: string): Promise<AgentMemory>;
 }

@@ -6,6 +6,7 @@ import type {
   CreateAgentLearningEventInput,
   CreateAgentMemoryInput,
   IAgentLearningRepository,
+  RecordApprovedLearningInput,
   SimilarLearningPatternCount,
 } from '../../domain/interfaces/IAgentLearningRepository.js';
 import type {
@@ -17,6 +18,7 @@ import type {
   RecommendationQuery,
 } from '../../domain/interfaces/IRecommendationRepository.js';
 import type { AgentLearningEvent, AgentMemory } from '../../domain/models/AgentLearning.js';
+import type { AuthContext } from '../../domain/models/AuthContext.js';
 import type { FinOpsRecommendation } from '../../domain/models/FinOpsRecommendation.js';
 import type { RecommendationExecutionPlan } from '../../domain/models/RecommendationExecutionPlan.js';
 
@@ -95,7 +97,11 @@ class FakeAgentLearningRepository implements IAgentLearningRepository {
   public eventInput: CreateAgentLearningEventInput | null = null;
   public completed: CompleteAgentLearningEventInput | null = null;
   public memoryInput: CreateAgentMemoryInput | null = null;
+  public recordedApproved: RecordApprovedLearningInput | null = null;
   public retryInput: { readonly eventId: string; readonly workerId: string; readonly errorMessage: string } | null = null;
+  public deactivatedMemoryId: string | null = null;
+  public similarPatternCount: SimilarLearningPatternCount = { eventCount: 1, tenantCount: 1 };
+  public promotedGlobalEventId: string | null = null;
 
   public async createEvent(input: CreateAgentLearningEventInput): Promise<AgentLearningEvent> {
     this.eventInput = input;
@@ -174,15 +180,85 @@ class FakeAgentLearningRepository implements IAgentLearningRepository {
   }
 
   public async findSummary() {
-    return { memories: [], events: [] };
+    return {
+      stats: {
+        totalEvents: 0,
+        feedbackApproved: 0,
+        feedbackRejected: 0,
+        learningPending: 0,
+        learningApproved: 0,
+        learningRejected: 0,
+        learningSkipped: 0,
+        learningError: 0,
+        activeMemories: 0,
+        globalMemories: 0,
+        shadowMemories: 0,
+      },
+      memories: [],
+      events: [],
+    };
+  }
+
+  public async recordApprovedLearning(input: RecordApprovedLearningInput): Promise<AgentLearningEvent> {
+    this.recordedApproved = input;
+    this.memoryInput = input.memories[0] ?? null;
+    this.completed = {
+      eventId: input.eventId,
+      status: 'APPROVED',
+      auditVerdict: input.auditVerdict,
+      auditScore: input.auditScore,
+      auditReport: input.auditReport,
+    };
+    return {
+      id: input.eventId,
+      tenantId: 'tenant-1',
+      recommendationId: 'rec-1',
+      decisionId: 'decision-1',
+      status: 'APPROVED',
+      auditVerdict: input.auditVerdict,
+      auditScore: input.auditScore,
+      createdAt: new Date('2026-04-29T12:00:00.000Z'),
+    };
   }
 
   public async countSimilarApprovedEvents(): Promise<SimilarLearningPatternCount> {
-    return { eventCount: 1, tenantCount: 1 };
+    return this.similarPatternCount;
   }
 
   public async hasActiveGlobalMemory(): Promise<boolean> {
     return false;
+  }
+
+  public async promoteGlobalMemory(input: { readonly sourceLearningEventId: string }): Promise<AgentMemory | null> {
+    this.promotedGlobalEventId = input.sourceLearningEventId;
+    return null;
+  }
+
+  public async deactivateMemory(input: {
+    readonly tenantId: string;
+    readonly memoryId: string;
+    readonly allowGlobal: boolean;
+    readonly actorUserId: string;
+  }): Promise<AgentMemory | null> {
+    this.deactivatedMemoryId = input.memoryId;
+    return {
+      id: input.memoryId,
+      tenantId: input.tenantId,
+      scope: 'LOCAL',
+      memoryType: 'LESSON',
+      content: 'Memoria de prueba',
+      confidence: 0.8,
+      active: false,
+      createdAt: new Date('2026-04-29T12:00:00.000Z'),
+    };
+  }
+}
+
+class LeakingTimeoutAiGateway implements IAiGateway {
+  public readonly modelName = 'fake-model';
+
+  public async generateText(_request: AiGatewayRequest): Promise<string> {
+    throw new Error('Request timed out. apiKey=super-secret Cookie: session=super-cookie');
   }
 }
 
@@ -232,6 +308,35 @@ describe('AgentLearningService', () => {
       auditVerdict: 'APPROVED',
       auditScore: 91,
     });
+    expect(learningRepository.recordedApproved?.memories).toHaveLength(1);
+  });
+
+  test('persists recurrent global learning as an inactive shadow candidate', async () => {
+    const learningRepository = new FakeAgentLearningRepository();
+    learningRepository.similarPatternCount = { eventCount: 5, tenantCount: 2 };
+    const service = new AgentLearningService(
+      new FakeRecommendationRepository(),
+      learningRepository,
+      new FakeAiGateway(),
+    );
+
+    const result = await service.processRecommendationDecision({
+      tenantId: 'tenant-1',
+      recommendationId: 'rec-1',
+      decisionId: 'decision-1',
+      userId: 'user-1',
+      decision: 'APPROVED',
+      reasonCode: 'APPROVED_HIGH_CONFIDENCE',
+    });
+
+    expect(result).toMatchObject({ status: 'APPROVED', eventId: 'event-1' });
+    expect(learningRepository.recordedApproved?.memories).toHaveLength(2);
+    expect(learningRepository.recordedApproved?.memories[1]).toMatchObject({
+      scope: 'GLOBAL',
+      active: false,
+      metadata: { learningLifecycle: 'SHADOW' },
+    });
+    expect(learningRepository.promotedGlobalEventId).toBeNull();
   });
 
   test('marks auditor timeouts as skipped learning instead of internal errors', async () => {
@@ -265,6 +370,34 @@ describe('AgentLearningService', () => {
     });
   });
 
+  test('sanitizes provider errors before persisting learning failures', async () => {
+    const learningRepository = new FakeAgentLearningRepository();
+    const service = new AgentLearningService(
+      new FakeRecommendationRepository(),
+      learningRepository,
+      new LeakingTimeoutAiGateway(),
+    );
+
+    const queued = await service.queueRecommendationDecision({
+      tenantId: 'tenant-1',
+      recommendationId: 'rec-1',
+      decisionId: 'decision-1',
+      userId: 'user-1',
+      decision: 'APPROVED',
+      reasonCode: 'APPROVED_HIGH_CONFIDENCE',
+    });
+    const result = await service.processQueuedRecommendationDecision(queued.eventId ?? '');
+
+    expect(result.error).toBe('Request timed out. apiKey=[REDACTED] Cookie: [REDACTED]');
+    expect(result.error).not.toContain('super-secret');
+    expect(result.error).not.toContain('super-cookie');
+    expect(learningRepository.completed).toMatchObject({
+      eventId: 'event-1',
+      status: 'SKIPPED',
+      errorMessage: 'Request timed out. apiKey=[REDACTED] Cookie: [REDACTED]',
+    });
+  });
+
   test('keeps external worker failures pending for durable retry', async () => {
     const learningRepository = new FakeAgentLearningRepository();
     const service = new AgentLearningService(
@@ -290,5 +423,42 @@ describe('AgentLearningService', () => {
       errorMessage: 'Request timed out.',
     });
     expect(learningRepository.completed).toBeNull();
+  });
+
+  test('allows an administrator to deactivate a memory without deleting its origin', async () => {
+    const learningRepository = new FakeAgentLearningRepository();
+    const service = new AgentLearningService(
+      new FakeRecommendationRepository(),
+      learningRepository,
+      new FakeAiGateway(),
+    );
+    const actor: AuthContext = {
+      userId: 'admin-1',
+      tenantId: 'tenant-1',
+      email: 'admin@example.com',
+      role: 'ADMIN',
+      jwtId: 'jwt-1',
+    };
+
+    const result = await service.deactivateMemory(actor, 'memory-1');
+
+    expect(result).toMatchObject({ id: 'memory-1', active: false });
+    expect(learningRepository.deactivatedMemoryId).toBe('memory-1');
+  });
+
+  test('does not allow a client approver to change agent memory', async () => {
+    const service = new AgentLearningService(
+      new FakeRecommendationRepository(),
+      new FakeAgentLearningRepository(),
+      new FakeAiGateway(),
+    );
+
+    await expect(service.deactivateMemory({
+      userId: 'client-1',
+      tenantId: 'tenant-1',
+      email: 'client@example.com',
+      role: 'CLIENT_APPROVER',
+      jwtId: 'jwt-2',
+    }, 'memory-1')).rejects.toThrow('Solo un administrador del agente puede revertir memorias');
   });
 });

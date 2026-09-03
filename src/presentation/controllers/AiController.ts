@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { FinOpsAiService } from '../../application/services/FinOpsAiService.js';
 import type { IAgentLearningService } from '../../domain/interfaces/IAgentLearningService.js';
-import { AiAuditRejectedError, FinOpsBaseError } from '../../domain/errors/errors.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 
 const chatSchema = z.object({
   message: z.string().min(1),
@@ -15,6 +15,7 @@ const chatSchema = z.object({
 const generateRecommendationsSchema = z.object({
   persist: z.boolean().optional(),
   externalResourceId: z.string().trim().min(1).optional(),
+  cloudResourceId: z.string().trim().min(1).optional(),
 });
 
 /**
@@ -100,7 +101,7 @@ export class AiController {
         },
       });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected AI chat error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected AI chat error occurred', 'ai_operation_failed', req.path);
     }
   };
 
@@ -117,7 +118,8 @@ export class AiController {
    * Usa `req.auth.tenantId` y `req.auth.userId` como contexto.
    *
    * Respuestas:
-   * - 200: `{ success: true, persisted, recommendations, context }`.
+   * - 200: `{ success: true, persisted, recommendations, analysis, context }`; `analysis` solo contiene
+   *   metadatos sanitizados de evidencia, auditoría, modelo y estimación de tokens.
    * - 400 VALIDATION_ERROR: el cuerpo no cumple el esquema.
    * - 401 AUTHENTICATION_REQUIRED: sin sesión autenticada.
    * - 400 / 502: errores de dominio (VALIDATION_ERROR -> 400; resto -> 502).
@@ -150,12 +152,29 @@ export class AiController {
         userId: req.auth.userId,
         persist: parsed.data.persist === true,
         ...(parsed.data.externalResourceId !== undefined ? { externalResourceId: parsed.data.externalResourceId } : {}),
+        ...(parsed.data.cloudResourceId !== undefined ? { cloudResourceId: parsed.data.cloudResourceId } : {}),
       });
 
       res.status(200).json({
         success: true,
         persisted: result.persisted,
         recommendations: result.recommendations,
+        analysis: {
+          evidenceHash: result.analysis.evidenceHash,
+          generatedCount: result.analysis.generatedCount,
+          promptTokenEstimate: result.analysis.promptTokenEstimate,
+          responseTokenEstimate: result.analysis.responseTokenEstimate,
+          model: result.analysis.model,
+          auditorModel: result.analysis.auditorModel,
+          ...(result.analysis.auditReport === undefined ? {} : {
+            audit: {
+              verdict: result.analysis.auditReport.verdict,
+              score: result.analysis.auditReport.score,
+              checkCount: result.analysis.auditReport.checks.length,
+              blockingIssueCount: result.analysis.auditReport.blockingIssues.length,
+            },
+          }),
+        },
         context: {
           periodStart: result.snapshot.periodStart,
           periodEnd: result.snapshot.periodEnd,
@@ -165,7 +184,7 @@ export class AiController {
         },
       });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected AI recommendation error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected AI recommendation error occurred', 'ai_operation_failed', req.path);
     }
   };
 
@@ -211,42 +230,31 @@ export class AiController {
         learning,
       });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected AI learning summary error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected AI learning summary error occurred', 'ai_operation_failed', req.path);
     }
   };
 
-  /**
-   * Manejador centralizado de errores de IA que traduce excepciones de dominio
-   * a códigos de estado HTTP:
-   * - {@link FinOpsBaseError} con código `VALIDATION_ERROR` -> 400; cualquier
-   *   otro código (p. ej. fallos del proveedor de IA) -> 502.
-   * - Error no controlado -> 500 con `fallbackMessage`.
-   */
-  private handleError(error: unknown, res: Response, fallbackMessage: string): void {
-    if (error instanceof AiAuditRejectedError) {
-      res.status(422).json({
-        success: false,
-        error: error.message,
-        code: error.code,
-        diagnosticId: error.diagnosticId,
-        audit: error.audit,
-      });
+  /** Revierte una memoria activa sin borrar el evento que la originó. */
+  public deactivateLearningMemory = async (req: Request, res: Response): Promise<void> => {
+    if (req.auth === undefined) {
+      res.status(401).json({ success: false, error: 'Authentication is required', code: 'AUTHENTICATION_REQUIRED' });
       return;
     }
-
-    if (error instanceof FinOpsBaseError) {
-      const status = error.code === 'VALIDATION_ERROR' ? 400 : 502;
-      res.status(status).json({
-        success: false,
-        error: error.message,
-        code: error.code,
-      });
+    const memoryId = typeof req.params['memoryId'] === 'string' ? req.params['memoryId'].trim() : '';
+    if (memoryId === '') {
+      res.status(400).json({ success: false, error: 'Memory id is required', code: 'VALIDATION_ERROR' });
       return;
     }
+    if (this.learningService?.deactivateMemory === undefined) {
+      res.status(503).json({ success: false, error: 'Learning memory rollback is not configured', code: 'LEARNING_NOT_CONFIGURED' });
+      return;
+    }
+    try {
+      const memory = await this.learningService.deactivateMemory(req.auth, memoryId);
+      res.status(200).json({ success: true, memory });
+    } catch (error: unknown) {
+      respondWithFinOpsError(res, error, 'No fue posible revertir la memoria del agente', 'ai_operation_failed', req.path);
+    }
+  };
 
-    res.status(500).json({
-      success: false,
-      error: fallbackMessage,
-    });
-  }
 }

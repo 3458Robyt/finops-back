@@ -1,4 +1,5 @@
 import type {
+  RecommendationAnalysisCandidateAudit,
   RecommendationAnalysisCandidateResult,
   RecommendationAnalysisRecommendationDisposition,
   RecommendationAnalysisRun,
@@ -14,6 +15,7 @@ export interface QueueRecommendationAnalysisRunInput {
   readonly trigger: RecommendationAnalysisTrigger;
   readonly scope: RecommendationAnalysisScope;
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
   readonly retriedFromRunId?: string;
   readonly maxAttempts?: number;
 }
@@ -47,6 +49,7 @@ export interface CompleteRecommendationAnalysisRunInput {
     readonly candidateId?: string;
     readonly disposition: RecommendationAnalysisRecommendationDisposition;
   }[];
+  readonly candidateAudits?: readonly Omit<RecommendationAnalysisCandidateAudit, 'runId'>[];
   readonly promptTokenEstimate: number;
   readonly responseTokenEstimate: number;
   readonly latencyMs: number;

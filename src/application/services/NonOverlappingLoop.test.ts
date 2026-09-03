@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { MetricsRegistry } from '../observability/MetricsRegistry.js';
 import { startNonOverlappingLoop } from './NonOverlappingLoop.js';
 
 describe('startNonOverlappingLoop', () => {
@@ -55,6 +56,33 @@ describe('startNonOverlappingLoop', () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
+  it('waits for the active iteration before shutdown completes', async () => {
+    let release!: () => void;
+    const run = vi.fn(() => new Promise<{ readonly processed: boolean }>((resolve) => {
+      release = () => resolve({ processed: false });
+    }));
+    const clearIntervalFn = vi.fn();
+    const handle = startNonOverlappingLoop({
+      run,
+      intervalMs: 1000,
+      fallbackIntervalMs: 30000,
+      setIntervalFn: vi.fn(() => 123 as unknown as NodeJS.Timeout),
+      clearIntervalFn,
+    });
+
+    handle.stop();
+    let drained = false;
+    const drain = handle.waitForIdle().then(() => { drained = true; });
+
+    await Promise.resolve();
+    expect(drained).toBe(false);
+    expect(clearIntervalFn).toHaveBeenCalledWith(123);
+
+    release();
+    await drain;
+    expect(drained).toBe(true);
+  });
+
   it('reports errors and continues future iterations', async () => {
     const onError = vi.fn();
     const run = vi.fn()
@@ -81,5 +109,28 @@ describe('startNonOverlappingLoop', () => {
 
     scheduled();
     expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('records bounded iteration counters and duration by process role', async () => {
+    const metrics = new MetricsRegistry();
+    const handle = startNonOverlappingLoop({
+      run: async () => undefined,
+      intervalMs: 1000,
+      fallbackIntervalMs: 30000,
+      setIntervalFn: vi.fn(() => 123 as unknown as NodeJS.Timeout),
+      clearIntervalFn: vi.fn(),
+      metrics,
+      metricName: 'learning_worker_iteration',
+      metricLabels: { process_role: 'learning-worker' },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    handle.stop();
+
+    const output = metrics.toPrometheus();
+    expect(output).toContain('finops_learning_worker_iteration_started_total{process_role="learning-worker"} 1');
+    expect(output).toContain('finops_learning_worker_iteration_completed_total{process_role="learning-worker"} 1');
+    expect(output).toContain('finops_learning_worker_iteration_duration_ms_count{outcome="success",process_role="learning-worker"} 1');
   });
 });

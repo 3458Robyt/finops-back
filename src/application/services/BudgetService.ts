@@ -1,12 +1,11 @@
-import { AuthorizationError, FinOpsBaseError } from '../../domain/errors/errors.js';
+import { FinOpsBaseError } from '../../domain/errors/errors.js';
 import type { IBudgetRepository, CreateBudgetInput, UpdateBudgetInput } from '../../domain/interfaces/IBudgetRepository.js';
 import type { INotificationRepository } from '../../domain/interfaces/INotificationRepository.js';
 import type { IOutboundMessageRepository } from '../../domain/interfaces/IOutboundMessageRepository.js';
 import type { ITelegramRepository } from '../../domain/interfaces/ITelegramRepository.js';
 import type { AuthContext } from '../../domain/models/AuthContext.js';
 import type { Budget, BudgetAlert, BudgetHealth, BudgetPerformance, BudgetScope } from '../../domain/models/Budget.js';
-
-const managerRoles = new Set<AuthContext['role']>(['MASTER_ADMIN', 'OPERATOR_ADMIN', 'ADMIN', 'FINOPS_TECHNICIAN']);
+import { requirePermission } from '../../domain/security/AuthorizationPolicy.js';
 const utcMonth = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export class BudgetService {
@@ -27,10 +26,10 @@ export class BudgetService {
     const currency = input.currency.trim().toUpperCase();
     const scopeKey = this.resolveScopeKey(input);
     const thresholds = normalizeThresholds(input);
-    if (!Number.isFinite(input.amount) || input.amount <= 0) throw new FinOpsBaseError('Budget amount must be positive', 'VALIDATION_ERROR');
-    if (!/^[A-Z]{3}$/.test(currency)) throw new FinOpsBaseError('Currency must be ISO-4217 uppercase code', 'VALIDATION_ERROR');
+    if (!Number.isFinite(input.amount) || input.amount <= 0) throw new FinOpsBaseError('El monto del presupuesto debe ser positivo', 'VALIDATION_ERROR');
+    if (!/^[A-Z]{3}$/.test(currency)) throw new FinOpsBaseError('La moneda debe ser un código ISO-4217 en mayúsculas', 'VALIDATION_ERROR');
     if (input.cloudAccountId !== undefined && !(await this.budgets.cloudAccountExists(actor.tenantId, input.cloudAccountId))) {
-      throw new FinOpsBaseError('Cloud account not found for this tenant', 'NOT_FOUND');
+      throw new FinOpsBaseError('La cuenta cloud no pertenece a este tenant', 'NOT_FOUND');
     }
     return this.budgets.create({ tenantId: actor.tenantId, scope: input.scope, scopeKey, ...(input.cloudAccountId !== undefined ? { cloudAccountId: input.cloudAccountId } : {}), ...(input.serviceName !== undefined ? { serviceName: input.serviceName } : {}), periodStart, amount: input.amount, currency, ...thresholds, createdByUserId: actor.userId });
   }
@@ -44,23 +43,24 @@ export class BudgetService {
       exceededThreshold: input.exceededThreshold ?? current.exceededThreshold,
     });
     const budget = await this.budgets.update(actor.tenantId, budgetId, input);
-    if (budget === null) throw new FinOpsBaseError('Budget not found or archived', 'NOT_FOUND');
+    if (budget === null) throw new FinOpsBaseError('Presupuesto no encontrado o archivado', 'NOT_FOUND');
     return budget;
   }
 
   public async archive(actor: AuthContext, budgetId: string): Promise<Budget> {
     this.requireManager(actor);
     const budget = await this.budgets.archive(actor.tenantId, budgetId, new Date());
-    if (budget === null) throw new FinOpsBaseError('Budget not found or already archived', 'NOT_FOUND');
+    if (budget === null) throw new FinOpsBaseError('Presupuesto no encontrado o ya archivado', 'NOT_FOUND');
     return budget;
   }
 
   public async getPerformance(actor: AuthContext, budgetId: string, now = new Date()): Promise<BudgetPerformance> {
     const budget = await this.requireBudget(actor, budgetId);
-    const [actualCost, forecastCost] = await Promise.all([this.budgets.getActualCost(budget), this.budgets.getForecastCost(budget)]);
+    const [actualResult, forecastCost] = await Promise.all([this.budgets.getActualCost(budget), this.budgets.getForecastCost(budget)]);
+    const actualCost = actualResult.amount;
     const consumedPercent = round((actualCost / budget.amount) * 100);
-    const health = healthFor(budget, Math.max(actualCost, forecastCost ?? 0));
-    return { budget, actualCost, remainingBudget: round(budget.amount - actualCost), consumedPercent, ...(forecastCost !== undefined ? { forecastCost, varianceAmount: round(forecastCost - budget.amount), variancePercent: round(((forecastCost - budget.amount) / budget.amount) * 100) } : {}), health, ...(depletionDate(budget, actualCost, now) !== undefined ? { estimatedDepletionDate: depletionDate(budget, actualCost, now)! } : {}) };
+    const health = actualResult.available ? healthFor(budget, Math.max(actualCost, forecastCost ?? 0)) : 'UNAVAILABLE';
+    return { budget, actualCost, actualCostAvailable: actualResult.available, actualCostSource: actualResult.source, remainingBudget: round(budget.amount - actualCost), consumedPercent, ...(forecastCost !== undefined ? { forecastCost, varianceAmount: round(forecastCost - budget.amount), variancePercent: round(((forecastCost - budget.amount) / budget.amount) * 100) } : {}), health, ...(actualResult.available && depletionDate(budget, actualCost, now) !== undefined ? { estimatedDepletionDate: depletionDate(budget, actualCost, now)! } : {}) };
   }
 
   public async evaluate(actor: AuthContext, budgetId?: string): Promise<{ readonly evaluated: number; readonly newAlerts: readonly BudgetAlert[] }> {
@@ -69,10 +69,11 @@ export class BudgetService {
     const newAlerts: BudgetAlert[] = [];
     for (const budget of selected) {
       const performance = await this.getPerformance(actor, budget.id);
+      if (!performance.actualCostAvailable) continue;
       for (const [level, threshold] of [['WARNING', budget.warningThreshold], ['CRITICAL', budget.criticalThreshold], ['EXCEEDED', budget.exceededThreshold]] as const) {
         const comparedCost = Math.max(performance.actualCost, performance.forecastCost ?? 0);
         if (comparedCost < budget.amount * threshold) continue;
-        const alert = await this.budgets.createAlertIfAbsent({ tenantId: budget.tenantId, budgetId: budget.id, level, threshold, periodStart: budget.periodStart, actualCost: performance.actualCost, ...(performance.forecastCost !== undefined ? { forecastCost: performance.forecastCost } : {}), currency: budget.currency, idempotencyKey: `${budget.id}:${budget.periodStart.toISOString().slice(0, 10)}:${level}`, metadata: { health: performance.health, source: performance.forecastCost !== undefined && performance.forecastCost >= performance.actualCost ? 'forecast_or_actual' : 'actual' } });
+        const alert = await this.budgets.createAlertIfAbsent({ tenantId: budget.tenantId, budgetId: budget.id, level, threshold, periodStart: budget.periodStart, actualCost: performance.actualCost, ...(performance.forecastCost !== undefined ? { forecastCost: performance.forecastCost } : {}), currency: budget.currency, idempotencyKey: `${budget.id}:${budget.periodStart.toISOString().slice(0, 10)}:${level}`, metadata: { health: performance.health, source: performance.forecastCost !== undefined && performance.forecastCost >= performance.actualCost ? 'forecast_or_actual' : performance.actualCostSource } });
         if (alert !== null) { newAlerts.push(alert); await this.publishAlert(budget, performance, alert); }
       }
     }
@@ -80,15 +81,77 @@ export class BudgetService {
   }
 
   public async listAlerts(actor: AuthContext, budgetId: string): Promise<readonly BudgetAlert[]> { await this.requireBudget(actor, budgetId); return this.budgets.listAlerts(actor.tenantId, budgetId); }
-  private async requireBudget(actor: AuthContext, id: string): Promise<Budget> { const budget = await this.budgets.findById(actor.tenantId, id); if (budget === null) throw new FinOpsBaseError('Budget not found', 'NOT_FOUND'); return budget; }
-  private requireManager(actor: AuthContext): void { if (!managerRoles.has(actor.role)) throw new AuthorizationError('You are not allowed to manage budgets'); }
-  private resolveScopeKey(input: { scope: BudgetScope; scopeKey?: string; cloudAccountId?: string; serviceName?: string }): string { if (input.scope === 'TENANT') { if (input.cloudAccountId !== undefined || input.serviceName !== undefined) throw new FinOpsBaseError('Tenant budgets cannot include an account or service target', 'VALIDATION_ERROR'); return '__tenant__'; } const key = input.scope === 'CLOUD_ACCOUNT' ? input.cloudAccountId : input.serviceName; if (key === undefined || key.trim() === '') throw new FinOpsBaseError('Scope target is required', 'VALIDATION_ERROR'); return key.trim(); }
-  private validateUpdate(input: UpdateBudgetInput): void { if (input.amount !== undefined && (!Number.isFinite(input.amount) || input.amount <= 0)) throw new FinOpsBaseError('Budget amount must be positive', 'VALIDATION_ERROR'); if ([input.warningThreshold, input.criticalThreshold, input.exceededThreshold].some((v) => v !== undefined && (!Number.isFinite(v) || v <= 0))) throw new FinOpsBaseError('Thresholds must be positive', 'VALIDATION_ERROR'); }
-  private async publishAlert(budget: Budget, performance: BudgetPerformance, alert: BudgetAlert): Promise<void> { const [users, links] = await Promise.all([this.outbound.findTenantUsers(budget.tenantId), this.telegram.findLinksByTenant(budget.tenantId)]); const activeLinks = new Map(links.filter((link) => link.status === 'ACTIVE').map((link) => [link.userId, link])); const percent = performance.consumedPercent.toFixed(1); const text = `Presupuesto ${alert.level.toLowerCase()}: ${budget.currency} ${performance.actualCost.toFixed(2)} consumidos (${percent}% de ${budget.amount.toFixed(2)}).`; await Promise.all(users.filter((u) => u.status === 'ACTIVE').map(async (user) => { await this.notifications.create({ tenantId: budget.tenantId, userId: user.id, type: 'BUDGET_ALERT', title: 'Alerta de presupuesto', message: text, currency: budget.currency, periodStart: budget.periodStart, generatedForDate: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())), metadata: { budgetId: budget.id, budgetAlertId: alert.id, level: alert.level } }); await this.outbound.create({ tenantId: budget.tenantId, userId: user.id, channel: 'EMAIL', messageType: 'BUDGET_ALERT', status: 'PENDING', subject: 'Alerta de presupuesto FinOps', preview: text, metadata: { budgetAlertId: alert.id, budgetId: budget.id } }); const link = activeLinks.get(user.id); if (link !== undefined) await this.outbound.create({ tenantId: budget.tenantId, userId: user.id, channel: 'TELEGRAM', messageType: 'BUDGET_ALERT', status: 'PENDING', preview: text, metadata: { budgetAlertId: alert.id, budgetId: budget.id, chatId: link.chatId } }); })); }
+  private async requireBudget(actor: AuthContext, id: string): Promise<Budget> { const budget = await this.budgets.findById(actor.tenantId, id); if (budget === null) throw new FinOpsBaseError('Presupuesto no encontrado', 'NOT_FOUND'); return budget; }
+  private requireManager(actor: AuthContext): void { requirePermission(actor.role, 'BUDGET_MANAGE', 'No está autorizado para administrar presupuestos'); }
+  private resolveScopeKey(input: { scope: BudgetScope; scopeKey?: string; cloudAccountId?: string; serviceName?: string }): string {
+    if (input.scope === 'TENANT') {
+      if (input.cloudAccountId !== undefined || input.serviceName !== undefined) throw new FinOpsBaseError('Los presupuestos del tenant no pueden incluir una cuenta o servicio', 'VALIDATION_ERROR');
+      return '__tenant__';
+    }
+    if (input.scope === 'ALLOCATION_DESTINATION') {
+      if (input.cloudAccountId !== undefined || input.serviceName !== undefined) throw new FinOpsBaseError('Los presupuestos por destino no pueden incluir una cuenta o servicio', 'VALIDATION_ERROR');
+      const key = input.scopeKey?.trim();
+      if (key === undefined || key === '') throw new FinOpsBaseError('Debe indicar el destino de asignación', 'VALIDATION_ERROR');
+      return key;
+    }
+    const key = input.scope === 'CLOUD_ACCOUNT' ? input.cloudAccountId : input.serviceName;
+    if (key === undefined || key.trim() === '') throw new FinOpsBaseError('Debe indicar el objetivo del alcance', 'VALIDATION_ERROR');
+    return key.trim();
+  }
+  private validateUpdate(input: UpdateBudgetInput): void { if (input.amount !== undefined && (!Number.isFinite(input.amount) || input.amount <= 0)) throw new FinOpsBaseError('El monto del presupuesto debe ser positivo', 'VALIDATION_ERROR'); if ([input.warningThreshold, input.criticalThreshold, input.exceededThreshold].some((v) => v !== undefined && (!Number.isFinite(v) || v <= 0))) throw new FinOpsBaseError('Los umbrales deben ser positivos', 'VALIDATION_ERROR'); }
+  private async publishAlert(budget: Budget, performance: BudgetPerformance, alert: BudgetAlert): Promise<void> {
+    const [users, links] = await Promise.all([
+      this.outbound.findTenantUsers(budget.tenantId),
+      this.telegram.findLinksByTenant(budget.tenantId),
+    ]);
+    const activeLinks = new Map(links.filter((link) => link.status === 'ACTIVE').map((link) => [link.userId, link]));
+    const percent = performance.consumedPercent.toFixed(1);
+    const text = `Presupuesto ${alert.level.toLowerCase()}: ${budget.currency} ${performance.actualCost.toFixed(2)} consumidos (${percent}% de ${budget.amount.toFixed(2)}).`;
+
+    await Promise.all(users.filter((user) => user.status === 'ACTIVE').map(async (user) => {
+      await this.notifications.create({
+        tenantId: budget.tenantId,
+        userId: user.id,
+        type: 'BUDGET_ALERT',
+        title: 'Alerta de presupuesto',
+        message: text,
+        currency: budget.currency,
+        periodStart: budget.periodStart,
+        generatedForDate: new Date(Date.UTC(
+          new Date().getUTCFullYear(),
+          new Date().getUTCMonth(),
+          new Date().getUTCDate(),
+        )),
+        metadata: { budgetId: budget.id, budgetAlertId: alert.id, level: alert.level },
+      });
+      await this.outbound.create({
+        tenantId: budget.tenantId,
+        userId: user.id,
+        channel: 'EMAIL',
+        messageType: 'BUDGET_ALERT',
+        status: 'PENDING',
+        subject: 'Alerta de presupuesto FinOps',
+        preview: text,
+        metadata: { budgetAlertId: alert.id, budgetId: budget.id, to: user.email },
+      });
+      const link = activeLinks.get(user.id);
+      if (link !== undefined) {
+        await this.outbound.create({
+          tenantId: budget.tenantId,
+          userId: user.id,
+          channel: 'TELEGRAM',
+          messageType: 'BUDGET_ALERT',
+          status: 'PENDING',
+          preview: text,
+          metadata: { budgetAlertId: alert.id, budgetId: budget.id, chatId: link.chatId },
+        });
+      }
+    }));
+  }
 }
 
-function parseMonth(value: string): Date { if (!utcMonth.test(value)) throw new FinOpsBaseError('Period must be YYYY-MM', 'VALIDATION_ERROR'); const [year, month] = value.split('-').map(Number); return new Date(Date.UTC(year!, month! - 1, 1)); }
-function normalizeThresholds(input: { warningThreshold?: number; criticalThreshold?: number; exceededThreshold?: number }): { warningThreshold: number; criticalThreshold: number; exceededThreshold: number } { const warningThreshold = input.warningThreshold ?? 0.8, criticalThreshold = input.criticalThreshold ?? 0.9, exceededThreshold = input.exceededThreshold ?? 1; if (!(warningThreshold > 0 && warningThreshold < criticalThreshold && criticalThreshold < exceededThreshold)) throw new FinOpsBaseError('Thresholds must be ordered: warning < critical < exceeded', 'VALIDATION_ERROR'); return { warningThreshold, criticalThreshold, exceededThreshold }; }
+function parseMonth(value: string): Date { if (!utcMonth.test(value)) throw new FinOpsBaseError('El período debe tener formato YYYY-MM', 'VALIDATION_ERROR'); const [year, month] = value.split('-').map(Number); return new Date(Date.UTC(year!, month! - 1, 1)); }
+function normalizeThresholds(input: { warningThreshold?: number; criticalThreshold?: number; exceededThreshold?: number }): { warningThreshold: number; criticalThreshold: number; exceededThreshold: number } { const warningThreshold = input.warningThreshold ?? 0.8, criticalThreshold = input.criticalThreshold ?? 0.9, exceededThreshold = input.exceededThreshold ?? 1; if (!(warningThreshold > 0 && warningThreshold < criticalThreshold && criticalThreshold < exceededThreshold)) throw new FinOpsBaseError('Los umbrales deben respetar el orden: advertencia < crítico < excedido', 'VALIDATION_ERROR'); return { warningThreshold, criticalThreshold, exceededThreshold }; }
 function healthFor(b: Budget, cost: number): BudgetHealth { const ratio = cost / b.amount; return ratio >= b.exceededThreshold ? 'EXCEEDED' : ratio >= b.criticalThreshold ? 'CRITICAL' : ratio >= b.warningThreshold ? 'WARNING' : 'HEALTHY'; }
 function depletionDate(b: Budget, actual: number, now: Date): Date | undefined { const elapsed = Math.max(0, (now.getTime() - b.periodStart.getTime()) / 86400000); if (elapsed < 1 || actual <= 0) return undefined; const date = new Date(b.periodStart.getTime() + (b.amount / (actual / elapsed)) * 86400000); const end = new Date(Date.UTC(b.periodStart.getUTCFullYear(), b.periodStart.getUTCMonth() + 1, 1)); return date > now && date < end ? date : undefined; }
 function round(value: number): number { return Math.round(value * 100) / 100; }

@@ -2,7 +2,9 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { TelegramBotService } from '../../application/services/TelegramBotService.js';
 import type { TelegramLinkService } from '../../application/services/TelegramLinkService.js';
-import { AuthorizationError, FinOpsBaseError } from '../../domain/errors/errors.js';
+import { safeSecretEqual } from '../../infrastructure/security/safeSecretCompare.js';
+import { runWithDatabaseContext } from '../../infrastructure/database/tenantContext.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 
 const createLinkSchema = z.object({
   email: z.string().email(),
@@ -46,7 +48,7 @@ export class TelegramController {
    * Cuerpo (`req.body`): el objeto update de Telegram, delegado a {@link TelegramBotService}.
    *
    * Respuestas:
-   * - 200: `{ success: true }` si la actualización se procesa correctamente.
+   * - 202: `{ success: true, queued, duplicate }` cuando el update queda encolado.
    * - 503 TELEGRAM_DISABLED: la integración está deshabilitada (`enabled` false).
    * - 503 CONFIGURATION_ERROR: el secreto del webhook no está configurado.
    * - 401 AUTHENTICATION_FAILED: el secreto de la cabecera no coincide.
@@ -63,16 +65,23 @@ export class TelegramController {
       return;
     }
 
-    if (req.header('X-Telegram-Bot-Api-Secret-Token') !== this.webhookSecret) {
+    if (!safeSecretEqual(this.webhookSecret, req.header('X-Telegram-Bot-Api-Secret-Token'))) {
       res.status(401).json({ success: false, error: 'Invalid Telegram webhook secret', code: 'AUTHENTICATION_FAILED' });
       return;
     }
 
     try {
-      await this.botService.handleUpdate(req.body);
-      res.status(200).json({ success: true });
+      const result = await runWithDatabaseContext(
+        {
+          role: 'MASTER_ADMIN',
+          workerId: 'telegram-webhook',
+          ...(res.locals?.requestId === undefined ? {} : { requestId: res.locals.requestId }),
+        },
+        () => this.botService.enqueueUpdate(req.body),
+      );
+      res.status(202).json({ success: true, queued: result === 'ENQUEUED', duplicate: result === 'DUPLICATE' });
     } catch (error: unknown) {
-      this.handleError(error, res, 'No fue posible procesar el webhook de Telegram');
+      respondWithFinOpsError(res, error, 'No fue posible procesar el webhook de Telegram', 'telegram_operation_failed', req.path);
     }
   };
 
@@ -97,7 +106,28 @@ export class TelegramController {
       const links = await this.linkService.listLinks(req.auth);
       res.status(200).json({ success: true, links });
     } catch (error: unknown) {
-      this.handleError(error, res, 'No fue posible cargar vinculos Telegram');
+      respondWithFinOpsError(res, error, 'No fue posible cargar vinculos Telegram', 'telegram_operation_failed', req.path);
+    }
+  };
+
+  /**
+   * Genera un código de auto-vinculación para el usuario autenticado.
+   *
+   * Sirve: POST /api/v1/telegram/self-link-code
+   * El código expira rápidamente y solo puede consumirse una vez mediante el
+   * webhook autenticado de Telegram.
+   */
+  public createSelfLinkCode = async (req: Request, res: Response): Promise<void> => {
+    if (req.auth === undefined) {
+      res.status(401).json({ success: false, error: 'Authentication is required', code: 'AUTHENTICATION_REQUIRED' });
+      return;
+    }
+
+    try {
+      const result = await this.linkService.createSelfLinkCode(req.auth);
+      res.status(201).json({ success: true, ...result });
+    } catch (error: unknown) {
+      respondWithFinOpsError(res, error, 'No fue posible generar el código de vinculación', 'telegram_operation_failed', req.path);
     }
   };
 
@@ -141,7 +171,7 @@ export class TelegramController {
       });
       res.status(201).json({ success: true, link });
     } catch (error: unknown) {
-      this.handleError(error, res, 'No fue posible crear el vinculo Telegram');
+      respondWithFinOpsError(res, error, 'No fue posible crear el vinculo Telegram', 'telegram_operation_failed', req.path);
     }
   };
 
@@ -177,7 +207,7 @@ export class TelegramController {
       const link = await this.linkService.disableLink(req.auth, linkId);
       res.status(200).json({ success: true, link });
     } catch (error: unknown) {
-      this.handleError(error, res, 'No fue posible desactivar el vinculo Telegram');
+      respondWithFinOpsError(res, error, 'No fue posible desactivar el vinculo Telegram', 'telegram_operation_failed', req.path);
     }
   };
 
@@ -213,7 +243,7 @@ export class TelegramController {
       const link = await this.linkService.sendTestMessage(req.auth, linkId);
       res.status(200).json({ success: true, link });
     } catch (error: unknown) {
-      this.handleError(error, res, 'No fue posible enviar mensaje de prueba');
+      respondWithFinOpsError(res, error, 'No fue posible enviar mensaje de prueba', 'telegram_operation_failed', req.path);
     }
   };
 
@@ -226,33 +256,4 @@ export class TelegramController {
     return typeof id === 'string' && id.trim() !== '' ? id.trim() : undefined;
   }
 
-  /**
-   * Manejador centralizado de errores que traduce excepciones de dominio a
-   * códigos de estado HTTP:
-   * - {@link AuthorizationError} -> 403.
-   * - {@link FinOpsBaseError} con código `VALIDATION_ERROR` -> 400; `NOT_FOUND`
-   *   -> 404; `CONFLICT` -> 409; cualquier otro código -> 500.
-   * - Error no controlado -> 500 con `fallbackMessage`.
-   */
-  private handleError(error: unknown, res: Response, fallbackMessage: string): void {
-    if (error instanceof AuthorizationError) {
-      res.status(403).json({ success: false, error: error.message, code: error.code });
-      return;
-    }
-
-    if (error instanceof FinOpsBaseError) {
-      const status = error.code === 'VALIDATION_ERROR'
-        ? 400
-        : error.code === 'NOT_FOUND'
-          ? 404
-          : error.code === 'CONFLICT'
-            ? 409
-            : 500;
-
-      res.status(status).json({ success: false, error: error.message, code: error.code });
-      return;
-    }
-
-    res.status(500).json({ success: false, error: fallbackMessage });
-  }
 }

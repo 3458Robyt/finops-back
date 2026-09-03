@@ -3,10 +3,11 @@ import { z } from 'zod';
 
 import type { RecommendationAnalysisService } from '../../application/services/RecommendationAnalysisService.js';
 import type { RecommendationAnalysisRun } from '../../domain/models/RecommendationAnalysisRun.js';
-import { resolveFinOpsError } from '../http/finOpsErrorResponse.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 
 const queueSchema = z.object({
   externalResourceId: z.string().trim().min(1).max(500).optional(),
+  cloudResourceId: z.string().trim().min(1).max(200).optional(),
 });
 
 export class RecommendationAnalysisController {
@@ -25,6 +26,9 @@ export class RecommendationAnalysisController {
         ...(parsed.data.externalResourceId !== undefined
           ? { externalResourceId: parsed.data.externalResourceId }
           : {}),
+        ...(parsed.data.cloudResourceId !== undefined
+          ? { cloudResourceId: parsed.data.cloudResourceId }
+          : {}),
       });
       res.status(202).json({
         success: true,
@@ -42,6 +46,9 @@ export class RecommendationAnalysisController {
       ...(typeof req.query['externalResourceId'] === 'string'
         ? { externalResourceId: req.query['externalResourceId'] }
         : {}),
+      ...(typeof req.query['cloudResourceId'] === 'string'
+        ? { cloudResourceId: req.query['cloudResourceId'] }
+        : {}),
     });
     if (!parsed.success) {
       res.status(400).json({
@@ -56,6 +63,9 @@ export class RecommendationAnalysisController {
       const preview = await this.service.preview(req.auth, {
         ...(parsed.data.externalResourceId !== undefined
           ? { externalResourceId: parsed.data.externalResourceId }
+          : {}),
+        ...(parsed.data.cloudResourceId !== undefined
+          ? { cloudResourceId: parsed.data.cloudResourceId }
           : {}),
       });
       res.status(200).json({
@@ -121,12 +131,12 @@ export class RecommendationAnalysisController {
   }
 
   private respondError(res: Response, error: unknown): void {
-    const resolved = resolveFinOpsError(error, 'No fue posible completar la operación de análisis.');
-    res.status(resolved.status).json({
-      success: false,
-      error: resolved.error,
-      ...(resolved.code !== undefined ? { code: resolved.code } : {}),
-    });
+    respondWithFinOpsError(
+      res,
+      error,
+      'No fue posible completar la operación de análisis.',
+      'recommendation_analysis_operation_failed',
+    );
   }
 }
 
@@ -136,6 +146,7 @@ function serializeRun(run: RecommendationAnalysisRun, detail: boolean): Record<s
     trigger: run.trigger,
     scope: run.scope,
     ...(run.externalResourceId !== undefined ? { externalResourceId: run.externalResourceId } : {}),
+    ...(run.cloudResourceId !== undefined ? { cloudResourceId: run.cloudResourceId } : {}),
     status: run.status,
     stage: run.stage,
     ...(run.periodStart !== undefined ? { periodStart: run.periodStart.toISOString() } : {}),
@@ -163,6 +174,25 @@ function serializeRun(run: RecommendationAnalysisRun, detail: boolean): Record<s
     recommendations: run.recommendations,
     ...(detail && run.readinessReport !== undefined ? { readinessReport: run.readinessReport } : {}),
     ...(detail && run.candidateResults !== undefined ? { candidateResults: run.candidateResults } : {}),
+    ...(detail && run.candidateAudits !== undefined
+      ? {
+          candidateAudits: run.candidateAudits.map((audit) => ({
+            candidateId: audit.candidateId,
+            draftIndex: audit.draftIndex,
+            ...(audit.recommendationId === undefined ? {} : { recommendationId: audit.recommendationId }),
+            auditVerdict: audit.auditVerdict,
+            auditScore: audit.auditScore,
+            auditChecks: audit.auditChecks,
+            blockingIssues: audit.blockingIssues,
+            requiredChanges: audit.requiredChanges,
+            finalDisposition: audit.finalDisposition,
+            ...(audit.draft === undefined ? {} : { draft: audit.draft }),
+            ...(audit.deterministicEvidence === undefined ? {} : { deterministicEvidence: audit.deterministicEvidence }),
+            ...(audit.model === undefined ? {} : { model: audit.model }),
+            ...(audit.auditorModel === undefined ? {} : { auditorModel: audit.auditorModel }),
+          })),
+        }
+      : {}),
   };
 }
 

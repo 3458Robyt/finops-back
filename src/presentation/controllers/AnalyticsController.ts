@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { CostAnalyticsService } from '../../application/services/CostAnalyticsService.js';
 import type { AnalyticsGroupBy } from '../../domain/interfaces/ICostAnalyticsRepository.js';
 import { FinOpsBaseError } from '../../domain/errors/errors.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 
 const supportedGroupBy = new Set<AnalyticsGroupBy>([
   'provider',
@@ -16,7 +17,7 @@ const supportedGroupBy = new Set<AnalyticsGroupBy>([
  * en `/api/v1/analytics`). Traduce las peticiones HTTP hacia los casos de uso de
  * analítica y serializa la respuesta al cliente.
  *
- * Expone consultas de anomalías, oportunidades, previsión (forecast),
+ * Expone consultas de oportunidades, previsión (forecast),
  * tendencias, uso, economía unitaria e insights de eficiencia, además del
  * recálculo de la analítica. Todos los endpoints comparten un mismo conjunto de
  * filtros leídos de la query string mediante {@link parseQuery}.
@@ -30,7 +31,7 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: CostAnalyticsService) {}
 
   /**
-   * Devuelve las anomalías de coste detectadas para el tenant.
+   * Devuelve las oportunidades históricas de coste para el tenant.
    *
    * Sirve: GET /api/v1/analytics/anomalies
    * Autenticación: requerida.
@@ -38,7 +39,10 @@ export class AnalyticsController {
    * `serviceName`, `groupBy` en la query string).
    *
    * Respuestas:
-   * - 200: `{ success: true, anomalies, meta: { count } }`.
+   * - 200: `{ success: true, anomalies, meta }`; esta forma legacy se conserva
+   *   para clientes antiguos. Los clientes nuevos deben usar la respuesta
+   *   canónica `{ success: true, opportunities, meta }` de `/opportunities`.
+   * - La ruta está deprecada; los clientes nuevos deben usar `/opportunities`.
    * - 400 VALIDATION_ERROR: filtros inválidos (fecha o `groupBy` no soportado).
    * - 401 AUTHENTICATION_REQUIRED: sin sesión autenticada.
    * - 500: error inesperado de analítica.
@@ -53,7 +57,7 @@ export class AnalyticsController {
       const anomalies = await this.analyticsService.getAnomalies(this.parseQuery(req));
       res.status(200).json({ success: true, anomalies, meta: { count: anomalies.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics anomaly error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics opportunities error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -64,7 +68,7 @@ export class AnalyticsController {
    * Autenticación: requerida.
    * Filtros: ver {@link parseQuery}.
    *
-   * Nota: internamente reutiliza la consulta de anomalías del servicio de analítica.
+   * Nota: internamente reutiliza la detección histórica del servicio de analítica.
    *
    * Respuestas:
    * - 200: `{ success: true, opportunities, meta: { count } }`.
@@ -82,7 +86,7 @@ export class AnalyticsController {
       const opportunities = await this.analyticsService.getAnomalies(this.parseQuery(req));
       res.status(200).json({ success: true, opportunities, meta: { count: opportunities.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics opportunities error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics opportunities error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -109,7 +113,22 @@ export class AnalyticsController {
       const forecasts = await this.analyticsService.getForecast(this.parseQuery(req));
       res.status(200).json({ success: true, forecasts, meta: { count: forecasts.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics forecast error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics forecast error occurred', 'analytics_operation_failed', req.path);
+    }
+  };
+
+  /** Devuelve escenarios comparables: base, tendencia, aprobado, ejecutado y verificado. */
+  public getForecastScenarios = async (req: Request, res: Response): Promise<void> => {
+    if (req.auth === undefined) {
+      res.status(401).json({ success: false, error: 'Authentication is required', code: 'AUTHENTICATION_REQUIRED' });
+      return;
+    }
+
+    try {
+      const scenarios = await this.analyticsService.getForecastScenarios(this.parseQuery(req));
+      res.status(200).json({ success: true, scenarios, meta: { count: scenarios.length } });
+    } catch (error: unknown) {
+      respondWithFinOpsError(res, error, 'An unexpected analytics forecast scenarios error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -136,7 +155,7 @@ export class AnalyticsController {
       const trends = await this.analyticsService.getTrends(this.parseQuery(req));
       res.status(200).json({ success: true, trends, meta: { count: trends.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics trends error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics trends error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -163,7 +182,7 @@ export class AnalyticsController {
       const usage = await this.analyticsService.getUsage(this.parseQuery(req));
       res.status(200).json({ success: true, usage, meta: { count: usage.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics usage error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics usage error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -190,7 +209,7 @@ export class AnalyticsController {
       const unitEconomics = await this.analyticsService.getUnitEconomics(this.parseQuery(req));
       res.status(200).json({ success: true, unitEconomics, meta: { count: unitEconomics.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics unit economics error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics unit economics error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -217,7 +236,7 @@ export class AnalyticsController {
       const insights = await this.analyticsService.getEfficiencyInsights(this.parseQuery(req));
       res.status(200).json({ success: true, insights, meta: { count: insights.length } });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics efficiency insights error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics efficiency insights error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -244,7 +263,7 @@ export class AnalyticsController {
       const result = await this.analyticsService.recompute(this.parseQuery(req));
       res.status(200).json({ success: true, ...result });
     } catch (error: unknown) {
-      this.handleError(error, res, 'An unexpected analytics recompute error occurred');
+      respondWithFinOpsError(res, error, 'An unexpected analytics recompute error occurred', 'analytics_operation_failed', req.path);
     }
   };
 
@@ -341,23 +360,4 @@ export class AnalyticsController {
     return value.trim();
   }
 
-  /**
-   * Manejador centralizado de errores de analítica que traduce excepciones de
-   * dominio a códigos de estado HTTP:
-   * - {@link FinOpsBaseError} con código `VALIDATION_ERROR` -> 400; cualquier
-   *   otro código -> 500.
-   * - Error no controlado -> 500 con `fallbackMessage`.
-   */
-  private handleError(error: unknown, res: Response, fallbackMessage: string): void {
-    if (error instanceof FinOpsBaseError) {
-      res.status(error.code === 'VALIDATION_ERROR' ? 400 : 500).json({
-        success: false,
-        error: error.message,
-        code: error.code,
-      });
-      return;
-    }
-
-    res.status(500).json({ success: false, error: fallbackMessage });
-  }
 }

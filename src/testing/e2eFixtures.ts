@@ -18,6 +18,10 @@ export interface E2eFixtureManifest {
     readonly email: string;
     readonly name: string;
   };
+  readonly viewer: {
+    readonly email: string;
+    readonly name: string;
+  };
   readonly tenants: readonly {
     readonly id: string;
     readonly name: string;
@@ -195,6 +199,16 @@ export async function createE2eFixtures(prisma: PrismaClient, runId = generateRu
       status: 'ACTIVE',
     },
   });
+  const viewer = await prisma.user.create({
+    data: {
+      tenantId: tenantA.id,
+      email: `${fixturePrefix}-viewer-${runId}@example.test`,
+      name: `E2E Viewer ${runId}`,
+      passwordHash,
+      role: 'VIEWER',
+      status: 'ACTIVE',
+    },
+  });
 
   const tenantAFixture = await seedTenantData(prisma, {
     runId,
@@ -229,6 +243,10 @@ export async function createE2eFixtures(prisma: PrismaClient, runId = generateRu
     admin: {
       email: user.email,
       name: user.name,
+    },
+    viewer: {
+      email: viewer.email,
+      name: viewer.name,
     },
     tenants: [
       { id: tenantA.id, name: tenantA.name, slug: tenantA.slug },
@@ -331,7 +349,7 @@ async function seedTenantData(
   });
 
   await prisma.costMetric.createMany({
-    data: buildCostMetrics(input, account.id, connection.id, periodStart),
+    data: buildCostMetrics(input, account.id, connection.id, resource.id, periodStart),
   });
   await prisma.costForecast.create({
     data: {
@@ -341,7 +359,7 @@ async function seedTenantData(
       serviceName: input.serviceName,
       groupBy: 'service',
       groupKey: input.serviceName,
-      forecastMonth: periodStart,
+      forecastMonth: new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth(), 1)),
       predictedCost: new Prisma.Decimal(180),
       lowerBound: new Prisma.Decimal(160),
       upperBound: new Prisma.Decimal(200),
@@ -476,6 +494,7 @@ function buildCostMetrics(
   },
   cloudAccountId: string,
   cloudConnectionId: string,
+  cloudResourceId: string,
   periodStart: Date,
 ): Prisma.CostMetricCreateManyInput[] {
   return Array.from({ length: 14 }, (_, index) => {
@@ -488,6 +507,7 @@ function buildCostMetrics(
       tenantId: input.tenantId,
       cloudAccountId,
       cloudConnectionId,
+      cloudResourceId,
       provider: input.provider,
       serviceName: input.serviceName,
       resourceId: input.resourceId,

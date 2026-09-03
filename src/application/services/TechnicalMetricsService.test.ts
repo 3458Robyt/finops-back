@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { TechnicalMetricsService } from './TechnicalMetricsService.js';
 import type {
   CloudResourceItem,
+  CloudResourceIdentity,
   IResourceMetricRepository,
   ResourceMetricSampleItem,
   TechnicalMetricCoverageFilters,
@@ -13,7 +14,9 @@ import type {
 } from '../../domain/interfaces/IResourceMetricRepository.js';
 
 class FakeResourceMetricRepository implements IResourceMetricRepository {
+  public canonicalResourceQuery: { tenantId: string; cloudResourceId: string } | null = null;
   public resourcesQuery: { tenantId: string; limit: number } | null = null;
+  public exactResourcesQuery: { tenantId: string; identities: readonly CloudResourceIdentity[] } | null = null;
   public samplesQuery: { tenantId: string; limit: number } | null = null;
   public filteredSamplesQuery: { tenantId: string; limit: number } | null = null;
   public seriesQuery: { tenantId: string; filters: TechnicalMetricSeriesFilters } | null = null;
@@ -82,6 +85,26 @@ class FakeResourceMetricRepository implements IResourceMetricRepository {
     return this.resources;
   }
 
+  public async getResourceForTenantById(
+    tenantId: string,
+    cloudResourceId: string,
+  ): Promise<CloudResourceItem | undefined> {
+    this.canonicalResourceQuery = { tenantId, cloudResourceId };
+    return this.resources.find((resource) => resource.id === cloudResourceId);
+  }
+
+  public async listResourcesForTenantByIdentities(
+    tenantId: string,
+    identities: readonly CloudResourceIdentity[],
+  ): Promise<readonly CloudResourceItem[]> {
+    this.exactResourcesQuery = { tenantId, identities };
+    return this.resources.filter((resource) => identities.some((identity) => (
+      (identity.cloudResourceId === undefined || identity.cloudResourceId === resource.id)
+      && identity.externalResourceId === resource.externalResourceId
+      && (identity.cloudConnectionId === undefined || identity.cloudConnectionId === resource.cloudConnectionId)
+    )));
+  }
+
   public async listMetricSamplesForTenant(
     tenantId: string,
     limit: number,
@@ -110,6 +133,10 @@ class FakeResourceMetricRepository implements IResourceMetricRepository {
           externalResourceId: 'i-0abc',
           metricName: 'cpu_utilization',
           metricUnit: 'Percent',
+          statistic: 'MEAN',
+          value: 11.25,
+          aggregationSemantics: 'MEAN_OF_NATIVE',
+          sourceGranularitiesSeconds: [1800],
           avg: 11.25,
           min: 10,
           max: 12.5,
@@ -157,7 +184,7 @@ describe('TechnicalMetricsService', () => {
   test('returns a resource summary scoped to its tenant resource', async () => {
     const repository = new FakeResourceMetricRepository();
     repository.summaries = [{
-      provider: 'AWS', externalResourceId: 'i-0abc', metricName: 'cpu_utilization', sampleCount: 2,
+      provider: 'AWS', externalResourceId: 'i-0abc', metricName: 'cpu_utilization', statistic: 'MEAN', sampleCount: 2,
       coverageDays: 1, min: 10, max: 12.5, avg: 11.25, p50: 11.25, p95: 12.5, p99: 12.5,
       latest: 10, firstSampledAt: new Date('2026-04-30T00:00:00.000Z'), latestSampledAt: new Date('2026-04-30T00:30:00.000Z'),
     }];
@@ -179,6 +206,20 @@ describe('TechnicalMetricsService', () => {
     const service = new TechnicalMetricsService(new FakeResourceMetricRepository());
 
     await expect(service.getResourceSummary('tenant-a', 'i-not-owned')).resolves.toBeUndefined();
+  });
+
+  test('uses the canonical resource id when external ids are duplicated', async () => {
+    const repository = new FakeResourceMetricRepository();
+    repository.resources = [
+      repository.resources[0]!,
+      { ...repository.resources[0]!, id: 'res-2', name: 'web-prod-02' },
+    ];
+    const service = new TechnicalMetricsService(repository);
+
+    const summary = await service.getResourceSummary('tenant-a', 'i-0abc', 'res-2');
+
+    expect(summary?.resource.id).toBe('res-2');
+    expect(repository.canonicalResourceQuery).toEqual({ tenantId: 'tenant-a', cloudResourceId: 'res-2' });
   });
   test('lists cloud resources scoped to the tenant with the default limit', async () => {
     const repository = new FakeResourceMetricRepository();
@@ -232,6 +273,98 @@ describe('TechnicalMetricsService', () => {
     expect(overview.kpis.map((kpi) => kpi.group)).toEqual(['CPU', 'MEMORY']);
     expect(overview.opportunities.some((opportunity) => opportunity.id === 'i-0abc:low-cpu')).toBe(true);
     expect(overview.opportunities.some((opportunity) => opportunity.id === 'i-0abc:missing-inventory')).toBe(true);
+  });
+
+  test('keeps duplicate external ids separated by canonical resource identity', async () => {
+    const repository = new FakeResourceMetricRepository();
+    repository.resources = [
+      { ...repository.resources[0]!, id: 'res-1', cloudConnectionId: 'conn-1' },
+      { ...repository.resources[0]!, id: 'res-2', cloudConnectionId: 'conn-2' },
+    ];
+    repository.samples = repository.resources.map((resource, index) => ({
+      id: `sample-${index + 1}`,
+      provider: 'AWS',
+      cloudConnectionId: resource.cloudConnectionId,
+      cloudResourceId: resource.id,
+      externalResourceId: resource.externalResourceId,
+      metricName: 'cpu_utilization',
+      metricUnit: 'Percent',
+      value: 10 + index,
+      sampledAt: new Date(`2026-04-30T00:${index}0:00.000Z`),
+      granularitySeconds: 1800,
+    }));
+    repository.costContext = repository.resources.map((resource, index) => ({
+      externalResourceId: resource.externalResourceId,
+      cloudResourceId: resource.id,
+      cloudConnectionId: resource.cloudConnectionId,
+      totalCost: 10 + index,
+      currency: 'USD',
+      metricCount: 1,
+    }));
+
+    const overview = await new TechnicalMetricsService(repository).getOverview('tenant-a');
+
+    expect(overview.resourceCount).toBe(2);
+    expect(overview.resources.map((resource) => resource.cloudResourceId)).toEqual(['res-2', 'res-1']);
+  });
+
+  test('resolves overview resources by the exact metric identities instead of a capped inventory page', async () => {
+    const repository = new FakeResourceMetricRepository();
+    repository.summaries = [{
+      provider: 'AWS',
+      externalResourceId: 'i-0abc',
+      cloudResourceId: 'res-1',
+      metricName: 'cpu_utilization',
+      statistic: 'MEAN',
+      sampleCount: 2,
+      coverageDays: 1,
+      min: 10,
+      max: 12.5,
+      avg: 11.25,
+      p50: 11.25,
+      p95: 12.5,
+      p99: 12.5,
+      latest: 10,
+      firstSampledAt: new Date('2026-04-30T00:00:00.000Z'),
+      latestSampledAt: new Date('2026-04-30T00:30:00.000Z'),
+    }];
+
+    const overview = await new TechnicalMetricsService(repository).getOverview('tenant-1');
+
+    expect(repository.resourcesQuery).toBeNull();
+    expect(repository.exactResourcesQuery).toEqual({
+      tenantId: 'tenant-1',
+      identities: [{ cloudResourceId: 'res-1', externalResourceId: 'i-0abc' }],
+    });
+    expect(overview.resources[0]).toMatchObject({
+      cloudResourceId: 'res-1',
+      name: 'web-prod-01',
+    });
+  });
+
+  test('uses a unique external resource identity when legacy metric rows lack a canonical id', async () => {
+    const repository = new FakeResourceMetricRepository();
+    repository.summaries = [{
+      provider: 'AWS',
+      externalResourceId: 'i-0abc',
+      metricName: 'cpu_utilization',
+      statistic: 'MEAN',
+      sampleCount: 1,
+      coverageDays: 1,
+      min: 10,
+      max: 10,
+      avg: 10,
+      p50: 10,
+      p95: 10,
+      p99: 10,
+      latest: 10,
+      firstSampledAt: new Date('2026-04-30T00:00:00.000Z'),
+      latestSampledAt: new Date('2026-04-30T00:00:00.000Z'),
+    }];
+
+    const overview = await new TechnicalMetricsService(repository).getOverview('tenant-1');
+
+    expect(overview.resources[0]?.name).toBe('web-prod-01');
   });
 
   test('aggregates metric series by hour bucket', async () => {

@@ -30,11 +30,13 @@ export interface RecommendationEvidenceMetric {
 export interface RecommendationEvidenceResource {
   readonly externalResourceId: string;
   readonly cloudResourceId?: string;
+  readonly cloudConnectionId?: string;
   readonly provider: string;
   readonly resourceType?: string;
   readonly serviceName?: string;
   readonly linkQuality: 'COST_AND_TECHNICAL' | 'TECHNICAL_ONLY';
   readonly cost?: {
+    readonly cloudResourceId?: string;
     readonly totalCost: number;
     readonly currency: string;
     readonly focusMetricCount: number;

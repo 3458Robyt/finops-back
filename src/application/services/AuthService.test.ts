@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { AuthService } from './AuthService.js';
+import { AuthService, hashOpaqueToken } from './AuthService.js';
 import type { IPasswordHasher } from '../../domain/interfaces/IPasswordHasher.js';
 import type { ITokenService, TokenIssueResult } from '../../domain/interfaces/ITokenService.js';
 import type {
@@ -9,6 +9,13 @@ import type {
   IUserRepository,
 } from '../../domain/interfaces/IUserRepository.js';
 import type { AuthContext } from '../../domain/models/AuthContext.js';
+import type { AuthSessionSummary, IAuthSessionRepository } from '../../domain/interfaces/IAuthSessionRepository.js';
+import type {
+  AuthRefreshTokenRecord,
+  CreateRefreshTokenInput,
+  IAuthSecurityRepository,
+  RotateRefreshTokenInput,
+} from '../../domain/interfaces/IAuthSecurityRepository.js';
 import { AuthenticationError, AuthorizationError } from '../../domain/errors/errors.js';
 
 class FakeUserRepository implements IUserRepository {
@@ -75,6 +82,52 @@ class FakeTokenService implements ITokenService {
   }
 }
 
+class FakeAuthSessionRepository implements IAuthSessionRepository {
+  public revokedCurrent = 0;
+  public revokedAll = 0;
+  public revokeCurrentResult = true;
+  public sessions: readonly AuthSessionSummary[] = [];
+  public revokedSession: string | null = null;
+  public async isActive(): Promise<boolean> { return true; }
+  public async revokeCurrent(): Promise<boolean> { this.revokedCurrent += 1; return this.revokeCurrentResult; }
+  public async revokeAll(): Promise<number> { this.revokedAll += 1; return 1; }
+  public async listActive(): Promise<readonly AuthSessionSummary[]> { return this.sessions; }
+  public async revokeById(_userId: string, sessionId: string): Promise<boolean> { this.revokedSession = sessionId; return true; }
+}
+
+class FakeAuthSecurityRepository implements IAuthSecurityRepository {
+  public created: CreateRefreshTokenInput | null = null;
+  public current: AuthRefreshTokenRecord | null = null;
+  public rotated: RotateRefreshTokenInput | null = null;
+  public revokedFamily: string | null = null;
+
+  public async findRefreshToken(): Promise<AuthRefreshTokenRecord | null> {
+    return this.current;
+  }
+
+  public async createRefreshToken(input: CreateRefreshTokenInput): Promise<void> {
+    this.created = input;
+  }
+
+  public async rotateRefreshToken(input: RotateRefreshTokenInput): Promise<boolean> {
+    this.rotated = input;
+    if (this.current === null) return false;
+    this.current = {
+      ...this.current,
+      tokenHash: input.replacementTokenHash,
+      usedAt: new Date(),
+    };
+    return true;
+  }
+
+  public async revokeRefreshFamily(familyId: string): Promise<void> {
+    this.revokedFamily = familyId;
+  }
+
+  public async revokeRefreshTokensForSession(): Promise<void> {}
+  public async revokeRefreshTokensForUser(): Promise<void> {}
+}
+
 const activeUser: AuthUser = {
   id: 'user-1',
   tenantId: 'tenant-1',
@@ -93,7 +146,8 @@ describe('AuthService', () => {
     ];
     const users = new FakeUserRepository(activeUser, tenants);
     const tokenService = new FakeTokenService();
-    const service = new AuthService(users, new FakePasswordHasher(true), tokenService);
+    const sessions = new FakeAuthSessionRepository();
+    const service = new AuthService(users, new FakePasswordHasher(true), tokenService, sessions);
 
     const result = await service.login({
       email: 'ADMIN@EXAMPLE.COM ',
@@ -128,7 +182,8 @@ describe('AuthService', () => {
     ];
     const users = new FakeUserRepository(activeUser, tenants);
     const tokenService = new FakeTokenService();
-    const service = new AuthService(users, new FakePasswordHasher(true), tokenService);
+    const sessions = new FakeAuthSessionRepository();
+    const service = new AuthService(users, new FakePasswordHasher(true), tokenService, sessions);
 
     const result = await service.switchTenant({
       actor: buildActor('tenant-1'),
@@ -140,11 +195,12 @@ describe('AuthService', () => {
     expect(result.user.homeTenantId).toBe('tenant-1');
     expect(result.activeTenant).toMatchObject({ id: 'tenant-2', isCurrent: true });
     expect(result.availableTenants.map((tenant) => tenant.isCurrent)).toEqual([false, true]);
+    expect(sessions.revokedCurrent).toBe(1);
   });
 
   test('rejects switch to a tenant outside accessible tenants', async () => {
     const users = new FakeUserRepository(activeUser);
-    const service = new AuthService(users, new FakePasswordHasher(true), new FakeTokenService());
+    const service = new AuthService(users, new FakePasswordHasher(true), new FakeTokenService(), new FakeAuthSessionRepository());
 
     await expect(service.switchTenant({
       actor: buildActor('tenant-1'),
@@ -154,7 +210,7 @@ describe('AuthService', () => {
 
   test('rejects invalid credentials without recording a session', async () => {
     const users = new FakeUserRepository(activeUser);
-    const service = new AuthService(users, new FakePasswordHasher(false), new FakeTokenService());
+    const service = new AuthService(users, new FakePasswordHasher(false), new FakeTokenService(), new FakeAuthSessionRepository());
 
     await expect(service.login({ email: 'admin@example.com', password: 'bad' }))
       .rejects
@@ -166,11 +222,75 @@ describe('AuthService', () => {
 
   test('rejects disabled users', async () => {
     const users = new FakeUserRepository({ ...activeUser, status: 'DISABLED' });
-    const service = new AuthService(users, new FakePasswordHasher(true), new FakeTokenService());
+    const service = new AuthService(users, new FakePasswordHasher(true), new FakeTokenService(), new FakeAuthSessionRepository());
 
     await expect(service.login({ email: 'admin@example.com', password: 'secret' }))
       .rejects
       .toBeInstanceOf(AuthenticationError);
+  });
+
+  test('issues and rotates an opaque refresh token without exposing its hash', async () => {
+    const users = new FakeUserRepository(activeUser);
+    const security = new FakeAuthSecurityRepository();
+    const service = new AuthService(users, new FakePasswordHasher(true), new FakeTokenService(), new FakeAuthSessionRepository(), security);
+
+    const loggedIn = await service.login({ email: activeUser.email, password: 'secret' });
+    expect(loggedIn.refreshToken).toBeDefined();
+    expect(security.created?.tokenHash).toBe(hashOpaqueToken(loggedIn.refreshToken!));
+    expect(security.created?.tokenHash).not.toBe(loggedIn.refreshToken);
+
+    security.current = {
+      id: 'refresh-1',
+      sessionId: 'session-1',
+      userId: activeUser.id,
+      tenantId: activeUser.tenantId,
+      familyId: 'family-1',
+      tokenHash: security.created!.tokenHash,
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+    const refreshed = await service.refresh({ refreshToken: loggedIn.refreshToken! });
+
+    expect(refreshed.refreshToken).toBeDefined();
+    expect(security.rotated?.tokenHash).toBe(security.created!.tokenHash);
+    expect(security.rotated?.replacementTokenHash).toBe(hashOpaqueToken(refreshed.refreshToken!));
+  });
+
+  test('revokes all sessions and exposes session management operations', async () => {
+    const sessions = new FakeAuthSessionRepository();
+    const expected: AuthSessionSummary = {
+      id: 'session-1',
+      issuedAt: new Date('2026-04-28T10:00:00.000Z'),
+      expiresAt: new Date('2026-04-28T12:00:00.000Z'),
+      isCurrent: true,
+    };
+    sessions.sessions = [expected];
+    const service = new AuthService(new FakeUserRepository(activeUser), new FakePasswordHasher(true), new FakeTokenService(), sessions);
+    const actor = buildActor('tenant-1');
+
+    await service.logoutAll(actor);
+    expect(sessions.revokedAll).toBe(1);
+    await expect(service.listSessions(actor)).resolves.toEqual([expected]);
+    await service.revokeSession(actor, 'session-1');
+    expect(sessions.revokedSession).toBe('session-1');
+  });
+
+  test('does not issue a replacement token when tenant switch cannot revoke the old session', async () => {
+    const sessions = new FakeAuthSessionRepository();
+    sessions.revokeCurrentResult = false;
+    const tokenService = new FakeTokenService();
+    const service = new AuthService(
+      new FakeUserRepository(activeUser, [
+        { id: 'tenant-1', name: 'Tenant Principal', slug: 'tenant-principal', accessRole: 'HOME' },
+        { id: 'tenant-2', name: 'Cliente Dos', slug: 'cliente-dos', accessRole: 'TECHNICIAN' },
+      ]),
+      new FakePasswordHasher(true),
+      tokenService,
+      sessions,
+    );
+
+    await expect(service.switchTenant({ actor: buildActor('tenant-1'), tenantId: 'tenant-2' }))
+      .rejects.toBeInstanceOf(AuthenticationError);
+    expect(tokenService.issuedContexts).toHaveLength(0);
   });
 });
 

@@ -1,125 +1,55 @@
-import type {
-  CloudIngestionConnection,
-  CloudIngestionCredential,
-  CloudIngestionJobContext,
-  CloudIngestionResult,
-  NormalizedCloudResource,
-  NormalizedFocusCostLineItem,
-  NormalizedProviderCostLineItem,
-  NormalizedResourceMetricSample,
-} from '../../domain/interfaces/ICloudIngestionProvider.js';
-import type { IngestionSourceType } from '../../domain/models/CloudConnection.js';
+import type { CloudIngestionJobContext, CloudIngestionResult } from '../../domain/interfaces/ICloudIngestionProvider.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
-import { CostBillingSource, Prisma } from '../../generated/prisma/client.js';
-import { CredentialCipher, type EncryptedCredentialPayload } from '../security/CredentialCipher.js';
+import { Prisma } from '../../generated/prisma/client.js';
+import { loadRuntimeConfig } from '../config/runtimeConfigReader.js';
+import { CredentialCipher } from '../security/CredentialCipher.js';
+import { upsertNormalizedCloudResources } from './PrismaCloudResourceCatalog.js';
 import {
-  buildFocusCostMetricRows,
-  getFocusCloudAccountExternalId,
-  getFocusCloudAccountName,
-} from './focusCostMetricProjection.js';
-
-interface ClaimedJobRow {
-  readonly id: string;
-}
-
-interface FocusCostMetricProjectionResult {
-  readonly projected: number;
-  readonly inserted: number;
-}
-
-type PrismaIngestionJobWithConnection = NonNullable<Awaited<ReturnType<PrismaCloudIngestionJobRepository['findJobContext']>>>;
-type PrismaIngestionPersistenceClient = Pick<
-  Prisma.TransactionClient,
-  | 'cloudResource'
-  | 'cloudAccount'
-  | 'costMetric'
-  | 'dataQualityCheck'
-  | 'focusCostLineItem'
-  | 'ingestionJob'
-  | 'ingestionWatermark'
-  | 'resourceMetricSample'
->;
-
-export interface IngestionJobExecutionSummary {
-  readonly durationMs: number;
-  readonly providerCode: string;
-  readonly sourceType: IngestionSourceType;
-  readonly apiCallCount: number;
-  readonly objectsProcessed: number;
-  readonly focusRows: number;
-  readonly focusRowsInserted: number;
-  readonly costMetrics: number;
-  readonly costMetricsInserted: number;
-  readonly resources: number;
-  readonly metricDerivedResources: number;
-  readonly metricSamples: number;
-  readonly metricSamplesLinkedToResource: number;
-  readonly warnings: readonly string[];
-  readonly coverage: Readonly<Record<string, unknown>>;
-}
+  buildMetricDerivedResources,
+  mergeNormalizedResources,
+} from './ingestionResourceNormalizer.js';
+import { PrismaIngestionCostProjector } from './PrismaIngestionCostProjector.js';
+import { PrismaIngestionJobCompletionSupport, type IngestionJobExecutionSummary } from './PrismaIngestionJobCompletionSupport.js';
+import { mergeResourceLinkageStats } from './ingestionResourceLinkage.js';
+import { PrismaIngestionSamplePersistence } from './PrismaIngestionSamplePersistence.js';
+import { PrismaIngestionJobLifecycleRepository, type IngestionJobProgress } from './PrismaIngestionJobLifecycleRepository.js';
+import { PrismaIngestionJobFailureHandler } from './PrismaIngestionJobFailureHandler.js';
+import { PrismaIngestionJobSupport } from './PrismaIngestionJobSupport.js';
+import { PrismaIngestionJobClaimRepository } from './PrismaIngestionJobClaimRepository.js';
+import type { IngestionJobReconciliationResult } from './PrismaIngestionJobLeaseReconciler.js';
+export type { IngestionJobExecutionSummary } from './PrismaIngestionJobCompletionSupport.js';
+export type { IngestionJobProgress } from './PrismaIngestionJobLifecycleRepository.js';
 
 export class PrismaCloudIngestionJobRepository {
   private static readonly COMPLETION_TRANSACTION_OPTIONS = {
     maxWait: 10_000,
     timeout: 60_000,
   } as const;
+  private readonly costProjector = new PrismaIngestionCostProjector();
+  private readonly samplePersistence = new PrismaIngestionSamplePersistence();
+  private readonly completionSupport = new PrismaIngestionJobCompletionSupport();
+  private readonly lifecycle: PrismaIngestionJobLifecycleRepository;
+  private readonly failureHandler: PrismaIngestionJobFailureHandler;
+  private readonly support: PrismaIngestionJobSupport;
+  private readonly claimRepository: PrismaIngestionJobClaimRepository;
 
   constructor(
     private readonly prisma: PrismaClient,
     private readonly credentialCipher: CredentialCipher,
-  ) {}
-
-  public async claimNextPendingJob(workerId: string): Promise<CloudIngestionJobContext | null> {
-    const now = new Date();
-    const leaseExpiredBefore = new Date(now.getTime() - readPositiveIntegerEnv('INGESTION_JOB_LEASE_MS', 300_000));
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`
-        UPDATE ingestion_jobs
-        SET status = 'FAILED',
-            completed_at = ${now},
-            error_message = 'Ingestion job lease expired after exhausting retry attempts',
-            locked_at = NULL,
-            locked_by = NULL
-        WHERE status = 'RUNNING'
-          AND locked_at < ${leaseExpiredBefore}
-          AND attempts >= max_attempts
-      `;
-      const rows = await tx.$queryRaw<ClaimedJobRow[]>`
-        SELECT id
-        FROM ingestion_jobs
-        WHERE attempts < max_attempts
-          AND (
-            status = 'PENDING'
-            OR (status = 'RUNNING' AND locked_at < ${leaseExpiredBefore})
-          )
-        ORDER BY created_at ASC
-        FOR UPDATE SKIP LOCKED
-        LIMIT 1
-      `;
-
-      const claimed = rows[0];
-      if (claimed === undefined) {
-        return null;
-      }
-
-      await tx.ingestionJob.update({
-        where: { id: claimed.id },
-        data: {
-          status: 'RUNNING',
-          attempts: { increment: 1 },
-          lockedAt: now,
-          lockedBy: workerId,
-          startedAt: now,
-          errorMessage: null,
-        },
-      });
-
-      const job = await this.findJobContext(claimed.id, tx);
-      return job === null ? null : this.toJobContext(job);
-    });
+    private readonly jobLeaseMs = loadRuntimeConfig().workers.ingestion.jobLeaseMs,
+    private readonly retryBackoffMs = loadRuntimeConfig().workers.ingestion.retryBackoffMs,
+  ) {
+    this.lifecycle = new PrismaIngestionJobLifecycleRepository(prisma);
+    this.failureHandler = new PrismaIngestionJobFailureHandler(prisma, retryBackoffMs);
+    this.support = new PrismaIngestionJobSupport(prisma, credentialCipher);
+    this.claimRepository = new PrismaIngestionJobClaimRepository(prisma, this.support, jobLeaseMs);
   }
-
+  public async claimNextPendingJob(workerId: string): Promise<CloudIngestionJobContext | null> {
+    return this.claimRepository.claimNextPendingJob(workerId);
+  }
+  public async reconcileStaleJobs(now = new Date()): Promise<IngestionJobReconciliationResult> {
+    return this.claimRepository.reconcileStaleJobs(now);
+  }
   public async refreshJobLease(jobId: string, workerId: string, attempt: number): Promise<boolean> {
     const updated = await this.prisma.ingestionJob.updateMany({
       where: { id: jobId, status: 'RUNNING', lockedBy: workerId, attempts: attempt },
@@ -127,49 +57,195 @@ export class PrismaCloudIngestionJobRepository {
     });
     return updated.count === 1;
   }
-
+  public async updateJobProgress(
+    jobId: string,
+    workerId: string,
+    attempt: number,
+    progress: IngestionJobProgress,
+  ): Promise<boolean> {
+    return this.lifecycle.updateJobProgress(jobId, workerId, attempt, progress);
+  }
+  public async isCancellationRequested(jobId: string, workerId: string, attempt: number): Promise<boolean> {
+    return this.lifecycle.isCancellationRequested(jobId, workerId, attempt);
+  }
+  public async markCancelled(job: CloudIngestionJobContext, workerId: string, message = 'Cancelado por el usuario.'): Promise<boolean> {
+    return this.lifecycle.markCancelled(job, workerId, message);
+  }
   public async completeJob(
     job: CloudIngestionJobContext,
     result: CloudIngestionResult,
     startedAt: Date,
     workerId: string,
+    onProgress?: (progress: IngestionJobProgress) => Promise<void>,
+    shouldCancel?: () => Promise<boolean>,
   ): Promise<IngestionJobExecutionSummary> {
     if (!await this.refreshJobLease(job.id, workerId, job.attempt)) {
       throw new Error('Ingestion job lease was lost before persistence');
     }
+    const initialMetricDerivedResources = buildMetricDerivedResources({
+      tenantId: job.tenantId,
+      cloudConnectionId: job.cloudConnectionId,
+      ...(job.connection.defaultRegion !== undefined ? { defaultRegion: job.connection.defaultRegion } : {}),
+    }, result.metricSamples);
+    const resources = mergeNormalizedResources([...result.resources, ...initialMetricDerivedResources]);
+    const resourceIdsByExternalId = new Map(await upsertNormalizedCloudResources(this.prisma, resources));
+    await this.support.registerSourceObjects(job, result.sourceObjects);
+    const metricDerivedResourceKeys = new Set(initialMetricDerivedResources.map((resource) => `${resource.cloudConnectionId}:${resource.externalResourceId}`));
+    let metricDerivedResources = initialMetricDerivedResources.length;
+    let metricSamplesProcessed = 0;
+    let metricSamplesInserted = 0;
+    let metricSamplesLinked = 0;
+    let metricLinkage = mergeResourceLinkageStats(
+      { linked: 0, unresolved: 0, reasons: {} },
+      { linked: 0, unresolved: 0, reasons: {} },
+    );
+    let metricBatchSequence = 0;
+    const assertNotCancelled = async (): Promise<void> => {
+      if (shouldCancel !== undefined && await shouldCancel()) {
+        throw new Error('Ingestion job cancellation requested during persistence');
+      }
+    };
+    const persistMetricBatch = async (batch: readonly CloudIngestionResult['metricSamples'][number][]): Promise<void> => {
+      if (batch.length === 0) return;
+      await assertNotCancelled();
+      const partKey = `TECHNICAL_METRIC:${metricBatchSequence}`;
+      await this.support.updateJobPart(job, partKey, {
+        status: 'RUNNING',
+        samplesRead: batch.length,
+        startedAt: new Date(),
+      });
+      try {
+        const derived = buildMetricDerivedResources({
+          tenantId: job.tenantId,
+          cloudConnectionId: job.cloudConnectionId,
+          ...(job.connection.defaultRegion !== undefined ? { defaultRegion: job.connection.defaultRegion } : {}),
+        }, batch);
+        if (derived.length > 0) {
+          const persisted = await upsertNormalizedCloudResources(this.prisma, derived);
+          for (const [externalResourceId, resourceId] of persisted) resourceIdsByExternalId.set(externalResourceId, resourceId);
+          for (const resource of derived) {
+            const key = `${resource.cloudConnectionId}:${resource.externalResourceId}`;
+            if (!metricDerivedResourceKeys.has(key)) {
+              metricDerivedResourceKeys.add(key);
+              metricDerivedResources += 1;
+            }
+          }
+        }
+        const linkage = await this.samplePersistence.insertMetricSamples(
+          this.prisma,
+          batch,
+          resourceIdsByExternalId,
+          job.id,
+        );
+        metricLinkage = mergeResourceLinkageStats(metricLinkage, linkage);
+        metricSamplesProcessed += batch.length;
+        metricSamplesInserted += linkage.inserted;
+        metricSamplesLinked += linkage.linked;
+        if (onProgress !== undefined) {
+          await onProgress({
+            phase: 'PERSISTING_RAW',
+            message: `Persistiendo lote técnico ${metricBatchSequence + 1}.`,
+            providerCalls: result.apiCallCount,
+            rowsRead: result.focusRows.length,
+            resources: resources.length + metricDerivedResources,
+            samples: metricSamplesProcessed,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        await this.support.updateJobPart(job, partKey, {
+          status: 'SUCCESS',
+          samplesRead: batch.length,
+          samplesWritten: batch.length,
+          completedAt: new Date(),
+        });
+      } catch (error) {
+        await this.support.updateJobPart(job, partKey, {
+          status: 'FAILED',
+          samplesRead: batch.length,
+          completedAt: new Date(),
+          errorMessage: error instanceof Error ? error.message : String(error),
+        }).catch(() => undefined);
+        throw error;
+      }
+      metricBatchSequence += 1;
+    };
+
+    await persistMetricBatch(result.metricSamples);
+    await assertNotCancelled();
     let focusRowsProcessed = result.focusRows.length;
-    let focusRowsInserted = await this.insertFocusRows(this.prisma, result.focusRows);
-    let costMetricProjection = await this.projectFocusRowsToCostMetrics(this.prisma, job, result.focusRows);
-    const providerProjection = await this.projectProviderCostsToCostMetrics(this.prisma, job, result.providerCostRows ?? []);
+    let focusRowsInserted = await this.samplePersistence.insertFocusRows(this.prisma, result.focusRows, job.id);
+    let costMetricProjection = await this.costProjector.projectFocusRowsToCostMetrics(this.prisma, job, result.focusRows, resourceIdsByExternalId);
+    const providerProjection = await this.costProjector.projectProviderCostsToCostMetrics(this.prisma, job, result.providerCostRows ?? [], resourceIdsByExternalId);
     costMetricProjection = {
       projected: costMetricProjection.projected + providerProjection.projected,
       inserted: costMetricProjection.inserted + providerProjection.inserted,
+      linkage: mergeResourceLinkageStats(costMetricProjection.linkage, providerProjection.linkage),
+      historicalResourcesInserted: (costMetricProjection.historicalResourcesInserted ?? 0)
+        + (providerProjection.historicalResourcesInserted ?? 0),
     };
 
+    let focusBatchSequence = 0;
     if (result.focusBatches !== undefined) {
       for await (const batch of result.focusBatches) {
-        focusRowsProcessed += batch.length;
-        focusRowsInserted += await this.insertFocusRows(this.prisma, batch);
-        const batchProjection = await this.projectFocusRowsToCostMetrics(this.prisma, job, batch);
-        costMetricProjection = {
-          projected: costMetricProjection.projected + batchProjection.projected,
-          inserted: costMetricProjection.inserted + batchProjection.inserted,
-        };
+        await assertNotCancelled();
+        const partKey = `BILLING_EXPORT:${focusBatchSequence}`;
+        await this.support.updateJobPart(job, partKey, {
+          status: 'RUNNING',
+          rowsRead: batch.length,
+          startedAt: new Date(),
+        });
+        try {
+          focusRowsProcessed += batch.length;
+          focusRowsInserted += await this.samplePersistence.insertFocusRows(this.prisma, batch, job.id);
+          const batchProjection = await this.costProjector.projectFocusRowsToCostMetrics(this.prisma, job, batch, resourceIdsByExternalId);
+          costMetricProjection = {
+            projected: costMetricProjection.projected + batchProjection.projected,
+            inserted: costMetricProjection.inserted + batchProjection.inserted,
+            linkage: mergeResourceLinkageStats(costMetricProjection.linkage, batchProjection.linkage),
+            historicalResourcesInserted: (costMetricProjection.historicalResourcesInserted ?? 0)
+              + (batchProjection.historicalResourcesInserted ?? 0),
+          };
+          if (onProgress !== undefined) {
+            await onProgress({
+              phase: 'PERSISTING_RAW',
+              message: 'Persistiendo lote FOCUS.',
+              providerCalls: result.apiCallCount,
+              rowsRead: focusRowsProcessed,
+              rowsWritten: focusRowsInserted,
+              resources: resources.length + metricDerivedResources,
+              samples: metricSamplesProcessed,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+          await this.support.updateJobPart(job, partKey, {
+            status: 'SUCCESS',
+            rowsRead: batch.length,
+            rowsWritten: batch.length,
+            completedAt: new Date(),
+          });
+        } catch (error) {
+          await this.support.updateJobPart(job, partKey, {
+            status: 'FAILED',
+            rowsRead: batch.length,
+            completedAt: new Date(),
+            errorMessage: error instanceof Error ? error.message : String(error),
+          }).catch(() => undefined);
+          throw error;
+        }
+        focusBatchSequence += 1;
       }
     }
 
-    const metricDerivedResources = this.buildMetricDerivedResources(job, result.metricSamples);
-    const resources = this.mergeResources([...result.resources, ...metricDerivedResources]);
-    const resourceIdsByExternalId = await this.upsertResources(this.prisma, resources);
-    const metricSamplesLinkedToResource = await this.insertMetricSamples(
-      this.prisma,
-      result.metricSamples,
-      resourceIdsByExternalId,
-    );
-    await this.reconcileMetricSampleResourceLinks(this.prisma, job.cloudConnectionId, resourceIdsByExternalId);
+    if (result.metricBatches !== undefined) {
+      for await (const batch of result.metricBatches) {
+        await persistMetricBatch(batch);
+      }
+    }
+    await assertNotCancelled();
+    await this.support.completeSourceObjects(job, result.sourceObjects, focusRowsProcessed);
 
     const completedAt = new Date();
-    const summary = this.buildSummary(
+    const summary = this.completionSupport.buildSummary(
       job,
       result,
       completedAt.getTime() - startedAt.getTime(),
@@ -177,8 +253,11 @@ export class PrismaCloudIngestionJobRepository {
       focusRowsInserted,
       focusRowsProcessed,
       resources.length,
-      metricDerivedResources.length,
-      metricSamplesLinkedToResource,
+      metricDerivedResources,
+      metricSamplesLinked,
+      metricSamplesProcessed,
+      metricSamplesInserted,
+      metricLinkage,
     );
 
     await this.prisma.$transaction(
@@ -186,11 +265,42 @@ export class PrismaCloudIngestionJobRepository {
         const completed = await tx.ingestionJob.updateMany({
           where: { id: job.id, status: 'RUNNING', lockedBy: workerId, attempts: job.attempt },
           data: {
-            status: 'SUCCESS',
+            status: summary.dataOutcome === 'INVALID_CONFIGURATION' ? 'SKIPPED' : 'SUCCESS',
+            dataOutcome: summary.dataOutcome,
             completedAt,
             lockedAt: null,
             lockedBy: null,
-            errorMessage: null,
+            projectionStatus: summary.projectionStatus,
+            projectionAttempts: 0,
+            projectionAvailableAt: summary.projectionStatus === 'PENDING' ? completedAt : null,
+            projectionLockedAt: null,
+            projectionLockedBy: null,
+            projectionStartedAt: null,
+            projectionCompletedAt: null,
+            projectionErrorMessage: null,
+            errorMessage: summary.dataOutcome === 'INVALID_CONFIGURATION'
+              ? (summary.warnings[0] ?? 'La fuente no está configurada.')
+              : null,
+            progress: {
+              phase: summary.dataOutcome === 'INVALID_CONFIGURATION'
+                ? 'SKIPPED'
+                : summary.projectionStatus === 'PENDING' ? 'RAW_COMPLETE' : 'COMPLETED',
+              message: summary.dataOutcome === 'INVALID_CONFIGURATION'
+                ? 'Trabajo omitido: la fuente no está configurada.'
+                : summary.projectionStatus === 'PENDING'
+                  ? 'Datos raw persistidos; proyección técnica en cola.'
+                : summary.dataOutcome === 'PARTIAL'
+                  ? 'Ingesta completada parcialmente; revisa las advertencias.'
+                  : summary.dataOutcome === 'NO_DATA'
+                    ? 'Proveedor consultado correctamente, sin datos para el periodo.'
+                    : 'Ingesta completada correctamente.',
+              providerCalls: summary.apiCallCount,
+              rowsRead: summary.focusRows,
+              rowsWritten: summary.focusRowsInserted,
+              resources: summary.resources,
+              samples: summary.metricSamples,
+              updatedAt: completedAt.toISOString(),
+            } as unknown as Prisma.InputJsonValue,
             resultSummary: summary as unknown as Prisma.InputJsonValue,
           },
         });
@@ -198,8 +308,9 @@ export class PrismaCloudIngestionJobRepository {
           throw new Error('Ingestion job lease was lost before completion');
         }
 
-        await this.updateWatermark(tx, job);
-        await this.recordQualityCheck(
+        await this.completionSupport.updateWatermark(tx, job, summary.dataOutcome);
+        await this.completionSupport.recordCoverageSegment(tx, job, summary);
+        await this.completionSupport.recordQualityCheck(
           tx,
           job,
           result,
@@ -207,8 +318,11 @@ export class PrismaCloudIngestionJobRepository {
           focusRowsInserted,
           focusRowsProcessed,
           resources.length,
-          metricDerivedResources.length,
-          metricSamplesLinkedToResource,
+          metricDerivedResources,
+          metricSamplesLinked,
+          metricSamplesProcessed,
+          metricSamplesInserted,
+          metricLinkage,
         );
 
       },
@@ -224,603 +338,6 @@ export class PrismaCloudIngestionJobRepository {
     startedAt: Date,
     workerId: string,
   ): Promise<void> {
-    const completedAt = new Date();
-    const message = error instanceof Error ? error.message : 'Unknown ingestion worker error';
-    const current = await this.prisma.ingestionJob.findFirst({
-      where: { id: job.id, status: 'RUNNING', lockedBy: workerId, attempts: job.attempt },
-      select: { attempts: true, maxAttempts: true },
-    });
-    const shouldRetry = current !== null && current.attempts < current.maxAttempts;
-
-    const failed = await this.prisma.ingestionJob.updateMany({
-      where: { id: job.id, status: 'RUNNING', lockedBy: workerId, attempts: job.attempt },
-      data: {
-        status: shouldRetry ? 'PENDING' : 'FAILED',
-        completedAt,
-        lockedAt: null,
-        lockedBy: null,
-        errorMessage: message,
-        resultSummary: {
-          durationMs: completedAt.getTime() - startedAt.getTime(),
-          providerCode: job.connection.providerCode,
-          sourceType: job.sourceType,
-          error: message,
-          retryScheduled: shouldRetry,
-        } as Prisma.InputJsonValue,
-      },
-    });
-    if (failed.count !== 1) {
-      return;
-    }
-
-    await this.prisma.dataQualityCheck.create({
-      data: {
-        tenantId: job.tenantId,
-        cloudConnectionId: job.cloudConnectionId,
-        sourceType: job.sourceType,
-        checkName: 'ingestion_job_execution',
-        status: shouldRetry ? 'WARNING' : 'FAILED',
-        expectedAt: job.targetEnd,
-        details: {
-          jobId: job.id,
-          error: message,
-          retryScheduled: shouldRetry,
-        } as Prisma.InputJsonValue,
-      },
-    });
+    return this.failureHandler.failJob(job, error, startedAt, workerId);
   }
-
-  private async findJobContext(
-    jobId: string,
-    client: Pick<PrismaClient, 'ingestionJob'> = this.prisma,
-  ) {
-    return client.ingestionJob.findUnique({
-      where: { id: jobId },
-      include: {
-        cloudConnection: {
-          include: {
-            credentials: {
-              where: {
-                status: 'ACTIVE',
-                purpose: {
-                  not: 'TEMPORARY_ADMIN',
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
-  private toJobContext(job: PrismaIngestionJobWithConnection): CloudIngestionJobContext {
-    return {
-      id: job.id,
-      tenantId: job.tenantId,
-      cloudConnectionId: job.cloudConnectionId,
-      sourceType: job.sourceType,
-      targetStart: job.targetStart,
-      targetEnd: job.targetEnd,
-      attempt: job.attempts,
-      connection: {
-        id: job.cloudConnection.id,
-        tenantId: job.cloudConnection.tenantId,
-        providerCode: job.cloudConnection.providerCode,
-        rootExternalId: job.cloudConnection.rootExternalId,
-        ...(job.cloudConnection.defaultRegion !== null
-          ? { defaultRegion: job.cloudConnection.defaultRegion }
-          : {}),
-        ...(this.isJsonObject(job.cloudConnection.metadata)
-          ? { metadata: job.cloudConnection.metadata as Record<string, unknown> }
-          : {}),
-        credentials: job.cloudConnection.credentials.flatMap((credential): CloudIngestionCredential[] => {
-          if (credential.purpose === 'TEMPORARY_ADMIN') {
-            return [];
-          }
-
-          return [{
-            purpose: credential.purpose,
-            payload: this.credentialCipher.decrypt({
-              encryptedPayload: credential.encryptedPayload,
-              encryptionIv: credential.encryptionIv,
-              encryptionAuthTag: credential.encryptionAuthTag,
-              encryptionAlgorithm: 'aes-256-gcm',
-              encryptionKeyVersion: credential.encryptionKeyVersion,
-            } satisfies EncryptedCredentialPayload),
-            ...(credential.externalPrincipalId !== null
-              ? { externalPrincipalId: credential.externalPrincipalId }
-              : {}),
-          }];
-        }),
-      } satisfies CloudIngestionConnection,
-    };
-  }
-
-  private async insertFocusRows(
-    tx: PrismaIngestionPersistenceClient,
-    rows: readonly NormalizedFocusCostLineItem[],
-  ): Promise<number> {
-    if (rows.length === 0) {
-      return 0;
-    }
-
-    let inserted = 0;
-    for (const chunk of chunkArray(rows, 1000)) {
-      const result = await tx.focusCostLineItem.createMany({
-        data: chunk.map((row) => this.focusRowData(row)),
-        skipDuplicates: true,
-      });
-      inserted += result.count;
-    }
-
-    return inserted;
-  }
-
-  private focusRowData(row: NormalizedFocusCostLineItem): Prisma.FocusCostLineItemUncheckedCreateInput {
-    return {
-      tenantId: row.tenantId,
-      cloudConnectionId: row.cloudConnectionId,
-      provider: row.provider,
-      focusVersion: row.focusVersion,
-      chargePeriodStart: row.chargePeriodStart,
-      chargePeriodEnd: row.chargePeriodEnd,
-      ...(row.billingPeriodStart !== undefined ? { billingPeriodStart: row.billingPeriodStart } : {}),
-      ...(row.billingPeriodEnd !== undefined ? { billingPeriodEnd: row.billingPeriodEnd } : {}),
-      ...(row.billingAccountId !== undefined ? { billingAccountId: row.billingAccountId } : {}),
-      ...(row.subAccountId !== undefined ? { subAccountId: row.subAccountId } : {}),
-      serviceName: row.serviceName,
-      resourceId: row.resourceId,
-      ...(row.regionId !== undefined ? { regionId: row.regionId } : {}),
-      chargeCategory: row.chargeCategory,
-      billedCost: new Prisma.Decimal(row.billedCost),
-      ...(row.effectiveCost !== undefined ? { effectiveCost: new Prisma.Decimal(row.effectiveCost) } : {}),
-      ...(row.listCost !== undefined ? { listCost: new Prisma.Decimal(row.listCost) } : {}),
-      ...(row.contractedCost !== undefined ? { contractedCost: new Prisma.Decimal(row.contractedCost) } : {}),
-      billingCurrency: row.billingCurrency,
-      ...(row.consumedQuantity !== undefined
-        ? { consumedQuantity: new Prisma.Decimal(row.consumedQuantity) }
-        : {}),
-      ...(row.consumedUnit !== undefined ? { consumedUnit: row.consumedUnit } : {}),
-      ...(row.tags !== undefined ? { tags: row.tags as Prisma.InputJsonValue } : {}),
-      rawRow: row.rawRow as Prisma.InputJsonValue,
-      lineItemHash: row.lineItemHash,
-    };
-  }
-
-  private async upsertResources(
-    tx: PrismaIngestionPersistenceClient,
-    resources: readonly NormalizedCloudResource[],
-  ): Promise<ReadonlyMap<string, string>> {
-    const resourceIdsByExternalId = new Map<string, string>();
-
-    for (const resource of resources) {
-      const updateData: Prisma.CloudResourceUncheckedUpdateInput = {
-        resourceType: resource.resourceType,
-        serviceName: resource.serviceName,
-        status: resource.status,
-        lastSeenAt: new Date(),
-        ...(resource.name !== undefined ? { name: resource.name } : {}),
-        ...(resource.regionId !== undefined ? { regionId: resource.regionId } : {}),
-        ...(resource.tags !== undefined ? { tags: resource.tags as Prisma.InputJsonValue } : {}),
-        ...(resource.rawResource !== undefined
-          ? { rawResource: resource.rawResource as Prisma.InputJsonValue }
-          : {}),
-      };
-      const createData: Prisma.CloudResourceUncheckedCreateInput = {
-        tenantId: resource.tenantId,
-        cloudConnectionId: resource.cloudConnectionId,
-        provider: resource.provider,
-        externalResourceId: resource.externalResourceId,
-        resourceType: resource.resourceType,
-        serviceName: resource.serviceName,
-        status: resource.status,
-        ...(resource.name !== undefined ? { name: resource.name } : {}),
-        ...(resource.regionId !== undefined ? { regionId: resource.regionId } : {}),
-        ...(resource.tags !== undefined ? { tags: resource.tags as Prisma.InputJsonValue } : {}),
-        ...(resource.rawResource !== undefined
-          ? { rawResource: resource.rawResource as Prisma.InputJsonValue }
-          : {}),
-      };
-
-      const persisted = await tx.cloudResource.upsert({
-        where: {
-          cloudConnectionId_externalResourceId: {
-            cloudConnectionId: resource.cloudConnectionId,
-            externalResourceId: resource.externalResourceId,
-          },
-        },
-        update: updateData,
-        create: createData,
-        select: {
-          id: true,
-          externalResourceId: true,
-        },
-      });
-      resourceIdsByExternalId.set(persisted.externalResourceId, persisted.id);
-    }
-
-    return resourceIdsByExternalId;
-  }
-
-  private async insertMetricSamples(
-    tx: PrismaIngestionPersistenceClient,
-    samples: readonly NormalizedResourceMetricSample[],
-    resourceIdsByExternalId: ReadonlyMap<string, string>,
-  ): Promise<number> {
-    if (samples.length === 0) {
-      return 0;
-    }
-
-    let linked = 0;
-    await tx.resourceMetricSample.createMany({
-      data: samples.map((sample) => {
-        const cloudResourceId = resourceIdsByExternalId.get(sample.externalResourceId);
-        if (cloudResourceId !== undefined) {
-          linked += 1;
-        }
-
-        return {
-          tenantId: sample.tenantId,
-          cloudConnectionId: sample.cloudConnectionId,
-          provider: sample.provider,
-          externalResourceId: sample.externalResourceId,
-          metricName: sample.metricName,
-          value: new Prisma.Decimal(sample.value),
-          sampledAt: sample.sampledAt,
-          granularitySeconds: sample.granularitySeconds,
-          sourceType: 'TECHNICAL_METRIC',
-          ...(cloudResourceId !== undefined ? { cloudResourceId } : {}),
-          ...(sample.metricUnit !== undefined ? { metricUnit: sample.metricUnit } : {}),
-          ...(sample.rawMetric !== undefined ? { rawMetric: sample.rawMetric as Prisma.InputJsonValue } : {}),
-        };
-      }),
-      skipDuplicates: true,
-    });
-
-    return linked;
-  }
-
-  private async updateWatermark(
-    tx: PrismaIngestionPersistenceClient,
-    job: CloudIngestionJobContext,
-  ): Promise<void> {
-    await tx.ingestionWatermark.upsert({
-      where: {
-        cloudConnectionId_sourceType: {
-          cloudConnectionId: job.cloudConnectionId,
-          sourceType: job.sourceType,
-        },
-      },
-      update: {
-        watermarkStart: job.targetStart,
-        watermarkEnd: job.targetEnd,
-        lastSuccessfulRunAt: new Date(),
-        freshnessDeadlineAt: this.calculateFreshnessDeadline(job),
-      },
-      create: {
-        tenantId: job.tenantId,
-        cloudConnectionId: job.cloudConnectionId,
-        sourceType: job.sourceType,
-        watermarkStart: job.targetStart,
-        watermarkEnd: job.targetEnd,
-        lastSuccessfulRunAt: new Date(),
-        freshnessDeadlineAt: this.calculateFreshnessDeadline(job),
-      },
-    });
-  }
-
-  private async recordQualityCheck(
-    tx: PrismaIngestionPersistenceClient,
-    job: CloudIngestionJobContext,
-    result: CloudIngestionResult,
-    costMetricProjection: FocusCostMetricProjectionResult,
-    focusRowsInserted: number,
-    focusRowsProcessed: number,
-    resourcesPersisted: number,
-    metricDerivedResources: number,
-    metricSamplesLinkedToResource: number,
-  ): Promise<void> {
-    await tx.dataQualityCheck.create({
-      data: {
-        tenantId: job.tenantId,
-        cloudConnectionId: job.cloudConnectionId,
-        sourceType: job.sourceType,
-        checkName: 'ingestion_job_execution',
-        status: result.warnings.length === 0 ? 'PASSED' : 'WARNING',
-        expectedAt: job.targetEnd,
-        details: {
-          jobId: job.id,
-          apiCallCount: result.apiCallCount,
-          objectsProcessed: result.objectsProcessed,
-          focusRows: focusRowsProcessed,
-          focusRowsInserted,
-          costMetrics: costMetricProjection.projected,
-          costMetricsInserted: costMetricProjection.inserted,
-          resources: resourcesPersisted,
-          metricDerivedResources,
-          metricSamples: result.metricSamples.length,
-          metricSamplesLinkedToResource,
-          warnings: result.warnings,
-          coverage: result.coverage,
-        } as Prisma.InputJsonValue,
-      },
-    });
-  }
-
-  private buildSummary(
-    job: CloudIngestionJobContext,
-    result: CloudIngestionResult,
-    durationMs: number,
-    costMetricProjection: FocusCostMetricProjectionResult,
-    focusRowsInserted: number,
-    focusRowsProcessed: number,
-    resourcesPersisted: number,
-    metricDerivedResources: number,
-    metricSamplesLinkedToResource: number,
-  ): IngestionJobExecutionSummary {
-    return {
-      durationMs,
-      providerCode: job.connection.providerCode,
-      sourceType: job.sourceType,
-      apiCallCount: result.apiCallCount,
-      objectsProcessed: result.objectsProcessed,
-      focusRows: focusRowsProcessed,
-      focusRowsInserted,
-      costMetrics: costMetricProjection.projected,
-      costMetricsInserted: costMetricProjection.inserted,
-      resources: resourcesPersisted,
-      metricDerivedResources,
-      metricSamples: result.metricSamples.length,
-      metricSamplesLinkedToResource,
-      warnings: result.warnings,
-      coverage: result.coverage,
-    };
-  }
-
-  private buildMetricDerivedResources(
-    job: CloudIngestionJobContext,
-    samples: readonly NormalizedResourceMetricSample[],
-  ): readonly NormalizedCloudResource[] {
-    const byExternalResourceId = new Map<string, {
-      sample: NormalizedResourceMetricSample;
-      metricNames: Set<string>;
-      sampleCount: number;
-    }>();
-
-    for (const sample of samples) {
-      const current = byExternalResourceId.get(sample.externalResourceId);
-      if (current === undefined) {
-        byExternalResourceId.set(sample.externalResourceId, {
-          sample,
-          metricNames: new Set([sample.metricName]),
-          sampleCount: 1,
-        });
-        continue;
-      }
-
-      current.metricNames.add(sample.metricName);
-      current.sampleCount += 1;
-    }
-
-    return [...byExternalResourceId.values()].map(({ sample, metricNames, sampleCount }) => {
-      const regionId = this.readRawMetricString(sample.rawMetric, 'region') ?? job.connection.defaultRegion;
-      return {
-        tenantId: job.tenantId,
-        cloudConnectionId: job.cloudConnectionId,
-        provider: sample.provider,
-        externalResourceId: sample.externalResourceId,
-        name: this.readRawMetricString(sample.rawMetric, 'resourceName') ?? sample.externalResourceId,
-        resourceType: this.inferResourceType(sample),
-        serviceName: this.inferServiceName(sample),
-        ...(regionId !== undefined ? { regionId } : {}),
-        status: 'UNKNOWN',
-        rawResource: {
-          source: 'METRIC_DERIVED',
-          metricNames: [...metricNames].sort(),
-          sampleCount,
-        },
-      };
-    });
-  }
-
-  private mergeResources(resources: readonly NormalizedCloudResource[]): readonly NormalizedCloudResource[] {
-    const byKey = new Map<string, NormalizedCloudResource>();
-
-    for (const resource of resources) {
-      const key = `${resource.cloudConnectionId}:${resource.externalResourceId}`;
-      const previous = byKey.get(key);
-      if (previous === undefined || previous.rawResource?.['source'] === 'METRIC_DERIVED') {
-        byKey.set(key, resource);
-      }
-    }
-
-    return [...byKey.values()];
-  }
-
-  private async reconcileMetricSampleResourceLinks(
-    tx: PrismaIngestionPersistenceClient,
-    cloudConnectionId: string,
-    resourceIdsByExternalId: ReadonlyMap<string, string>,
-  ): Promise<void> {
-    for (const [externalResourceId, cloudResourceId] of resourceIdsByExternalId) {
-      await tx.resourceMetricSample.updateMany({
-        where: {
-          cloudConnectionId,
-          externalResourceId,
-          cloudResourceId: null,
-        },
-        data: { cloudResourceId },
-      });
-    }
-  }
-
-  private inferResourceType(sample: NormalizedResourceMetricSample): string {
-    const namespace = this.readRawMetricString(sample.rawMetric, 'namespace')?.toLowerCase() ?? '';
-    if (namespace.includes('compute') || namespace.includes('ec2') || namespace.includes('vmi')) {
-      return 'COMPUTE_INSTANCE';
-    }
-
-    if (namespace.includes('block') || namespace.includes('volume') || namespace.includes('ebs')) {
-      return 'BLOCK_VOLUME';
-    }
-
-    return 'UNKNOWN';
-  }
-
-  private inferServiceName(sample: NormalizedResourceMetricSample): string {
-    const namespace = this.readRawMetricString(sample.rawMetric, 'namespace')?.toLowerCase() ?? '';
-    if (namespace.includes('aws/ec2')) {
-      return 'Amazon EC2';
-    }
-
-    if (namespace.includes('oci_compute') || namespace.includes('oci_computeagent') || namespace.includes('vmi')) {
-      return 'Oracle Compute';
-    }
-
-    if (namespace.includes('ebs')) {
-      return 'Amazon EBS';
-    }
-
-    return 'UNKNOWN';
-  }
-
-  private readRawMetricString(
-    rawMetric: Readonly<Record<string, unknown>> | undefined,
-    field: string,
-  ): string | undefined {
-    if (rawMetric === undefined) {
-      return undefined;
-    }
-
-    const value = rawMetric[field];
-    return typeof value === 'string' && value.trim() !== '' ? value : undefined;
-  }
-
-  private async projectProviderCostsToCostMetrics(
-    tx: PrismaIngestionPersistenceClient,
-    job: CloudIngestionJobContext,
-    rows: readonly NormalizedProviderCostLineItem[],
-  ): Promise<FocusCostMetricProjectionResult> {
-    if (rows.length === 0) return { projected: 0, inserted: 0 };
-    const account = await tx.cloudAccount.upsert({
-      where: { tenantId_provider_externalAccountId: { tenantId: job.tenantId, provider: rows[0]!.provider, externalAccountId: job.connection.rootExternalId } },
-      update: { name: job.connection.rootExternalId, status: 'ACTIVE' },
-      create: { tenantId: job.tenantId, provider: rows[0]!.provider, externalAccountId: job.connection.rootExternalId, name: job.connection.rootExternalId },
-      select: { id: true },
-    });
-    await tx.costMetric.deleteMany({ where: { cloudConnectionId: job.cloudConnectionId, chargePeriodStart: { gte: job.targetStart, lt: job.targetEnd }, billingSource: CostBillingSource.FOCUS } });
-    const result = await tx.costMetric.createMany({
-      data: rows.map((row) => ({
-        tenantId: row.tenantId, cloudAccountId: account.id, cloudConnectionId: row.cloudConnectionId,
-        provider: row.provider, billingSource: CostBillingSource.PROVIDER_API,
-        ...(row.billingAccountId === undefined ? {} : { billingAccountId: row.billingAccountId }),
-        serviceName: row.serviceName, resourceId: row.resourceId,
-        ...(row.regionId === undefined ? {} : { regionId: row.regionId }),
-        chargePeriodStart: row.chargePeriodStart, chargePeriodEnd: row.chargePeriodEnd,
-        billedCost: row.billedCost, billingCurrency: row.billingCurrency, pricingCurrency: row.billingCurrency,
-        ...(row.consumedQuantity === undefined ? {} : { consumedQuantity: row.consumedQuantity }),
-        ...(row.consumedUnit === undefined ? {} : { consumedUnit: row.consumedUnit }),
-        sourceMetric: row.sourceMetric, metricIdentityHash: row.lineItemHash,
-        providerRaw: {
-          source: 'PROVIDER_API',
-          cloudConnectionId: row.cloudConnectionId,
-          raw: row.rawRow,
-        } as Prisma.InputJsonValue,
-      })),
-      skipDuplicates: true,
-    });
-    return { projected: rows.length, inserted: result.count };
-  }
-
-  private async projectFocusRowsToCostMetrics(
-    tx: PrismaIngestionPersistenceClient,
-    job: CloudIngestionJobContext,
-    rows: readonly NormalizedFocusCostLineItem[],
-  ): Promise<FocusCostMetricProjectionResult> {
-    if (rows.length === 0) {
-      return { projected: 0, inserted: 0 };
-    }
-
-    const accountIdsByExternalId = await this.upsertFocusCloudAccounts(tx, job, rows);
-    await tx.costMetric.deleteMany({ where: { cloudConnectionId: job.cloudConnectionId, chargePeriodStart: { gte: job.targetStart, lt: job.targetEnd }, billingSource: CostBillingSource.PROVIDER_API } });
-    const result = await tx.costMetric.createMany({
-      data: buildFocusCostMetricRows({
-        job,
-        rows,
-        accountIdsByExternalId,
-      }),
-      skipDuplicates: true,
-    });
-
-    return {
-      projected: rows.length,
-      inserted: result.count,
-    };
-  }
-
-  private async upsertFocusCloudAccounts(
-    tx: PrismaIngestionPersistenceClient,
-    job: CloudIngestionJobContext,
-    rows: readonly NormalizedFocusCostLineItem[],
-  ): Promise<ReadonlyMap<string, string>> {
-    const samplesByExternalId = new Map<string, NormalizedFocusCostLineItem>();
-    for (const row of rows) {
-      const externalId = getFocusCloudAccountExternalId(job, row);
-      if (!samplesByExternalId.has(externalId)) {
-        samplesByExternalId.set(externalId, row);
-      }
-    }
-
-    const accountIdsByExternalId = new Map<string, string>();
-    for (const [externalId, row] of samplesByExternalId) {
-      const account = await tx.cloudAccount.upsert({
-        where: {
-          tenantId_provider_externalAccountId: {
-            tenantId: job.tenantId,
-            provider: row.provider,
-            externalAccountId: externalId,
-          },
-        },
-        update: {
-          name: getFocusCloudAccountName(job, row),
-          status: 'ACTIVE',
-          ...(job.connection.defaultRegion !== undefined ? { defaultRegion: job.connection.defaultRegion } : {}),
-        },
-        create: {
-          tenantId: job.tenantId,
-          provider: row.provider,
-          externalAccountId: externalId,
-          name: getFocusCloudAccountName(job, row),
-          ...(job.connection.defaultRegion !== undefined ? { defaultRegion: job.connection.defaultRegion } : {}),
-        },
-        select: { id: true },
-      });
-      accountIdsByExternalId.set(externalId, account.id);
-    }
-
-    return accountIdsByExternalId;
-  }
-
-  private calculateFreshnessDeadline(job: CloudIngestionJobContext): Date {
-    const hours = job.sourceType === 'BILLING_EXPORT' ? 30 : 1;
-    return new Date(job.targetEnd.getTime() + hours * 60 * 60 * 1000);
-  }
-
-  private isJsonObject(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
-  }
-}
-
-function readPositiveIntegerEnv(key: string, defaultValue: number): number {
-  const parsed = Number.parseInt(process.env[key] ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
-}
-
-function chunkArray<T>(values: readonly T[], size: number): readonly (readonly T[])[] {
-  const chunks: T[][] = [];
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size));
-  }
-
-  return chunks;
 }

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { rateLimit } from 'express-rate-limit';
 import type { AuthService } from '../application/services/AuthService.js';
+import type { PasswordRecoveryService } from '../application/services/PasswordRecoveryService.js';
+import type { MfaService } from '../application/services/MfaService.js';
 import type { BudgetService } from '../application/services/BudgetService.js';
 import type { CostAllocationService } from '../application/services/CostAllocationService.js';
 import type { CloudConnectionService } from '../application/services/CloudConnectionService.js';
@@ -13,52 +14,30 @@ import type { RecommendationAnalysisService } from '../application/services/Reco
 import type { AgentInstructionService } from '../application/services/AgentInstructionService.js';
 import type { ContextSummaryBuilderService } from '../application/services/ContextSummaryBuilderService.js';
 import type { OutboundMessageService } from '../application/services/OutboundMessageService.js';
+import type { MessagingPreferenceService } from '../application/services/MessagingPreferenceService.js';
 import type { SavingsReminderService } from '../application/services/SavingsReminderService.js';
 import type { TechnicalMetricsService } from '../application/services/TechnicalMetricsService.js';
 import type { TelegramBotService } from '../application/services/TelegramBotService.js';
 import type { TelegramLinkService } from '../application/services/TelegramLinkService.js';
 import type { MasterAdminService } from '../application/services/MasterAdminService.js';
+import type { MasterAdminIngestionJobService } from '../application/services/MasterAdminIngestionJobService.js';
+import type { ClientInvitationService } from '../application/services/ClientInvitationService.js';
 import type { IAgentContextRepository } from '../domain/interfaces/IAgentContextRepository.js';
+import type { AgentQualityService } from '../application/services/AgentQualityService.js';
 import type { IAgentLearningService } from '../domain/interfaces/IAgentLearningService.js';
+import type { IAuthSessionRepository } from '../domain/interfaces/IAuthSessionRepository.js';
 import type { ICostRepository } from '../domain/interfaces/ICostRepository.js';
 import type { IRecommendationRepository } from '../domain/interfaces/IRecommendationRepository.js';
 import type { ITokenService } from '../domain/interfaces/ITokenService.js';
 import type { ValueRealizationService } from '../application/services/ValueRealizationService.js';
-import { AgentController } from './controllers/AgentController.js';
-import { BudgetController } from './controllers/BudgetController.js';
-import { CostAllocationController } from './controllers/CostAllocationController.js';
-import { AiController } from './controllers/AiController.js';
-import { AnalyticsController } from './controllers/AnalyticsController.js';
-import { AuthController } from './controllers/AuthController.js';
-import { CloudConnectionController } from './controllers/CloudConnectionController.js';
-import { CostController } from './controllers/CostController.js';
-import { KpiController } from './controllers/KpiController.js';
-import { MasterAdminController } from './controllers/MasterAdminController.js';
-import { NotificationController } from './controllers/NotificationController.js';
-import { OutboundMessageController } from './controllers/OutboundMessageController.js';
-import { RecommendationController } from './controllers/RecommendationController.js';
-import { RecommendationAnalysisController } from './controllers/RecommendationAnalysisController.js';
-import { TechnicalMetricsController } from './controllers/TechnicalMetricsController.js';
-import { TelegramController } from './controllers/TelegramController.js';
-import { ValueRealizationController } from './controllers/ValueRealizationController.js';
-import { createAuthMiddleware, requireRole } from './middleware/authMiddleware.js';
-import { createAgentRoutes } from './routes/agentRoutes.js';
-import { createBudgetRoutes } from './routes/budgetRoutes.js';
-import { createCostAllocationRoutes } from './routes/costAllocationRoutes.js';
-import { createAiRoutes } from './routes/aiRoutes.js';
-import { createAnalyticsRoutes } from './routes/analyticsRoutes.js';
-import { createAuthRoutes } from './routes/authRoutes.js';
-import { createCloudConnectionRoutes } from './routes/cloudConnectionRoutes.js';
-import { createCostRoutes } from './routes/costRoutes.js';
-import { createIngestionRoutes } from './routes/ingestionRoutes.js';
-import { createKpiRoutes } from './routes/kpiRoutes.js';
-import { createMasterAdminRoutes } from './routes/masterAdminRoutes.js';
-import { createNotificationRoutes } from './routes/notificationRoutes.js';
-import { createOutboundMessageRoutes } from './routes/outboundMessageRoutes.js';
-import { createRecommendationRoutes } from './routes/recommendationRoutes.js';
-import { createTechnicalMetricsRoutes } from './routes/technicalMetricsRoutes.js';
-import { createTelegramRoutes } from './routes/telegramRoutes.js';
-import { createValueRealizationRoutes } from './routes/valueRealizationRoutes.js';
+import type { ResourceLinkageReadinessService } from '../application/services/ResourceLinkageReadinessService.js';
+import type { MetricsRegistry } from '../application/observability/MetricsRegistry.js';
+import type { OperationalReadinessReport } from '../application/services/OperationalReadinessService.js';
+import { loadRuntimeConfig } from '../infrastructure/config/runtimeConfigReader.js';
+import type { RuntimeConfig } from '../infrastructure/config/runtimeConfigTypes.js';
+import { createHttpErrorHandler, createNotFoundHandler } from './middleware/httpErrorHandler.js';
+import { createMetricsAuth } from './middleware/metricsAuth.js';
+import { registerApiRoutes } from './registerApiRoutes.js';
 
 /**
  * Dependencias inyectadas en el servidor Express.
@@ -68,16 +47,18 @@ import { createValueRealizationRoutes } from './routes/valueRealizationRoutes.js
  * desde la Composición Raíz (`index.ts`) para mantener desacoplada la capa
  * de presentación de la infraestructura.
  */
-interface ServerDependencies {
+export interface ServerDependencies {
   /** Servicio de autenticación (login, emisión de credenciales). */
   readonly authService: AuthService;
+  readonly passwordRecoveryService: PasswordRecoveryService;
+  readonly mfaService: MfaService;
   readonly budgetService: BudgetService;
   readonly costAllocationService: CostAllocationService;
   /** Servicio de gestión de conexiones a proveedores de nube. */
   readonly cloudConnectionService: CloudConnectionService;
   /** Servicio de métricas técnicas de recursos cloud (CPU, memoria, IOPS, etc.). */
   readonly technicalMetricsService: TechnicalMetricsService;
-  /** Servicio de analítica de costos (anomalías, tendencias, forecast, etc.). */
+  /** Servicio de analítica de costos (oportunidades, tendencias, forecast, etc.). */
   readonly analyticsService: CostAnalyticsService;
   /** Servicio de IA FinOps (chat y generación de recomendaciones). */
   readonly aiService: FinOpsAiService;
@@ -86,17 +67,22 @@ interface ServerDependencies {
   readonly agentInstructionService: AgentInstructionService;
   /** Repositorio del contexto del agente (perfiles, reglas, trazas). */
   readonly agentContextRepository: IAgentContextRepository;
+  /** Reporte tenant-scoped de calidad/calibración y costo operativo de IA. */
+  readonly agentQualityService: AgentQualityService;
   /** Servicio que construye resúmenes de contexto para el agente. */
   readonly contextSummaryBuilderService: ContextSummaryBuilderService;
   /** Servicio de recordatorios de ahorro (genera notificaciones). */
   readonly savingsReminderService: SavingsReminderService;
   /** Servicio de mensajeria externa por Telegram y correo. */
   readonly outboundMessageService: OutboundMessageService;
+  readonly messagingPreferenceService: MessagingPreferenceService;
   /** Servicio del bot de Telegram (procesa actualizaciones del webhook). */
   readonly telegramBotService: TelegramBotService;
   /** Servicio de vinculación de cuentas con Telegram (links). */
   readonly telegramLinkService: TelegramLinkService;
   readonly masterAdminService: MasterAdminService;
+  readonly masterAdminIngestionJobService: MasterAdminIngestionJobService;
+  readonly clientInvitationService: ClientInvitationService;
   /** Secreto opcional para validar el webhook de Telegram. */
   readonly telegramWebhookSecret?: string;
   /** Indica si la integración con Telegram está habilitada. */
@@ -109,208 +95,94 @@ interface ServerDependencies {
   readonly recommendationRepository: IRecommendationRepository;
   /** Servicio de tokens usado por el middleware de autenticación. */
   readonly tokenService: ITokenService;
+  /** Repositorio que permite revocar y validar sesiones JWT persistidas. */
+  readonly authSessionRepository: IAuthSessionRepository;
   readonly valueRealizationService: ValueRealizationService;
+  readonly resourceLinkageReadinessService: ResourceLinkageReadinessService;
+  readonly metricsRegistry: MetricsRegistry;
+  /** Configuración tipada resuelta en la composición raíz. */
+  readonly runtimeConfig?: RuntimeConfig;
+  /** Comprueba dependencias críticas sin exponer detalles de infraestructura. */
+  readonly readinessCheck?: () => Promise<OperationalReadinessReport>;
 }
 
-/**
- * Crea y configura la aplicación Express con todas sus rutas.
- *
- * Configuración aplicada:
- *   - Middleware CORS: origen tomado de `process.env.CORS_ORIGIN` (por
- *     defecto `http://localhost:5173`) y `credentials: true`.
- *   - Middleware `express.json()` para parsear cuerpos JSON.
- *
- * Controladores instanciados con sus dependencias: `AiController`,
- * `AgentController`, `AnalyticsController`, `AuthController`,
- * `CloudConnectionController`, `CostController`, `RecommendationController`,
- * `KpiController`, `NotificationController` y `TelegramController`. Además
- * crea el middleware `requireAuth` a partir de `tokenService`.
- *
- * Prefijos de ruta montados (todos bajo `/api/v1`):
- *   - `/api/v1/agent`             → `createAgentRoutes`
- *   - `/api/v1/ai`                → `createAiRoutes`
- *   - `/api/v1/analytics`         → `createAnalyticsRoutes`
- *   - `/api/v1/auth`              → `createAuthRoutes` (sin `requireAuth`)
- *   - `/api/v1/cloud-connections` → `createCloudConnectionRoutes`
- *   - `/api/v1/costs`             → `createCostRoutes`
- *   - `/api/v1/kpis`              → `createKpiRoutes`
- *   - `/api/v1/notifications`     → `createNotificationRoutes`
- *   - `/api/v1/recommendations`   → `createRecommendationRoutes`
- *   - `/api/v1/telegram`          → `createTelegramRoutes`
- *
- * Expone además un endpoint de salud `GET /health` que responde `200` con
- * `{ status: 'ok', timestamp }`.
- *
- * Nota: esta función no registra un middleware global de manejo de errores
- * ni un handler 404; cada controlador gestiona sus propias respuestas.
- *
- * @param dependencies Dependencias inyectadas (servicios, repositorios y configuración).
- * @returns Instancia de la aplicación Express lista para escuchar conexiones.
- */
+/** Crea la aplicación Express con seguridad, rutas, salud, readiness y métricas. */
 export function createExpressServer(dependencies: ServerDependencies): Express {
+  const config = dependencies.runtimeConfig ?? loadRuntimeConfig();
   const app = express();
+  app.set('trust proxy', config.http.trustProxy);
 
   // Cabeceras de seguridad HTTP (X-Content-Type-Options, HSTS, etc.).
   // Se monta antes de CORS; helmet no interfiere con las cabeceras CORS.
   app.use(helmet());
   app.use(cors({
-    origin: parseCorsOrigins(process.env['CORS_ORIGIN']),
+    origin: config.http.corsOrigins.length === 1 ? config.http.corsOrigins[0] : [...config.http.corsOrigins],
     credentials: true,
   }));
-  app.use(createRequestLogger());
-  app.use(express.json());
+  app.use(createRequestLogger(dependencies.metricsRegistry));
+  app.use(express.json({ limit: config.http.bodyLimit }));
 
-  const globalApiLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: parsePositiveIntegerEnv('API_RATE_LIMIT_PER_MINUTE', 600),
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      success: false,
-      code: 'RATE_LIMITED',
-      message: 'Demasiadas solicitudes. Intenta de nuevo mas tarde.',
-    },
+  registerApiRoutes(app, dependencies);
+
+  app.get('/live', (_req, res) => {
+    res.status(200).json({
+      status: 'live',
+      processRole: config.environment.processRole,
+      timestamp: new Date().toISOString(),
+    });
   });
-
-  // Limitador anti fuerza bruta para el login (POST /api/v1/auth/login).
-  const authLoginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    limit: 10, // 10 intentos por ventana por IP
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      success: false,
-      code: 'RATE_LIMITED',
-      message: 'Demasiados intentos de inicio de sesión. Intenta de nuevo más tarde.',
-    },
-  });
-
-  // Limitador anti flood para el webhook de Telegram (POST /api/v1/telegram/webhook).
-  const telegramWebhookLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minuto
-    limit: 120, // 120 updates por minuto por IP
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-
-  const aiLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: parsePositiveIntegerEnv('AI_RATE_LIMIT_PER_MINUTE', 30),
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      success: false,
-      code: 'RATE_LIMITED',
-      message: 'Demasiadas solicitudes de IA. Intenta de nuevo mas tarde.',
-    },
-  });
-
-  const aiController = new AiController(dependencies.aiService, dependencies.learningService);
-  const recommendationAnalysisController = new RecommendationAnalysisController(
-    dependencies.recommendationAnalysisService,
-  );
-  const budgetController = new BudgetController(dependencies.budgetService);
-  const costAllocationController = new CostAllocationController(dependencies.costAllocationService);
-  const agentController = new AgentController(
-    dependencies.agentInstructionService,
-    dependencies.agentContextRepository,
-    dependencies.contextSummaryBuilderService,
-  );
-  const analyticsController = new AnalyticsController(dependencies.analyticsService);
-  const authController = new AuthController(dependencies.authService);
-  const cloudConnectionController = new CloudConnectionController(
-    dependencies.cloudConnectionService,
-  );
-  const technicalMetricsController = new TechnicalMetricsController(
-    dependencies.technicalMetricsService,
-  );
-  const costController = new CostController(dependencies.costRepository);
-  const recommendationController = new RecommendationController(
-    dependencies.recommendationRepository,
-    dependencies.aiService,
-    dependencies.learningService,
-    dependencies.valueRealizationService,
-  );
-const kpiController = new KpiController(dependencies.recommendationRepository);
-const notificationController = new NotificationController(dependencies.savingsReminderService);
-const outboundMessageController = new OutboundMessageController(dependencies.outboundMessageService);
-const telegramController = new TelegramController(
-    dependencies.telegramBotService,
-    dependencies.telegramLinkService,
-    dependencies.telegramWebhookSecret,
-    dependencies.telegramEnabled,
-  );
-  const masterAdminController = new MasterAdminController(dependencies.masterAdminService);
-  const valueRealizationController = new ValueRealizationController(dependencies.valueRealizationService);
-  const requireAuth = createAuthMiddleware(dependencies.tokenService);
-  const requireCloudManager = requireRole([
-    'ADMIN',
-    'MASTER_ADMIN',
-    'OPERATOR_ADMIN',
-    'FINOPS_TECHNICIAN',
-  ]);
-  const requireValueRealizationReconcile = requireRole([
-    'ADMIN',
-    'MASTER_ADMIN',
-    'OPERATOR_ADMIN',
-    'FINOPS_TECHNICIAN',
-  ]);
-
-  // Limitadores específicos montados ANTES de sus routers para ejecutarse primero.
-  app.use('/api/v1', globalApiLimiter);
-  app.use('/api/v1/auth/login', authLoginLimiter);
-  app.use('/api/v1/ai', aiLimiter);
-  app.use('/api/v1/telegram/webhook', telegramWebhookLimiter);
-
-  app.use('/api/v1/agent', createAgentRoutes(agentController, requireAuth));
-  app.use(
-    '/api/v1/ai',
-    createAiRoutes(aiController, recommendationAnalysisController, requireAuth, requireCloudManager),
-  );
-  app.use('/api/v1/analytics', createAnalyticsRoutes(analyticsController, requireAuth));
-  app.use('/api/v1/budgets', createBudgetRoutes(budgetController, requireAuth));
-  app.use('/api/v1/cost-allocation', createCostAllocationRoutes(costAllocationController, requireAuth));
-  app.use('/api/v1/auth', createAuthRoutes(authController, requireAuth));
-  app.use('/api/v1/cloud-connections', createCloudConnectionRoutes(cloudConnectionController, requireAuth, requireCloudManager));
-  app.use('/api/v1/costs', createCostRoutes(costController, requireAuth));
-  app.use('/api/v1/ingestion', createIngestionRoutes(cloudConnectionController, requireAuth, requireCloudManager));
-  app.use('/api/v1/technical-metrics', createTechnicalMetricsRoutes(technicalMetricsController, requireAuth));
-  app.use('/api/v1/kpis', createKpiRoutes(kpiController, requireAuth));
-app.use('/api/v1/master-admin', createMasterAdminRoutes(masterAdminController, requireAuth));
-app.use('/api/v1/notifications', createNotificationRoutes(notificationController, requireAuth));
-app.use('/api/v1/outbound-messages', createOutboundMessageRoutes(outboundMessageController, requireAuth));
-app.use('/api/v1/recommendations', createRecommendationRoutes(recommendationController, requireAuth));
-  app.use('/api/v1/telegram', createTelegramRoutes(telegramController, requireAuth));
-  app.use('/api/v1/value-realization', createValueRealizationRoutes(valueRealizationController, requireAuth, requireValueRealizationReconcile));
 
   app.get('/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.status(200).json({
+      status: 'ok',
+      processRole: config.environment.processRole,
+      timestamp: new Date().toISOString(),
+    });
   });
+
+  app.get('/ready', async (_req, res) => {
+    if (dependencies.readinessCheck === undefined) {
+      res.status(200).json({
+        status: 'ready',
+        processRole: config.environment.processRole,
+        checks: {
+          database: 'not_configured',
+          runtimeRls: config.database.runtimeEnforce ? 'required' : 'disabled',
+        },
+      });
+      return;
+    }
+
+    try {
+      const report = await dependencies.readinessCheck();
+      res.status(report.ready ? 200 : 503).json({
+        status: report.ready ? 'ready' : 'not_ready',
+        processRole: config.environment.processRole,
+        checks: report.checks,
+      });
+    } catch {
+      res.status(503).json({
+        status: 'not_ready',
+        processRole: config.environment.processRole,
+        checks: {
+          database: 'failed',
+          runtimeRls: config.database.runtimeEnforce ? 'unknown' : 'disabled',
+        },
+      });
+    }
+  });
+
+  app.get('/metrics', createMetricsAuth(config.security.metricsToken, config.environment.isProduction), (_req, res) => {
+    res.type('text/plain; version=0.0.4').status(200).send(dependencies.metricsRegistry.toPrometheus());
+  });
+
+  app.use(createNotFoundHandler());
+  app.use(createHttpErrorHandler());
 
   return app;
 }
 
-function parseCorsOrigins(value: string | undefined): string | string[] {
-  const raw = value ?? 'http://localhost:5173';
-  const origins = raw
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter((origin) => origin !== '');
-
-  return origins.length === 1 ? origins[0]! : origins;
-}
-
-function parsePositiveIntegerEnv(name: string, fallback: number): number {
-  const value = process.env[name];
-  if (value === undefined) {
-    return fallback;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function createRequestLogger() {
+function createRequestLogger(metrics: MetricsRegistry) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const requestId = req.header('x-request-id') ?? randomUUID();
     const startedAt = Date.now();
@@ -318,6 +190,9 @@ function createRequestLogger() {
     res.setHeader('x-request-id', requestId);
 
     res.on('finish', () => {
+      const statusClass = `${Math.floor(res.statusCode / 100)}xx`;
+      metrics.increment('http_requests_total', { method: req.method, status_class: statusClass });
+      metrics.observe('http_request_duration_ms', Date.now() - startedAt, { method: req.method, status_class: statusClass });
       console.log(JSON.stringify({
         level: res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
         event: 'http_request',

@@ -1,22 +1,20 @@
-import { AiAuditRejectedError, FinOpsBaseError } from '../../domain/errors/errors.js';
-import { createHash } from 'node:crypto';
 import type { IAiGateway } from '../../domain/interfaces/IAiGateway.js';
 import type { ICostAnalyticsRepository } from '../../domain/interfaces/ICostAnalyticsRepository.js';
 import type { IRecommendationRepository } from '../../domain/interfaces/IRecommendationRepository.js';
 import type { IAgentLearningContextProvider } from '../../domain/interfaces/IAgentLearningService.js';
-import type { BuiltAiContext, IContextEngineService } from '../../domain/interfaces/IContextEngineService.js';
+import type { IContextEngineService } from '../../domain/interfaces/IContextEngineService.js';
 import type { RecommendationExecutionPlan } from '../../domain/models/RecommendationExecutionPlan.js';
-import type { AiContextOperation } from '../../domain/models/AgentContext.js';
 import type { AiObservabilityService } from './AiObservabilityService.js';
-import { normalizeHistory } from './ai/finOpsAiPrompts.js';
-import { toEphemeralRecommendation } from './ai/finOpsAiResponseParser.js';
-import { applyAuditEvidence, buildRecommendationDeduplicationKey } from './ai/recommendationEvidence.js';
 import { FinOpsContextAssembler } from './ai/finOpsContextAssembler.js';
 import { AiTraceRecorder } from './ai/aiTraceRecorder.js';
 import { FinOpsArtifactGenerator } from './ai/finOpsArtifactGenerator.js';
 import type { TechnicalRecommendationEvidenceProvider } from './ai/TechnicalRecommendationEvidenceService.js';
-import type { RecommendationReadinessReport } from './ai/RecommendationReadinessGate.js';
-import { buildDeterministicTrendAnalysis } from './ai/DeterministicTrendAnalysis.js';
+import { FinOpsAiChatRunner } from './ai/FinOpsAiChatRunner.js';
+import { FinOpsAiExecutionPlanRunner } from './ai/FinOpsAiExecutionPlanRunner.js';
+import { FinOpsAiRecommendationRunner } from './ai/FinOpsAiRecommendationRunner.js';
+import { FinOpsAiRecommendationPreparer } from './ai/FinOpsAiRecommendationPreparer.js';
+import { loadRuntimeConfig } from '../../infrastructure/config/runtimeConfigReader.js';
+import type { RuntimeConfig } from '../../infrastructure/config/runtimeConfigTypes.js';
 
 // Reexporta los contratos públicos para preservar la API del servicio.
 export type {
@@ -39,8 +37,6 @@ import type {
 } from './ai/finOpsAiTypes.js';
 
 /** Veredicto de auditoría requerido para aceptar el artefacto generado por IA. */
-const approvedAuditVerdict = 'APPROVED';
-
 /**
  * Servicio de aplicación de IA FinOps.
  *
@@ -78,6 +74,10 @@ export class FinOpsAiService {
   private readonly artifactGenerator: FinOpsArtifactGenerator;
   /** Ensamblador de contexto y prompts por caso de uso. */
   private readonly contextAssembler: FinOpsContextAssembler;
+  private readonly chatRunner: FinOpsAiChatRunner;
+  private readonly executionPlanRunner: FinOpsAiExecutionPlanRunner;
+  private readonly recommendationPreparer: FinOpsAiRecommendationPreparer;
+  private readonly recommendationRunner: FinOpsAiRecommendationRunner;
 
   /**
    * @param analyticsRepository      - Repositorio de analítica de costos (snapshots).
@@ -88,16 +88,17 @@ export class FinOpsAiService {
    * @param aiObservability          - Servicio opcional de observabilidad/trazas IA.
    */
   constructor(
-    private readonly analyticsRepository: ICostAnalyticsRepository,
-    private readonly recommendationRepository: IRecommendationRepository,
-    private readonly aiGateway: IAiGateway,
+    analyticsRepository: ICostAnalyticsRepository,
+    recommendationRepository: IRecommendationRepository,
+    aiGateway: IAiGateway,
     learningContextProvider?: IAgentLearningContextProvider,
     contextEngine?: IContextEngineService,
     aiObservability?: AiObservabilityService,
     technicalEvidenceProvider?: TechnicalRecommendationEvidenceProvider,
+    aiConfig: RuntimeConfig['ai'] = loadRuntimeConfig().ai,
   ) {
-    this.mainModel = aiGateway.modelName ?? process.env['AI_MODEL'] ?? process.env['NVIDIA_MODEL'] ?? 'gpt-5.4-mini';
-    this.auditorModel = process.env['AI_AUDITOR_MODEL'] ?? process.env['NVIDIA_AUDITOR_MODEL'] ?? this.mainModel;
+    this.mainModel = aiGateway.modelName ?? aiConfig.model;
+    this.auditorModel = aiConfig.auditorModel || this.mainModel;
     if (this.mainModel === this.auditorModel) {
       console.warn('AI generator and auditor use the same model; deterministic quality gates remain required.');
     }
@@ -113,6 +114,37 @@ export class FinOpsAiService {
       learningContextProvider,
       contextEngine,
       technicalEvidenceProvider,
+    );
+    this.chatRunner = new FinOpsAiChatRunner(
+      analyticsRepository,
+      aiGateway,
+      this.contextAssembler,
+      this.traceRecorder,
+      this.mainModel,
+    );
+    this.executionPlanRunner = new FinOpsAiExecutionPlanRunner(
+      analyticsRepository,
+      recommendationRepository,
+      this.contextAssembler,
+      this.artifactGenerator,
+      this.traceRecorder,
+      this.mainModel,
+      this.auditorModel,
+    );
+    this.recommendationPreparer = new FinOpsAiRecommendationPreparer(
+      analyticsRepository,
+      this.contextAssembler,
+      this.mainModel,
+      this.auditorModel,
+    );
+    this.recommendationRunner = new FinOpsAiRecommendationRunner(
+      recommendationRepository,
+      this.contextAssembler,
+      this.artifactGenerator,
+      this.traceRecorder,
+      this.recommendationPreparer,
+      this.mainModel,
+      this.auditorModel,
     );
   }
 
@@ -130,49 +162,7 @@ export class FinOpsAiService {
    * @throws Propaga errores del gateway IA tras registrarlos en la traza.
    */
   public async answerChat(input: AiChatInput): Promise<AiChatResponse> {
-    const message = input.message.trim();
-
-    if (message === '') {
-      throw new FinOpsBaseError('Chat message is required', 'VALIDATION_ERROR');
-    }
-
-    const snapshot = await this.analyticsRepository.getLatestTenantSnapshot(input.tenantId);
-    const { builtContext, systemPrompt } = await this.contextAssembler.assembleChatContext({
-      tenantId: input.tenantId,
-      ...(input.userId !== undefined ? { userId: input.userId } : {}),
-      message,
-      snapshot,
-    });
-    const startedAt = Date.now();
-
-    try {
-      const answer = await this.aiGateway.generateText({
-        responseFormat: 'text',
-        temperature: 0.3,
-        maxTokens: 900,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          ...normalizeHistory(input.history),
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-      });
-
-      await this.recordTrace(input, 'CHAT', builtContext, startedAt, answer);
-
-      return {
-        answer: answer.trim(),
-        snapshot,
-      };
-    } catch (error: unknown) {
-      await this.recordTrace(input, 'CHAT', builtContext, startedAt, undefined, error);
-      throw error;
-    }
+    return this.chatRunner.run(input);
   }
 
   /**
@@ -193,171 +183,13 @@ export class FinOpsAiService {
   public async generateRecommendations(
     input: GenerateAiRecommendationsInput,
   ): Promise<GenerateAiRecommendationsResponse> {
-    const prepared = input.prepared ?? await this.prepareRecommendationAnalysis(input);
-    const { snapshot, readinessReport, technicalEvidenceSnapshot } = prepared;
-    if (readinessReport.candidates.length === 0) {
-      return {
-        recommendations: [],
-        snapshot,
-        persisted: input.persist === true,
-        analysis: {
-          readinessReport,
-          ...(technicalEvidenceSnapshot !== undefined ? { technicalEvidenceSnapshot } : {}),
-          evidenceHash: prepared.evidenceHash,
-          generatedCount: 0,
-          promptTokenEstimate: 0,
-          responseTokenEstimate: 0,
-          model: this.mainModel,
-          auditorModel: this.auditorModel,
-        },
-      };
-    }
-
-    const assembled = await this.contextAssembler.assembleRecommendationContext({
-      tenantId: input.tenantId,
-      ...(input.userId !== undefined ? { userId: input.userId } : {}),
-      snapshot,
-      ...(input.externalResourceId !== undefined ? { externalResourceId: input.externalResourceId } : {}),
-      ...(prepared.technicalEvidenceSnapshot !== undefined
-        ? { technicalEvidenceSnapshot: prepared.technicalEvidenceSnapshot }
-        : {}),
-    });
-    const { builtContext, systemPrompt, learningContext } = assembled;
-    const governedSystemPrompt = [
-      systemPrompt,
-      'PREANALISIS DETERMINISTICO DE TENDENCIAS (hechos autorizados):',
-      JSON.stringify(prepared.deterministicAnalysis, null, 2),
-    ].join('\n\n');
-    const startedAt = Date.now();
-
-    await input.onStage?.('AI_GENERATION');
-    const { drafts, auditReport, firstRawResponse } = await this.artifactGenerator.generateAuditedDrafts(
-      input.tenantId,
-      input.userId,
-      snapshot,
-      governedSystemPrompt,
-      input.externalResourceId,
-      technicalEvidenceSnapshot,
-      prepared.deterministicAnalysis,
-      readinessReport,
-      () => input.onStage?.('AI_AUDIT'),
-    );
-
-    if (auditReport.verdict !== approvedAuditVerdict) {
-      throw new AiAuditRejectedError('AI audit rejected recommendation output', {
-        diagnosticId: this.buildAuditDiagnosticId(input.tenantId),
-        audit: {
-          ...auditReport,
-          generatedCount: drafts.length,
-          promptTokenEstimate: estimateTokens(governedSystemPrompt),
-          responseTokenEstimate: estimateTokens(firstRawResponse),
-          model: this.mainModel,
-          auditorModel: this.auditorModel,
-          readinessSummary: readinessReport.summary,
-          candidates: readinessReport.candidates.map((candidate: RecommendationReadinessReport['candidates'][number]) => ({
-            id: candidate.id,
-            readiness: candidate.readiness,
-            cloudAccountId: candidate.cloudAccountId,
-            serviceName: candidate.serviceName,
-            resourceId: candidate.resourceId,
-            maxEstimatedMonthlySavings: candidate.maxEstimatedMonthlySavings,
-            reasons: candidate.reasons,
-          })),
-        },
-      });
-    }
-
-    const auditedDrafts = drafts.map((draft) => ({
-      ...applyAuditEvidence(
-        draft,
-        auditReport,
-        learningContext,
-        technicalEvidenceSnapshot,
-        input.analysisRunId,
-      ),
-      deduplicationKey: buildRecommendationDeduplicationKey(
-        draft,
-        snapshot.periodStart,
-        snapshot.periodEnd,
-      ),
-    }));
-
-    const persisted = input.persist === true;
-    await input.onStage?.('PERSISTENCE');
-    const recommendations = persisted
-      ? await this.recommendationRepository.createMany(auditedDrafts)
-      : auditedDrafts.map((draft, index) => toEphemeralRecommendation(draft, index));
-
-    await this.recordTrace(input, 'RECOMMENDATION', builtContext, startedAt, firstRawResponse);
-
-    return {
-      recommendations,
-      snapshot,
-      persisted,
-      analysis: {
-        readinessReport,
-        ...(technicalEvidenceSnapshot !== undefined ? { technicalEvidenceSnapshot } : {}),
-        evidenceHash: prepared.evidenceHash,
-        auditReport,
-        generatedCount: drafts.length,
-        promptTokenEstimate: estimateTokens(governedSystemPrompt),
-        responseTokenEstimate: estimateTokens(firstRawResponse),
-        model: this.mainModel,
-        auditorModel: this.auditorModel,
-      },
-    };
+    return this.recommendationRunner.run(input);
   }
 
   public async prepareRecommendationAnalysis(
-    input: Pick<GenerateAiRecommendationsInput, 'tenantId' | 'externalResourceId'>,
+    input: Pick<GenerateAiRecommendationsInput, 'tenantId' | 'externalResourceId' | 'cloudResourceId'>,
   ): Promise<PreparedRecommendationAnalysis> {
-    const tenantSnapshot = await this.analyticsRepository.getLatestTenantSnapshot(input.tenantId);
-    const snapshot = input.externalResourceId === undefined
-      ? tenantSnapshot
-      : scopeSnapshotToResource(tenantSnapshot, input.externalResourceId);
-    const preparedEvidence = await this.contextAssembler.prepareRecommendationEvidence({
-      tenantId: input.tenantId,
-      snapshot,
-      ...(input.externalResourceId !== undefined ? { externalResourceId: input.externalResourceId } : {}),
-    });
-    const periodEnd = new Date(snapshot.periodEnd);
-    const periodFrom = new Date(periodEnd);
-    periodFrom.setUTCMonth(periodFrom.getUTCMonth() - 6);
-    const trendFilters = {
-      from: periodFrom,
-      to: periodEnd,
-      ...(input.externalResourceId !== undefined
-        ? { groupBy: 'resource' as const }
-        : { groupBy: 'service' as const }),
-    };
-    const [allCostSeries, allUsageSeries] = await Promise.all([
-      this.analyticsRepository.getMonthlyCostSeries(input.tenantId, trendFilters),
-      this.analyticsRepository.getMonthlyUsageSeries(input.tenantId, trendFilters),
-    ]);
-    const costSeries = input.externalResourceId === undefined
-      ? allCostSeries
-      : allCostSeries.filter((point) => point.resourceId === input.externalResourceId);
-    const usageSeries = input.externalResourceId === undefined
-      ? allUsageSeries
-      : allUsageSeries.filter((point) => point.resourceId === input.externalResourceId);
-    const deterministicAnalysis = buildDeterministicTrendAnalysis(costSeries, usageSeries);
-    const evidenceHash = createHash('sha256').update(JSON.stringify({
-      snapshot,
-      technicalEvidenceHash: preparedEvidence.technicalEvidenceSnapshot?.hash ?? null,
-      deterministicAnalysis,
-    })).digest('hex');
-
-    return {
-      snapshot,
-      readinessReport: preparedEvidence.readinessReport,
-      ...(preparedEvidence.technicalEvidenceSnapshot !== undefined
-        ? { technicalEvidenceSnapshot: preparedEvidence.technicalEvidenceSnapshot }
-        : {}),
-      evidenceHash,
-      deterministicAnalysis,
-      model: this.mainModel,
-      auditorModel: this.auditorModel,
-    };
+    return this.recommendationPreparer.prepare(input);
   }
 
   public getModelNames(): { readonly model: string; readonly auditorModel: string } {
@@ -381,119 +213,7 @@ export class FinOpsAiService {
   public async generateExecutionPlan(
     input: GenerateExecutionPlanInput,
   ): Promise<RecommendationExecutionPlan> {
-    const recommendation = await this.recommendationRepository.findById(
-      input.tenantId,
-      input.recommendationId,
-    );
-
-    if (recommendation === null) {
-      throw new FinOpsBaseError('Recommendation not found', 'NOT_FOUND');
-    }
-
-    const snapshot = await this.analyticsRepository.getLatestTenantSnapshot(input.tenantId);
-    const { builtContext, systemPrompt } = await this.contextAssembler.assembleExecutionPlanContext({
-      tenantId: input.tenantId,
-      userId: input.userId,
-      snapshot,
-      recommendation,
-    });
-    const startedAt = Date.now();
-
-    const { content, auditReport, firstRawResponse } = await this.artifactGenerator.generateAuditedPlan(
-      input.tenantId,
-      input.userId,
-      snapshot,
-      recommendation,
-      systemPrompt,
-    );
-
-    await this.recordTrace(
-      { tenantId: input.tenantId, userId: input.userId },
-      'EXECUTION_PLAN',
-      builtContext,
-      startedAt,
-      firstRawResponse,
-    );
-
-    if (auditReport.verdict !== approvedAuditVerdict) {
-      throw new AiAuditRejectedError('AI audit rejected execution plan output', {
-        diagnosticId: this.buildAuditDiagnosticId(input.tenantId),
-        audit: auditReport,
-      });
-    }
-
-    const plan = await this.recommendationRepository.createExecutionPlan({
-      recommendationId: recommendation.id,
-      generatedByUserId: input.userId,
-      model: this.mainModel,
-      auditorModel: this.auditorModel,
-      content,
-      auditReport,
-      auditVerdict: auditReport.verdict,
-      auditScore: auditReport.score,
-    });
-
-    return plan;
+    return this.executionPlanRunner.run(input);
   }
 
-  /**
-   * Registra una traza de observabilidad de una operación IA de alto nivel
-   * (chat, recomendación o plan), delegando en {@link AiTraceRecorder}.
-   */
-  private recordTrace(
-    actor: { readonly tenantId: string; readonly userId?: string },
-    operation: AiContextOperation,
-    builtContext: BuiltAiContext | undefined,
-    startedAt: number,
-    responseText?: string,
-    error?: unknown,
-  ): Promise<void> {
-    return this.traceRecorder.record({
-      tenantId: actor.tenantId,
-      ...(actor.userId !== undefined ? { userId: actor.userId } : {}),
-      operation,
-      model: this.mainModel,
-      ...(builtContext !== undefined ? { builtContext } : {}),
-      startedAt,
-      ...(responseText !== undefined ? { responseText } : {}),
-      ...(error !== undefined ? { error } : {}),
-    });
-  }
-
-  private buildAuditDiagnosticId(tenantId: string): string {
-    return `audit-${tenantId}-${Date.now().toString(36)}`;
-  }
-}
-
-function estimateTokens(value: string): number {
-  return Math.ceil(value.length / 4);
-}
-
-function scopeSnapshotToResource(
-  snapshot: import('../../domain/interfaces/ICostAnalyticsRepository.js').CostAnalyticsSnapshot,
-  externalResourceId: string,
-): import('../../domain/interfaces/ICostAnalyticsRepository.js').CostAnalyticsSnapshot {
-  const topResources = snapshot.topResources.filter((resource) => resource.resourceId === externalResourceId);
-  if (topResources.length === 0) {
-    throw new FinOpsBaseError('No existe evidencia de costo para el recurso solicitado', 'VALIDATION_ERROR');
-  }
-
-  const totalCost = topResources.reduce((sum, resource) => sum + resource.totalCost, 0);
-  const metricCount = topResources.reduce((sum, resource) => sum + resource.metricCount, 0);
-  const { topUsage: _topUsage, usageInsights: _usageInsights, anomalies: _anomalies, forecasts: _forecasts, ...base } = snapshot;
-  return {
-    ...base,
-    totalCost,
-    metricCount,
-    providers: snapshot.providers.filter((provider) => provider.provider === topResources[0]!.provider),
-    accounts: snapshot.accounts.filter((account) => account.provider === topResources[0]!.provider),
-    services: snapshot.services.filter((service) => (
-      service.provider === topResources[0]!.provider && service.serviceName === topResources[0]!.serviceName
-    )),
-    environments: [],
-    topResources,
-    topUsage: (snapshot.topUsage ?? []).filter((usage) => (
-      usage.provider === topResources[0]!.provider && usage.serviceName === topResources[0]!.serviceName
-    )),
-  };
 }

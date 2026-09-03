@@ -1,7 +1,7 @@
 import type { CostAnalyticsSnapshot } from '../../../domain/interfaces/ICostAnalyticsRepository.js';
 import type { CreateRecommendationInput } from '../../../domain/interfaces/IRecommendationRepository.js';
 import type { FinOpsRecommendation } from '../../../domain/models/FinOpsRecommendation.js';
-import type { AiAuditReport } from '../../../domain/models/RecommendationExecutionPlan.js';
+import type { AiAuditReport, AiCandidateAuditArtifact } from '../../../domain/models/RecommendationExecutionPlan.js';
 import type { RecommendationEvidenceSnapshot } from './RecommendationEvidenceSnapshot.js';
 import type { RecommendationReadinessReport } from './RecommendationReadinessGate.js';
 import type { DeterministicTrendAnalysis } from './DeterministicTrendAnalysis.js';
@@ -63,6 +63,7 @@ export interface GenerateAiRecommendationsInput {
   readonly persist?: boolean;
   /** Limita la generación a un recurso que exista en el snapshot factual del tenant. */
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
   /** Corrida durable que origina las recomendaciones; solo para orquestación interna. */
   readonly analysisRunId?: string;
   /** Preparación factual ya calculada para garantizar que generador y auditor usen el mismo snapshot. */
@@ -94,7 +95,9 @@ export interface GenerateAiRecommendationsResponse {
     readonly technicalEvidenceSnapshot?: RecommendationEvidenceSnapshot;
     readonly evidenceHash: string;
     readonly auditReport?: AiAuditReport;
+    readonly candidateAudits?: readonly AiCandidateAuditArtifact[];
     readonly generatedCount: number;
+    readonly rejectedCount?: number;
     readonly promptTokenEstimate: number;
     readonly responseTokenEstimate: number;
     readonly model: string;

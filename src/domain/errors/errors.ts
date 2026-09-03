@@ -17,12 +17,14 @@
 export class FinOpsBaseError extends Error {
   public readonly code: string;
   public readonly timestamp: Date;
+  public readonly details?: Readonly<Record<string, unknown>> | undefined;
 
-  constructor(message: string, code: string) {
+  constructor(message: string, code: string, details?: Readonly<Record<string, unknown>>) {
     super(message);
     this.name = this.constructor.name;
     this.code = code;
     this.timestamp = new Date();
+    this.details = details;
 
     // Restaurar la cadena de prototipos (necesario en TypeScript para herencia de Error)
     Object.setPrototypeOf(this, new.target.prototype);
@@ -85,13 +87,13 @@ export class IngestionError extends FinOpsBaseError {
 }
 
 export class AuthenticationError extends FinOpsBaseError {
-  constructor(message = 'Invalid email or password') {
+  constructor(message = 'Correo o contraseña inválidos') {
     super(message, 'AUTHENTICATION_FAILED');
   }
 }
 
 export class AuthorizationError extends FinOpsBaseError {
-  constructor(message = 'The authenticated user is not allowed to perform this action') {
+  constructor(message = 'El usuario autenticado no está autorizado para realizar esta acción') {
     super(message, 'AUTHORIZATION_FAILED');
   }
 }

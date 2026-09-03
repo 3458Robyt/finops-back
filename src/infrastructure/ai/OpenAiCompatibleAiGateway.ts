@@ -2,6 +2,9 @@ import OpenAI from 'openai';
 
 import { ConfigurationError } from '../../domain/errors/errors.js';
 import type { AiGatewayRequest, IAiGateway } from '../../domain/interfaces/IAiGateway.js';
+import type { MetricsRegistry } from '../../application/observability/MetricsRegistry.js';
+import { loadRuntimeConfig } from '../config/runtimeConfigReader.js';
+import type { RuntimeConfig } from '../config/runtimeConfigTypes.js';
 
 /**
  * Adaptador de infraestructura para endpoints compatibles con la API de OpenAI.
@@ -13,7 +16,9 @@ import type { AiGatewayRequest, IAiGateway } from '../../domain/interfaces/IAiGa
  * - AI_TIMEOUT_MS
  * - AI_MAX_RETRIES
  *
- * Las variables NVIDIA_* / NIM_API_KEY siguen funcionando como fallback temporal.
+ * Las variables heredadas NVIDIA_* / NIM_API_KEY no se leen: la configuración
+ * debe migrarse explícitamente a la familia AI_* para evitar proveedores
+ * ambiguos o credenciales antiguas activadas de forma silenciosa.
  */
 export class OpenAiCompatibleAiGateway implements IAiGateway {
   private readonly client: OpenAI;
@@ -21,73 +26,75 @@ export class OpenAiCompatibleAiGateway implements IAiGateway {
 
   public readonly modelName: string;
 
-  public constructor() {
-    const apiKey =
-      process.env['AI_API_KEY'] ?? process.env['NVIDIA_API_KEY'] ?? process.env['NIM_API_KEY'];
+  public constructor(
+    private readonly metrics?: MetricsRegistry,
+    aiConfig: RuntimeConfig['ai'] = loadRuntimeConfig().ai,
+  ) {
+    const apiKey = aiConfig.apiKey;
 
     if (apiKey === undefined || apiKey.trim() === '') {
       throw new ConfigurationError('AI_API_KEY must be configured before using AI features');
     }
 
-    this.model = process.env['AI_MODEL'] ?? process.env['NVIDIA_MODEL'] ?? 'gpt-5.4-mini';
+    this.model = aiConfig.model;
     this.modelName = this.model;
     this.client = new OpenAI({
       apiKey,
-      baseURL: process.env['AI_BASE_URL'] ?? process.env['NVIDIA_BASE_URL'] ?? 'https://api.openai.com/v1',
-      timeout: readPositiveIntegerEnv('AI_TIMEOUT_MS', process.env['NVIDIA_TIMEOUT_MS'], 60000),
-      maxRetries: readNonNegativeIntegerEnv('AI_MAX_RETRIES', 1),
+      baseURL: aiConfig.baseUrl,
+      timeout: aiConfig.timeoutMs,
+      maxRetries: aiConfig.maxRetries,
     });
   }
 
   public async generateText(request: AiGatewayRequest): Promise<string> {
-    const completion = await this.client.chat.completions.create(
-      {
-        model: request.model ?? this.model,
-        messages: request.messages.map((message) => ({
-          role: message.role,
-          content: message.content,
-        })),
-        temperature: request.temperature ?? 0.3,
-        top_p: 0.95,
-        max_tokens: request.maxTokens ?? 2048,
-        stream: true,
-        chat_template_kwargs: { thinking: false },
-      } as unknown as Parameters<OpenAI['chat']['completions']['create']>[0],
-      {
-        ...(request.timeoutMs !== undefined ? { timeout: request.timeoutMs } : {}),
-        ...(request.maxRetries !== undefined ? { maxRetries: request.maxRetries } : {}),
-      },
-    );
+    const model = request.model ?? this.model;
+    const startedAt = Date.now();
+    const inputTokens = estimateTokens(request.messages.map((message) => message.content).join('\n'));
+    try {
+      const completion = await this.client.chat.completions.create(
+        {
+          model,
+          messages: request.messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+          temperature: request.temperature ?? 0.3,
+          top_p: 0.95,
+          max_tokens: request.maxTokens ?? 2048,
+          stream: true,
+          chat_template_kwargs: { thinking: false },
+        } as unknown as Parameters<OpenAI['chat']['completions']['create']>[0],
+        {
+          ...(request.timeoutMs !== undefined ? { timeout: request.timeoutMs } : {}),
+          ...(request.maxRetries !== undefined ? { maxRetries: request.maxRetries } : {}),
+        },
+      );
 
-    let output = '';
-    const stream = completion as AsyncIterable<{
-      readonly choices?: ReadonlyArray<{
-        readonly delta?: {
-          readonly content?: string | null;
-        };
+      let output = '';
+      const stream = completion as AsyncIterable<{
+        readonly choices?: ReadonlyArray<{
+          readonly delta?: {
+            readonly content?: string | null;
+          };
+        }>;
       }>;
-    }>;
 
-    for await (const chunk of stream) {
-      output += chunk.choices?.[0]?.delta?.content ?? '';
+      for await (const chunk of stream) {
+        output += chunk.choices?.[0]?.delta?.content ?? '';
+      }
+
+      this.metrics?.increment('ai_requests_total', { model, outcome: 'success' });
+      this.metrics?.increment('ai_input_tokens_estimated_total', { model }, inputTokens);
+      this.metrics?.increment('ai_output_tokens_estimated_total', { model }, estimateTokens(output));
+      this.metrics?.observe('ai_request_duration_ms', Date.now() - startedAt, { model, outcome: 'success' });
+      return output;
+    } catch (error) {
+      this.metrics?.increment('ai_requests_total', { model, outcome: 'error' });
+      this.metrics?.observe('ai_request_duration_ms', Date.now() - startedAt, { model, outcome: 'error' });
+      throw error;
     }
-
-    return output;
   }
 }
-
-function readPositiveIntegerEnv(primaryKey: string, fallbackRaw: string | undefined, defaultValue: number): number {
-  const raw = process.env[primaryKey] ?? fallbackRaw;
-  if (raw === undefined) return defaultValue;
-
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
-}
-
-function readNonNegativeIntegerEnv(key: string, defaultValue: number): number {
-  const raw = process.env[key];
-  if (raw === undefined) return defaultValue;
-
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
 }

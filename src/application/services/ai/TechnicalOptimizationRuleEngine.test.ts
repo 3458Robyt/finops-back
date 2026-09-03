@@ -87,6 +87,69 @@ describe('TechnicalOptimizationRuleEngine', () => {
     expect(result?.evidenceStrength).toBe('LOW');
     expect(result?.blockers).toContain('INSUFFICIENT_TECHNICAL_COVERAGE');
   });
+
+  it('does not treat non-utilization values below 100 as percentage saturation', () => {
+    const result = evaluateTechnicalOptimizationRules({
+      referenceDate,
+      summaries: [
+        summary('NetworkBytesIn', {
+          metricUnit: 'Bytes',
+          avg: 70,
+          p95: 95,
+          p99: 99,
+          max: 99,
+          highUtilizationSampleCount: 0,
+          highUtilizationRatio: 0,
+        }),
+        summary('CpuUtilization', { avg: 12, p95: 35, p99: 45 }),
+        summary('MemoryUtilization', { avg: 24, p95: 45, p99: 55 }),
+      ],
+    });
+
+    expect(result[0]?.blockers).not.toContain('NETWORK_SATURATION_RISK');
+    expect(result[0]?.ruleMatches).not.toContain('NETWORK_HIGH_UTILIZATION');
+  });
+
+  it('records the rule version and detects low auxiliary utilization', () => {
+    const [result] = evaluateTechnicalOptimizationRules({
+      referenceDate,
+      summaries: [
+        summary('NetworkUtilization', { avg: 8, p95: 20 }),
+        summary('DiskUtilization', { avg: 12, p95: 30 }),
+        summary('CpuUtilization', { avg: 35, p95: 65, p99: 70 }),
+        summary('MemoryUtilization', { avg: 45, p95: 65, p99: 70 }),
+      ],
+    });
+
+    expect(result?.ruleVersion).toBe('technical-rules-2026-08-11.v1');
+    expect(result?.appliedThresholds).toMatchObject({
+      highUtilizationPercent: 80,
+      minimumSamples: 48,
+      minimumCoverageDays: 7,
+    });
+    expect(result?.ruleMatches).toEqual(expect.arrayContaining(['NETWORK_LOW_UTILIZATION', 'DISK_LOW_UTILIZATION']));
+  });
+
+  it('does not interpret absolute CPU or memory values as percentages', () => {
+    const [result] = evaluateTechnicalOptimizationRules({
+      referenceDate,
+      summaries: [
+        summary('CpuSeconds', { metricUnit: 'Seconds', avg: 1, p95: 2, p99: 3 }),
+        summary('MemoryUsedBytes', { metricUnit: 'Bytes', avg: 10, p95: 20, p99: 30 }),
+      ],
+    });
+
+    expect(result?.readiness).toBe('VALIDATION_ONLY');
+    expect(result?.ruleMatches).not.toEqual(expect.arrayContaining([
+      'CPU_IDLE_CANDIDATE',
+      'CPU_STRONG_UNDERUTILIZATION',
+      'MEMORY_LOW_UTILIZATION',
+    ]));
+    expect(result?.blockers).toEqual(expect.arrayContaining([
+      'CPU_METRIC_UNIT_NOT_PERCENTAGE',
+      'MEMORY_METRIC_UNIT_NOT_PERCENTAGE',
+    ]));
+  });
 });
 
 function summary(

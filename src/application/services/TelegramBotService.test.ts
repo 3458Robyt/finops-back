@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FinOpsAiService } from './FinOpsAiService.js';
 import type { ITelegramClient } from './TelegramClient.js';
 import { TelegramBotService } from './TelegramBotService.js';
+import { TelegramLinkService } from './TelegramLinkService.js';
 import { TelegramMessageFormatter } from './TelegramMessageFormatter.js';
 import type { SavingsReminderService } from './SavingsReminderService.js';
 import type { ICostAnalyticsRepository } from '../../domain/interfaces/ICostAnalyticsRepository.js';
@@ -10,6 +11,8 @@ import type {
   CreateOrUpdateTelegramLinkInput,
   CreateTelegramAuditEventInput,
   CreateTelegramInteractionLogInput,
+  CreateTelegramSelfLinkCodeInput,
+  ConsumeTelegramSelfLinkCodeInput,
   ITelegramRepository,
 } from '../../domain/interfaces/ITelegramRepository.js';
 import type { TelegramChatLink, TelegramInteractionLog, TelegramLinkedUser } from '../../domain/models/Telegram.js';
@@ -32,6 +35,23 @@ describe('TelegramBotService', () => {
     expect(fixture.client.messages[0]?.text).toContain('Chat ID: 12345');
     expect(fixture.client.messages[0]?.text).not.toContain('Costo total');
     expect(fixture.repository.logs[0]?.status).toBe('IGNORED');
+  });
+
+  it('consumes a self-link code before exposing the linked bot commands', async () => {
+    const fixture = createFixture();
+    fixture.repository.selfLink = buildLink({ chatId: '12345' });
+
+    await fixture.service.handleUpdate({
+      message: {
+        chat: { id: 12345 },
+        from: { id: 77, username: 'david' },
+        text: '/start one-time-code',
+      },
+    });
+
+    expect(fixture.client.messages[0]?.text).toContain('quedó vinculada correctamente');
+    expect(fixture.repository.logs[0]?.status).toBe('PROCESSED');
+    expect(fixture.repository.logs[0]?.metadata).toEqual({ reason: 'self_link_consumed' });
   });
 
   it('routes linked free text to the FinOps AI service with the linked tenant and user', async () => {
@@ -95,11 +115,63 @@ describe('TelegramBotService', () => {
     expect(fixture.client.messages[0]?.text).toContain('no esta vinculado');
     expect(fixture.repository.logs[0]?.status).toBe('IGNORED');
   });
+
+  it('processes a persisted private update and completes its lease', async () => {
+    const fixture = createFixture();
+    fixture.repository.activeLink = buildLink();
+    fixture.repository.queuedUpdate = {
+      id: 'inbound-1',
+      updateId: '10',
+      payload: { message: { chat: { id: 'chat-1', type: 'private' }, text: '/costos' } },
+      status: 'PROCESSING',
+      attemptCount: 1,
+      maxAttempts: 3,
+      nextAttemptAt: new Date('2026-08-31T00:00:00.000Z'),
+    };
+
+    const result = await fixture.service.processNextQueuedUpdate({ workerId: 'telegram-inbound-1', leaseMs: 30_000, retryBackoffMs: 1_000 });
+
+    expect(result).toEqual({ processed: true, status: 'PROCESSED' });
+    expect(fixture.repository.completedUpdate).toMatchObject({ id: 'inbound-1', workerId: 'telegram-inbound-1', status: 'PROCESSED' });
+  });
+
+  it('requeues provider failures without sending a duplicate fallback reply', async () => {
+    const fixture = createFixture();
+    fixture.aiFailure.value = new Error('provider unavailable');
+    fixture.repository.activeLink = buildLink();
+    fixture.repository.queuedUpdate = {
+      id: 'inbound-2',
+      updateId: '11',
+      payload: { message: { chat: { id: 'chat-1', type: 'private' }, text: 'Consulta el costo' } },
+      status: 'PROCESSING',
+      attemptCount: 1,
+      maxAttempts: 3,
+      nextAttemptAt: new Date('2026-08-31T00:00:00.000Z'),
+    };
+
+    const result = await fixture.service.processNextQueuedUpdate({ workerId: 'telegram-inbound-1', leaseMs: 30_000, retryBackoffMs: 1_000 });
+
+    expect(result).toEqual({ processed: true, status: 'PENDING' });
+    expect(fixture.repository.completedUpdate).toMatchObject({ id: 'inbound-2', workerId: 'telegram-inbound-1', status: 'PENDING' });
+    expect(fixture.client.messages).toHaveLength(0);
+    expect(fixture.repository.logs[0]?.status).toBe('ERROR');
+  });
 });
 
 class FakeTelegramRepository implements ITelegramRepository {
   public activeLink: TelegramChatLink | null = null;
+  public selfLink: TelegramChatLink | null = null;
   public logs: TelegramInteractionLog[] = [];
+  public queuedUpdate: {
+    readonly id: string;
+    readonly updateId: string;
+    readonly payload: unknown;
+    readonly status: 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+    readonly attemptCount: number;
+    readonly maxAttempts: number;
+    readonly nextAttemptAt: Date;
+  } | null = null;
+  public completedUpdate: { readonly id: string; readonly workerId: string; readonly status: 'PENDING' | 'PROCESSED' | 'FAILED' } | null = null;
 
   public async findUserByEmailInTenant(_tenantId: string, _email: string): Promise<TelegramLinkedUser | null> {
     return null;
@@ -121,8 +193,20 @@ class FakeTelegramRepository implements ITelegramRepository {
     return this.activeLink;
   }
 
+  public async findActiveLinkByUserId(_userId: string): Promise<TelegramChatLink | null> {
+    return this.activeLink;
+  }
+
   public async createOrUpdateLink(_input: CreateOrUpdateTelegramLinkInput): Promise<TelegramChatLink> {
     throw new Error('Not used');
+  }
+
+  public async createSelfLinkCode(_input: CreateTelegramSelfLinkCodeInput): Promise<void> {
+    return undefined;
+  }
+
+  public async consumeSelfLinkCode(_input: ConsumeTelegramSelfLinkCodeInput): Promise<TelegramChatLink | null> {
+    return this.selfLink;
   }
 
   public async disableLink(_tenantId: string, _id: string): Promise<TelegramChatLink | null> {
@@ -151,6 +235,27 @@ class FakeTelegramRepository implements ITelegramRepository {
   public async createAuditEvent(_input: CreateTelegramAuditEventInput): Promise<void> {
     return undefined;
   }
+
+  public async findTenantOptionsForUser(_userId: string, activeTenantId: string) {
+    return [{ id: activeTenantId, name: 'Tenant de prueba', slug: 'tenant-prueba', isActive: true }];
+  }
+
+  public async setActiveTenantForChat(_input: { readonly chatId: string; readonly userId: string; readonly tenantId: string }): Promise<TelegramChatLink | null> {
+    return this.activeLink;
+  }
+
+  public async enqueueInboundUpdate(_input: { readonly updateId: string; readonly payload: unknown }): Promise<'ENQUEUED' | 'DUPLICATE'> {
+    return 'ENQUEUED';
+  }
+
+  public async claimNextInboundUpdate(_input: { readonly workerId: string; readonly leaseExpiredBefore: Date }) {
+    return this.queuedUpdate;
+  }
+
+  public async completeInboundUpdate(input: { readonly id: string; readonly workerId: string; readonly status: 'PENDING' | 'PROCESSED' | 'FAILED'; readonly errorMessage?: string; readonly nextAttemptAt?: Date }) {
+    this.completedUpdate = { id: input.id, workerId: input.workerId, status: input.status };
+    return null;
+  }
 }
 
 class FakeTelegramClient implements ITelegramClient {
@@ -165,6 +270,7 @@ function createFixture(): {
   readonly repository: FakeTelegramRepository;
   readonly client: FakeTelegramClient;
   readonly service: TelegramBotService;
+  readonly aiFailure: { value: Error | undefined };
   readonly aiCalls: { readonly tenantId: string; readonly userId?: string; readonly message: string }[];
   readonly reminderCalls: { readonly tenantId: string; readonly userId: string }[];
 } {
@@ -172,9 +278,11 @@ function createFixture(): {
   const client = new FakeTelegramClient();
   const aiCalls: { readonly tenantId: string; readonly userId?: string; readonly message: string }[] = [];
   const reminderCalls: { readonly tenantId: string; readonly userId: string }[] = [];
+  const aiFailure: { value: Error | undefined } = { value: undefined };
 
   const aiService = {
     answerChat: async (input: { readonly tenantId: string; readonly userId?: string; readonly message: string }) => {
+      if (aiFailure.value !== undefined) throw aiFailure.value;
       aiCalls.push(input);
       return {
         answer: 'Respuesta IA en espanol',
@@ -226,6 +334,7 @@ function createFixture(): {
     client,
     aiCalls,
     reminderCalls,
+    aiFailure,
     service: new TelegramBotService(
       repository,
       client,
@@ -235,6 +344,7 @@ function createFixture(): {
       recommendationRepository,
       analyticsRepository,
       'finops_bot',
+      new TelegramLinkService(repository, client),
     ),
   };
 }

@@ -1,9 +1,1089 @@
 # Progreso — FinOps Inteligente (Backend)
 
-> **Estado vigente 2026-08-03:** las entradas inferiores son bitácora histórica. La beta se integró en
-> `main` mediante PR #19 frontend y PR #16 backend; los canaries SEC-001 y AI-001 están cerrados
-> técnicamente. Los bloqueos externos AWS-001/OCI-001 y la activación productiva permanente permanecen
-> abiertos o diferidos según `docs/DEUDA_TECNICA.md`.
+### 2026-09-02 — Evidencia visual actualizada y diagramas draw.io editables
+
+- Se levantó la beta local y se capturaron **18 pantallas actuales** con Playwright, cubriendo autenticación, panel, consola técnica, oportunidades, IA, ingesta, métricas, inventario, presupuestos, asignación, valor realizado, mensajería, seguridad y administración MSP.
+- Las capturas seleccionadas se conservaron en `docs/resultados_a_la_fecha/capturas_actuales/` junto con un catálogo de módulos, contexto de tenant y pasos de reproducción. La evidencia de métricas utiliza `Tak 2.0` con datos de `CpuUtilization`, cobertura y serie temporal renderizada con uPlot.
+- Se instaló y utilizó `Agents365-ai/drawio-skill` desde `C:\Users\DAVID\.agents\skills\drawio-skill`. Se generaron cuatro diagramas técnicos con Diagram IR, archivos `.drawio` editables, fuentes `.ir.json` y exportaciones `.svg`/`.png` en `docs/resultados_a_la_fecha/figuras/`.
+- El validador de la skill confirmó los cuatro diagramas con `0 error(s), 0 warning(s)` y sin cruces ni solapamientos geométricos. La validación y el inventario de archivos quedaron documentados junto a las figuras.
+- Se actualizó `docs/RESULTADOS_A_LA_FECHA.md` para reemplazar la evidencia visual histórica por las figuras actuales y las cuatro representaciones técnicas nuevas. Los diagramas Mermaid anteriores se conservan como antecedente, no como fuente autoritativa.
+- Limitación del entorno: no está instalado el ejecutable de escritorio de draw.io ni Graphviz; por ello la salida editable fue validada con la skill y las salidas SVG/PNG se generaron desde la misma especificación reproducible.
+
+### 2026-09-02 — Documento académico de resultados parciales
+
+- Se creó `docs/RESULTADOS_A_LA_FECHA.md` para sustentar el Criterio 4 del proyecto de grado.
+- El documento relaciona resultados con la metodología híbrida, objetivos funcionales, arquitectura, ingesta FOCUS/OCI, métricas técnicas, IA gobernada, gobernanza, seguridad y pruebas.
+- Se incorporaron dos diagramas propios en SVG/PNG con fuentes Mermaid y seis capturas reales de la aplicación local, conservando la fecha de captura y separándola del corte cuantitativo.
+- El corte cuantitativo usa consultas de solo lectura sobre `finops_local` al 2026-09-02: 167.624 costos normalizados, 2.307.078 muestras crudas y 3.378.792 rollups.
+- Se documentaron como limitaciones AWS real, operación manual durante desarrollo, validación periódica del proveedor IA, cobertura de linkage y operación productiva 24/7.
+
+### 2026-09-01 — Moneda explícita y generación manual no bloqueante
+
+- Se auditó la fuente de costos de `Tak 2.0`: sus registros FOCUS están almacenados
+  con `billing_currency = COP`; el costo unitario se deriva de
+  `billed_cost / consumed_quantity`. No se aplicó una conversión adicional para
+  evitar doble conversión. La Consola técnica ahora muestra el código ISO (`COP`,
+  `USD`, etc.) y conserva precisión suficiente para precios unitarios.
+- La evidencia de insights de consumo ahora expone la moneda y la fórmula usada,
+  dejando claro que el valor es nativo de FOCUS y no necesariamente USD.
+- La vista previa de readiness para generar recomendaciones dejó de bloquear la
+  carga del módulo y el botón manual. La cola se puede iniciar aunque la vista
+  previa sea lenta o temporalmente no disponible; el worker vuelve a validar la
+  evidencia antes de llamar a la IA. Se agregaron timeouts diferenciados: 60 s
+  para preview y 10 s para encolar.
+- Verificación inicial: `POST /api/v1/ai/analysis-runs` respondió `202` en ~241 ms
+  con la corrida persistida en `PENDING`; el API local permanece separado del
+  worker, por lo que el procesamiento requiere iniciar el proceso worker.
+- Se estabilizó la fixture del proveedor OCI que dependía de una fecha histórica
+  fija y empezó a fallar al superar la retención de 90 días; el reloj se fija
+  únicamente dentro de esa prueba. La suite unitaria completa queda en **545
+  pruebas aprobadas, 11 omitidas**.
+
+### 2026-08-31 — Mensajería durable por Telegram y correo SMTP
+
+- Se consolidó un bot Telegram global de chats privados. El webhook valida su
+  secreto y responde `202` después de encolar el `update_id`; un worker con
+  lease, deduplicación y reintentos procesa comandos y permite cambiar de tenant
+  únicamente a técnicos con asignaciones activas.
+- Se añadieron preferencias persistentes por usuario, módulo `Mensajería`,
+  auto-vinculación desde `Perfil`, historial de entregas y verificación segura
+  de SMTP y del bot mediante `getMe`.
+- Las notificaciones se almacenan como outbox `PENDING` y un scheduler las
+  entrega por SMTP/Telegram con límites, pool, timeout, reintentos y estados
+  sanitizados. Invitaciones y recuperación de contraseña conservan el envío
+  directo porque contienen tokens efímeros.
+- Se aplicaron localmente las migraciones `202608310001_messaging_channels_v2`
+  y `202608310002_messaging_preferences_worker_rls`; Supabase permanece
+  read-only y no fue modificado.
+- Verificación: **126 archivos unitarios aprobados, 545 pruebas aprobadas y 11
+  omitidas**, typecheck, build, arquitectura (414 archivos/1 excepción),
+  release hygiene y build frontend aprobados.
+
+### 2026-08-29 — Optimización de lecturas técnicas, toolchain y verificación de migraciones
+
+- Las consultas de cobertura dejaron de lanzar tres barridos independientes de
+  `resource_metric_samples`: resumen, métricas y días se calculan desde una
+  relación filtrada materializada. El catálogo de estadísticas combina raw y
+  rollups para no ocultar métricas durante una reconstrucción parcial.
+- Las respuestas de lectura técnica tienen cache privado corto; uPlot conserva
+  tooltip externo con valores exactos y etiquetas de recursos calculadas una sola
+  vez. No se reducen granularidades ni se descarta información raw.
+- Se separaron los mappers de corridas de análisis para cumplir la compuerta de
+  arquitectura. Los runners E2E ahora validan la migración vigente
+  `202608310002_messaging_preferences_worker_rls`.
+- Se agregó una limpieza de artefactos de desarrollo en dry-run por defecto y se
+  verificó localmente con 0 jobs y 0 schemas coincidentes; no se modificó ninguna
+  base remota.
+- El paquete OCI paraguas no está en uso. Los cinco arranques fríos del módulo
+  OCI específico registraron mediana ~2,3 s y peor proceso 4,2 s.
+- Verificación: **537/548 pruebas unitarias** con 11 omitidas, IA offline 25/25,
+  arquitectura 405 archivos, integración PostgreSQL aislada 10 archivos/17
+  pruebas, E2E completo con fixtures **13/13** (incluido cambio de tenant),
+  audit de producción 0 vulnerabilidades y frontend typecheck/lint/build/bundle
+  aprobados.
+
+### 2026-08-29 — Estabilización P0/P1, gobernanza IA y preparación AWS
+
+- La ingesta ahora reconcilia leases vencidos dentro del claim y desde la
+  consola de administración: reencola trabajos recuperables, cierra intentos
+  agotados y respeta cancelaciones. El proceso local de desarrollo inicia los
+  workers IA/proyección de forma explícita, mientras la ingesta cloud continúa
+  siendo opt-in.
+- La auditoría IA dejó de aceptar únicamente el texto APPROVED: exige score
+  mínimo 80, checks completos sin fallos y cero bloqueadores/cambios requeridos
+  para recomendaciones y planes. El botón de generación en Dashboard y
+  Consola usa readiness y corridas durables.
+- AWS quedó preparado sin simular acceso real: STS/External ID, regiones,
+  inventario EC2/EBS con tags, discovery y paginación CloudWatch, Cost Explorer,
+  FOCUS S3 con manifiestos y destrucción de clientes SDK. El canary real sigue
+  bloqueado hasta tener una cuenta autorizada.
+- Se agregó una suite Playwright real de solo lectura, separada de fixtures,
+  con cuatro resoluciones, guardia contra mutaciones y filtros técnicos. La
+  suite mock específica de análisis/chat terminó 8/8; la suite local general
+  terminó 10 aprobadas y 3 omitidas por fixtures ausentes.
+- Verificación final de código: backend test:all con 529 pruebas aprobadas y 11
+  omitidas, AI offline 25/25, arquitectura 403 archivos, release hygiene,
+  audit de producción, frontend build y bundle aprobados.
+
+### 2026-08-28 — Corrección de la leyenda y valores interactivos del histórico de costos
+
+- La leyenda nativa de uPlot ahora se monta en un contenedor externo dentro del
+  flujo normal del componente, en lugar de dibujarse dentro del área fija de
+  la gráfica. Así conserva el valor dinámico del punto bajo el cursor sin
+  superponerse con los avisos y elementos posteriores de la tarjeta.
+- El espacio de la gráfica y la leyenda queda separado, la serie mantiene su
+  color real y la moneda seleccionada, y se conserva el cursor interactivo.
+- Se eliminó la leyenda duplicada del encabezado del dashboard. Verificación:
+  `npm run typecheck`, `npm run lint` y `npm run build` del frontend aprobados.
+
+### 2026-08-28 — Backfill FOCUS de 90 días completado localmente
+
+- Después de corregir el descubrimiento, se ejecutó un backfill real de costos
+  FOCUS para Tak 2.0 en PostgreSQL local, desde 2026-05-29 hasta 2026-08-27
+  (UTC). El job terminó en `SUCCESS` sin warnings: **785 objetos, 180.397
+  filas leídas, 146.361 filas nuevas persistidas y 794 llamadas a OCI**.
+- La ventana operativa quedó con **90 de 90 días con datos FOCUS**. El panel ya
+  no debería mostrar 85 periodos faltantes cuando el backend apunta a la base
+  local y se recarga la sesión.
+- El total local de Tak 2.0 quedó en **148.916 filas FOCUS** hasta el 26 de
+  agosto de 2026. **67.179** costos no pudieron vincularse a un recurso del
+  inventario (`INVENTORY_RESOURCE_NOT_FOUND`), pero sí se conservaron para el
+  análisis financiero; esto es una deuda de inventario, no un fallo de descarga.
+- El backend activo fue reiniciado con `scripts/local/run-local.ps1 -Mode dev`
+  y quedó conectado a `127.0.0.1:5433/finops_local`. Supabase no fue
+  modificado; sus migraciones siguen pendientes.
+
+### 2026-08-28 — Corrección de descubrimiento de reportes FOCUS OCI
+
+- Se reprodujo el problema contra la conexión OCI empresarial: Object Storage
+  sí contiene **8.909 objetos FOCUS `.csv.gz`**, con datos hasta el 26 de agosto
+  de 2026. El proveedor devolvía únicamente los primeros 1.000 objetos, que
+  eran los más antiguos, por lo que una ventana reciente terminaba sin objetos
+  FOCUS y caía silenciosamente a OCI Usage API.
+- El descubrimiento ahora filtra la fecha del objeto contra la ventana del job
+  durante la paginación, continúa después de las páginas históricas y aumenta
+  el límite seguro por ubicación a 10.000 objetos. También acepta nombres de
+  campos OCI con guiones (`namespace-name`, `bucket-name`, `object-name`) y sus
+  equivalentes camelCase.
+- Canary real de solo lectura después del cambio: para 2026-08-25 se
+  descubrieron **9 objetos y 1.845 filas FOCUS**, en dos lotes, sin warnings.
+  No se descargaron secretos ni se expusieron credenciales. Luego se ejecutó
+  una prueba end-to-end en PostgreSQL local con una ventana 2026-08-25..27:
+  job exitoso, **11 objetos, 2.346 filas leídas, 1.953 filas FOCUS y métricas
+  de costo insertadas**, 20 llamadas y cero warnings.
+- El primer intento de crear ese job usando directamente el `DATABASE_URL`
+  del entorno (Supabase) falló con `P2022: projection_status ... does not
+  exist`, porque allí siguen pendientes las migraciones de cobertura/proyección.
+  El entorno local reproducible está actualizado y la prueba se realizó allí;
+  no se aplicaron migraciones ni se modificó Supabase en esta sesión.
+- Verificación del cambio: suite unitaria **120 archivos, 517 pruebas
+  aprobadas y 11 omitidas**, typecheck, build y arquitectura **399/399**
+  aprobados.
+
+### 2026-08-28 — Corrección responsive y legibilidad de métricas técnicas
+
+- La gráfica técnica ya no usa la leyenda nativa de uPlot. Se añadió una
+  leyenda compacta/expandible con búsqueda, nombres reales de recursos y acceso
+  al identificador completo mediante tooltip; el contenedor del gráfico dejó de
+  tener una altura fija que provocaba solapamientos.
+- El overview de métricas resuelve `cloud_resources` por identidad exacta y no
+  depende del límite de 200 recursos. Las filas históricas sin ID canónico solo
+  reutilizan el inventario cuando el identificador externo es único.
+- La navegación global ahora usa rail/barra adaptable, scroll interno de
+  módulos y menú ``Más`` en móvil. El chat limita el desplazamiento al historial
+  y mantiene el compositor en la parte inferior.
+- Pruebas del corte: backend **120 archivos, 517 pruebas aprobadas y 11
+  omitidas**; frontend typecheck/lint/build/arquitectura aprobados; E2E
+  fixture-based responsive, chat y leyenda **7/7**.
+
+### 2026-08-28 — Consolidación del cierre técnico de la beta
+
+- Se verificó el estado local de PostgreSQL 17 con migraciones hasta
+  `202608280007_restore_auth_cleanup_refresh_visibility`. La migración final
+  restaura la visibilidad interna que el worker de limpieza necesita para no
+  borrar sesiones expiradas que todavía tienen refresh tokens vigentes.
+- La suite PostgreSQL aislada pasó completa: **10 archivos, 17 pruebas, cleanup
+  de autenticación y heartbeat**, con schema temporal eliminado en `finally`.
+  También se corrigió el runner para que Prisma use el schema efímero y
+  `timezone=UTC`; antes los fixtures se creaban en `public` o desplazaban las
+  fechas por la zona horaria local.
+- La verificación local vigente reporta **2.123.297 muestras raw**, **3.105.765
+  rollups**, 36 recursos, 108 métricas, 11 namespaces y cuatro estadísticas
+  (`MEAN`, `MIN`, `MAX`, `P95`) para Tak 2.0. En 2026-05-30..2026-08-30 hay
+  44.304 ventanas `COVERED`, 16.157 `PARTIAL` y 71.593 `NO_DATA`; el backfill
+  no se declara completo.
+- El corte previo a la corrección todavía mostraba solo las 602 filas FOCUS
+  históricas de 2024 y 711 costos `PROVIDER_API` en COP; la causa era el límite
+  de descubrimiento de 1.000 objetos, no la ausencia de reportes en OCI. La
+  prueba end-to-end posterior quedó registrada en la entrada FOCUS superior.
+- Seguridad y calidad: 20 helpers FinOps sin grants a roles API ni `search_path`
+  inseguro, `npm audit --omit=dev --audit-level=high` sin vulnerabilidades,
+  arquitectura 399/1 excepción, suite unitaria 517 aprobadas y 11 omitidas;
+  frontend typecheck/lint/build aprobados.
+- Supabase sigue read-only, por lo que las migraciones locales 202608280001–007
+  están pendientes allí. AWS real y OCI Usage API siguen bloqueados por
+  dependencias externas; el trabajo 24/7 se mantiene diferido durante el
+  desarrollo manual.
+- El canary IA live se reintentó de forma aislada el 2026-08-28 con
+  `persist=false`; el proveedor respondió HTTP 503 en `/ai/chat`. El schema y
+  los fixtures se eliminaron en `finally`, no se expuso la clave y `AI-001`
+  queda bloqueado hasta que el proveedor vuelva a estar disponible.
+- Los PR de backend y frontend quedaron publicados en `feat/shared-cost-allocation`
+  y sus workflows CI terminaron en verde. Se corrigió el build de contenedor del
+  backend para Prisma sin secretos y el build del frontend para no depender de
+  Git dentro de la imagen.
+
+> Las entradas fechadas a continuación son bitácora histórica. No sustituyen
+> este corte vigente ni el estado autoritativo en `docs/ESTADO_ACTUAL_FINOPS.md`.
+
+### 2026-08-24 — Corrección de cobertura técnica y normalización monetaria
+
+- El backfill de `Tak 2.0` continúa ejecutándose en PostgreSQL local con ventanas
+  oldest-first de seis horas, cuatro jobs concurrentes, persistencia acotada y
+  reintentos de hasta tres intentos. En el corte de esta actualización hay
+  **1.298.248 muestras**, **63 días con datos** y cobertura temporal entre el 21 de
+  mayo y el 18 de agosto de 2026; todavía existen jobs técnicos activos, por lo
+  que no se declara completado el rango de 90 días.
+- Las muestras ya conservan las estadísticas OCI por separado: **325.011 MEAN,
+  325.011 MIN, 324.844 MAX y 324.555 P95**. Los días posteriores al 18 de agosto
+  permanecen sin evidencia del proveedor o siguen esperando sus ventanas de
+  ingesta; se mantienen como gaps explícitos, no como ceros inventados.
+- La ingesta trata `Server is busy at this moment` y respuestas 5xx/transitorias
+  como reintentables. El scheduler usa `maxAttempts=3`, evita reencolar ventanas
+  confirmadas como `NO_DATA` y conserva el progreso por job/parte. Las ventanas
+  fallidas con hash de configuración obsoleto se reencolan y el worker las reclama
+  por `target_start` oldest-first para no dejar gaps históricos detrás de jobs nuevos.
+- El historial de costos ahora agrupa por moneda nativa, convierte a la moneda de
+  reporte del tenant mediante tasas TRM persistidas y muestra periodos ausentes o
+  sin tasa como cortes/advertencias. No se suman nominalmente COP y USD.
+- En el corte local hay **2.819 MB** de base; Tak 2.0 tiene costos en COP y la
+  cuenta personal en USD. La réplica local es la fuente de desarrollo; Supabase no
+  fue modificada en este trabajo.
+- Verificación: frontend `npm run build` y bundle fitness pasaron; backend
+  `npm run test:all` pasó con **119 archivos, 508 pruebas y 11 omitidas**.
+
+### 2026-08-23 — PostgreSQL local y operación durable de ingesta
+
+- Se creó un entorno PostgreSQL 17 nativo en `127.0.0.1:5433/finops_local` para
+  desarrollo. Docker/virtualización no están disponibles en esta estación, por
+  lo que se dejó un script reproducible de arranque/parada en
+  `scripts/local/start-postgres17.ps1`; Supabase no se modifica y conserva el
+  origen de clonación y rollback.
+- Se clonó el esquema `public` y los datos de aplicación desde Supabase a una
+  instantánea inmutable con SHA-256. El clon conserva 8 tenants, 10 conexiones,
+  737.609 muestras técnicas y 9.762 filas FOCUS heredadas. Los jobs heredados
+  `PENDING/RUNNING` se archivaron como `CANCELLED` para no reanudar leases
+  antiguos; no se eliminaron datos de negocio.
+- El clon aplica automáticamente las migraciones Prisma pendientes después de
+  restaurar el dump. La migración `202608230001_ingestion_coverage_and_parts`
+  agrega partes de job, segmentos de cobertura y procedencia por job para
+  métricas, objetos y filas FOCUS, con RLS e índices tenant-scoped.
+- La ingesta técnica OCI ahora transmite lotes acotados, conserva MEAN/MIN/MAX/P95,
+  actualiza el progreso por parte y evita cargar todo el periodo en memoria. El
+  scheduler usa un advisory lock transaccional para impedir duplicados y permite
+  recuperar hasta 90 días mediante `INGESTION_SCHEDULER_METRIC_CATCHUP_DAYS`.
+- Se habilitó la operación local coordinada con `npm run dev:local`: backend,
+  scheduler y worker se ejecutan mientras la aplicación está abierta; el worker
+  usa concurrencia configurable y los jobs dejan cobertura, muestras vinculadas
+  y metadatos de origen verificables.
+- Verificación real local: la cuenta personal OCI procesó una ventana con 44
+  llamadas, 44 muestras y las cuatro estadísticas nativas; no quedaron jobs
+  `PENDING/RUNNING`. La conexión personal conserva 183.561 muestras entre el 4
+  de mayo y el 23 de agosto de 2026.
+- Límite conocido: la cuenta personal no tiene capacidad `COSTS` autorizada y no
+  se descubrieron objetos FOCUS actuales en su ventana, por lo que la facturación
+  permanece `PARTIAL`; no se declara que los reportes FOCUS estén completos.
+- Evidencia técnica: `npm run typecheck`, `npm run test:unit`, `npm run build`,
+  `npm run check:architecture`, `npm run check:release-hygiene`, build del
+  frontend y canary local de RLS pasaron. El runbook operativo está en
+  `docs/OPERACION_POSTGRES_LOCAL_INGESTA.md`.
+
+### 2026-08-19 — Ingesta OCI/FOCUS y métricas técnicas enterprise
+
+- Se consolidó la consulta de OCI Monitoring por tenancy: las definiciones confirmadas
+  de varios compartimentos se consultan con `compartmentIdInSubtree=true` y solo se
+  divide por compartimento cuando OCI devuelve una denegación compatible con fallback.
+- El rate limiter de Monitoring ahora usa un bucket único por tenancy, compartido por
+  descubrimiento y backfill, para que la concurrencia de jobs/regiones no multiplique la
+  tasa contra OCI.
+- FOCUS se autodetecta en el almacenamiento administrado por OCI (`bling`, tenancy y
+  `FOCUS Reports`), filtra objetos y filas por la ventana pedida antes de persistir y
+  cae a OCI Usage API en `AUTO` cuando no existe un reporte para ese periodo. Nunca se
+  suman ambas fuentes.
+- La validación OCI quedó paralela y cancelable con deadline; el cliente Usage API usa
+  una configuración de circuit breaker compatible con el SDK generado. El canary
+  controlado de Tak 2.0 reporta disponibles Identity, Inventory, Costs, Metrics y
+  Storage.
+- Corte real de Supabase Tak 2.0: 994 recursos normalizados, 663 definiciones (296
+  confirmadas), 82.400 muestras (20.600 MEAN/MIN/MAX/P95), 1.324 resúmenes, 602 líneas
+  FOCUS y 621 costos de Usage API. Dos jobs concurrentes procesaron 19.776 muestras
+  cada uno con 776 llamadas y 100 % de enlace a recursos.
+- Se dejó documentado que el backfill empresarial aún conserva 129 jobs técnicos
+  `PENDING` y que la persistencia remota continúa como deuda de rendimiento.
+- Verificación: `npm run test:all` aprobó 116 archivos, 495 pruebas y 11 omitidas;
+  IA offline 25/25, frontend build/release hygiene y `graphify update .` aprobados.
+
+### 2026-08-17 — Bloqueo externo confirmado en OCI empresarial
+
+- Se revalidó en modo read-only la conexión `Tak 2` del tenant `TAK Colombia`
+  usando el mismo backend y proveedor OCI que ya validan correctamente la
+  cuenta personal. OCI continúa rechazando la firma HTTP antes de consultar
+  inventario, costos, métricas o Storage.
+- La conexión empresarial conserva únicamente la candidata anterior en estado
+  `INVALID/REJECTED`; no se persistió una nueva API key. Reintentar la misma
+  candidata no puede corregir el problema.
+- Diagnóstico: bloqueo externo de autenticación OCI, no un fallo del parser ni
+  del backend. Debe verificarse en el usuario empresarial exacto la pareja de
+  clave pública/fingerprint, User OCID, Tenancy OCID y región. La ausencia de
+  policies produciría un rechazo posterior de autorización, no este rechazo de
+  firma.
+- Acción requerida: crear o registrar una API signing key en el mismo usuario
+  OCI empresarial, comparar el fingerprint mostrado por OCI con el que muestra
+  FinOps y guardar el nuevo `.pem` en la conexión. No compartir la clave
+  privada; si el fingerprint cambia, FinOps creará una candidata nueva y la
+  validará sin desplazar la credencial anterior.
+
+### 2026-08-17 — Alta OCI personal estabilizada y Usage API verificada
+
+- Se comprobó sin exponer el secreto que el fingerprint derivado por FinOps
+  coincide exactamente con el `.pem` recién descargado. La primera firma fue
+  rechazada de forma transitoria y el mismo candidato fue aceptado en el
+  reintento, quedando `ACTIVE/VERIFIED` sin volver a cargar la clave.
+- Las API keys OCI nuevas ahora conservan estado `PENDING/RETRYABLE_ERROR`
+  durante una ventana de propagación de cinco minutos. La UI reintenta en
+  segundo plano a los 10, 30 y 60 segundos; nunca promueve la credencial hasta
+  que OCI verifica la firma y las claves antiguas o incompatibles siguen
+  terminando como `INVALID` fuera de la ventana.
+- Se corrigió la validación y recolección de OCI Usage API con granularidad
+  `DAILY`: las fechas se normalizan a días UTC completos, evitando el error del
+  SDK por horas, minutos o fracciones distintas de cero.
+- Canary real read-only de la conexión personal: autenticación `VERIFIED`;
+  `IDENTITY`, `INVENTORY`, `COSTS` y `METRICS` en `AVAILABLE`; `STORAGE` en
+  `NOT_CONFIGURED`. No se ejecutó ingesta ni se expuso la clave.
+- Verificación: 113 archivos/477 pruebas backend aprobadas (11 omitidas),
+  typecheck y build backend; typecheck, lint, build y bundle fitness frontend.
+
+### 2026-08-16 — Cierre del onboarding OCI y validación de candidata empresarial
+
+- Se separó el almacenamiento cifrado de credenciales de la validación remota:
+  `POST /credentials` responde con la candidata `PENDING` y `nextAction=VALIDATE`;
+  la UI inicia la verificación en una segunda operación no bloqueante. Las
+  candidatas rechazadas permanecen `INVALID` sin desplazar la credencial activa.
+- Se corrigió la causa raíz del fallo de TAK Colombia: los métodos del repositorio
+  Prisma se invocaban sin su `this` concreto. El contrato ahora exige los métodos
+  de ciclo de vida y existe una regresión que prueba el binding real.
+- Se añadió fingerprint OCI derivado desde la clave pública, validación PEM/RSA
+  previa al cifrado, deduplicación de candidatas vivas y migración
+  `202608160004_cloud_credential_fingerprint_idempotency`, aplicada en Supabase.
+  Se reconciliaron cuatro fingerprints existentes sin registrar secretos.
+- La UI de onboarding tiene cuatro pasos, selector de archivo PEM/KEY, ayuda
+  contextual accesible por hover/foco/clic, errores con campo y acción segura y
+  controles de ingesta avanzada colapsados por defecto. Los primitives se
+  extrajeron para mantener el componente principal bajo el límite arquitectónico.
+- El canary OCI se corrigió para cargar `CREDENTIAL_ENCRYPTION_KEY` desde la
+  configuración tipada y omitir FOCUS cuando STORAGE no está disponible. La
+  validación live de la candidata empresarial se ejecutó en modo read-only para
+  OCI: el parsing/fingerprint fueron correctos, pero el proveedor rechazó la
+  autenticación; la candidata quedó `INVALID/REJECTED` y no hubo ingestas ni
+  cambios en recursos cloud.
+- Verificación: Supabase tiene 74 migraciones aplicadas y Advisors de seguridad
+  sin lints; backend 112 archivos/474 pruebas aprobadas (11 omitidas), typecheck,
+  build, arquitectura y release hygiene; frontend typecheck, lint, build, bundle
+  fitness y Playwright smoke aprobados. AWS sigue en standby.
+
+### 2026-08-16 — Ingesta OCI personal, estadísticas nativas y corrección de unicidad
+
+- Se desplegaron en Supabase `202608160002_oci_ingestion_configuration` y
+  `202608160003_drop_legacy_metric_unique`. El índice único legado que no incluía
+  `statistic` fue eliminado; la clave efectiva conserva por separado estadística y
+  granularidad.
+- Las 11 definiciones OCI de la conexión personal usan MEAN, MIN, MAX y P95. El
+  backfill de 90 días terminó sin trabajos `PENDING` o `RUNNING`: 56.427 muestras
+  MEAN y 37.210 de cada estadística nativa MIN/MAX/P95. Las estadísticas nativas
+  están disponibles desde 2026-05-18 y MEAN conserva histórico desde 2026-05-04.
+- OCI conserva métricas en una ventana móvil de aproximadamente 90 días. Las
+  futuras ventanas se alinean al límite de 30 minutos para evitar duplicados por
+  deriva de minutos. FOCUS sigue como fuente de costos; la capacidad directa
+  `COSTS` de OCI sigue denegada por IAM.
+- Verificación final: typecheck, 112 archivos de prueba (472 pasadas y 11 omitidas),
+  arquitectura y build backend; build frontend y actualización de Graphify aprobados.
+
+### 2026-08-14 — Migraciones Supabase, RLS y rendimiento
+
+- Se aplicaron mediante el MCP de Supabase las migraciones `202608140001` a
+  `202608140006`: estadísticas nativas, invitaciones de cliente,
+  auto-vinculación Telegram, correo de invitación, índices FK y optimización de
+  políticas RLS.
+- La verificación remota confirmó 19.427 muestras técnicas, tablas nuevas
+  vacías, índices FK presentes y Advisors de seguridad sin lints.
+- El Advisor de rendimiento quedó sin advertencias: se eliminaron los RLS
+  initplans por fila y la política permisiva redundante de refresh tokens. Los
+  117 avisos INFO de índices no usados se conservan hasta tener tráfico
+  representativo.
+- `npm run test:canary:runtime-rls` pasó con `finops_runtime`, dos tenants,
+  tablas nuevas visibles solo dentro del contexto y cero recomendaciones
+  cross-tenant.
+- `npx prisma migrate status` confirma que las 70 migraciones locales están
+  registradas como aplicadas en Supabase; el historial se alineó mediante
+  `migrate resolve` sin volver a ejecutar el SQL.
+
+### 2026-08-13 — Verificación vigente de clasificación y linaje OCI
+
+- El dry-run read-only de `npx tsx scripts/reconcile-resource-links.ts --batch-size=1000` confirmó que el backfill es idempotente: no hubo candidatos ni actualizaciones nuevas.
+- En la cuenta OCI con datos operativos se mantienen 8.173/8.173 costos elegibles enlazados exactamente: 36 recursos vivos y 8.137 referencias históricas. Los 555 identificadores de telemetría no facturables se clasifican como `INVENTORY_RESOURCE_NOT_FOUND` y los 432 registros sin conexión como `CONNECTION_NOT_AVAILABLE`; no se presentan como fallos de enlace elegible.
+- Las 19.427 muestras técnicas examinadas permanecen enlazadas. La clasificación conserva todos los costos financieros y no usa fuzzy matching.
+
+### 2026-08-13 — Revalidación PostgreSQL aislada y corrección de fixture cross-tenant
+
+- La primera revalidación de `npm run test:integration:isolated` encontró una violación correcta del guard de tenant en
+  `recommendation_analysis_runs`: el fixture seleccionaba un usuario con `findFirst` sin filtrar rol y podía usar un
+  `VIEWER` para reintentar un flujo cross-tenant.
+- Se restringió el fixture al usuario `MASTER_ADMIN`. La corrida posterior pasó 10 archivos/17 pruebas, auth cleanup,
+  heartbeat/readiness y limpieza final; no quedaron schemas `finops_e2e_*` residuales.
+- La suite remota tarda varios minutos por Supabase; se conserva el límite ampliado y se evita paralelizar operaciones
+  destructivas contra schemas de prueba.
+
+### 2026-08-13 — Revalidación del canary global y alineación de evidencia IA
+
+- Se reconstruyó `dist` antes de ejecutar el canary; así se evitó evaluar un runtime compilado con lógica anterior.
+- El canary comparativo aislado con `AI_CANARY_SCOPE=learning` autenticó contra un schema efímero y produjo 3/3
+  recomendaciones aprobadas en baseline y candidate, con ahorros no negativos. El score fue 92 para baseline y 90
+  para candidate, por lo que `evaluateGlobalLearningCanary` bloqueó la promoción por no demostrar mejora estricta.
+- Ninguna memoria GLOBAL se activó. El resultado es correcto y fail-closed; una respuesta válida pero peor no es evidencia
+  de aprendizaje exitoso. El reporte sanitizado quedó en `.test-artifacts/ai-audit/learning-2026-08-13T02-48-49-920Z.json`.
+- Se corrigió una inconsistencia entre readiness, normalización, rúbrica y auditor: un `SERVICE_COST_REVIEW` puede ser
+  `COST_ONLY` sin métricas técnicas únicamente si declara `reviewScope=FINANCIAL`, `financialReviewOnly=true`, revisión
+  manual y `operationalAuthorization=NONE`; las acciones técnicas continúan exigiendo validación técnica.
+- Se agregaron regresiones para la revisión financiera y el normalizador técnico. Typecheck, build y 33 pruebas dirigidas
+  de readiness/normalización/golden scenarios pasaron.
+
+### 2026-08-12 — Compuertas CI de release y cleanup
+
+- El workflow backend ejecuta explícitamente `npm run check:release-hygiene` antes de los checks de código y
+  elimina los fixtures de smoke mediante un paso `always()` contra el PostgreSQL efímero de Docker.
+- Esto evita que una ejecución CI deje credenciales temporales, tenants E2E o datos de prueba en el entorno de
+  integración; la base principal de Supabase no participa en ese flujo.
+- Al corte, las referencias Git locales muestran la rama backend 201 commits por delante de su upstream de feature
+  y 235 por delante de `origin/main`; frontend está 38/48 por delante. No se publica ni se abre PR hasta revisar y
+  autorizar esa acumulación, y los cambios locales del goal permanecen sin commit.
+- El workflow añadió builds de las imágenes Docker de backend y frontend; la estación local no tiene Docker CLI, por
+  lo que la aceptación de contenedores queda delegada a CI/destino operativo.
+
+### 2026-08-12 — Smoke API aislado y onboarding autenticado
+
+- Se añadió `npm run test:api:smoke:isolated`, un runner acotado que crea el schema `finops_e2e_api_*`, aplica las
+  64 migraciones, crea fixtures temporales, inicia el API con `DB_RUNTIME_ENFORCE=true` y deshabilita workers no
+  requeridos durante la prueba.
+- El smoke general pasó 35 verificaciones HTTP, incluyendo login, salud, costos, asignación, presupuestos,
+  recomendaciones, métricas, trazas, notificaciones, cambio de tenant y rechazo 401 sin autenticación.
+- El smoke de onboarding pasó lecturas operativas, 13 mutaciones denegadas al rol `VIEWER`, cambio de tenant del
+  `MASTER_ADMIN` para comprobar que el onboarding cross-tenant responde 404 y la inspección de que no se exponen
+  credenciales. El schema y el manifiesto con contraseña temporal se eliminaron en `finally`.
+
+### 2026-08-12 — Hardening final de grants API y despliegue Supabase
+
+- La verificación de privilegios posterior a `202608120006` y `202608120007` encontró que
+  `finops_login_tenant_id()` conservaba grants explícitos para `anon`, `authenticated` y `service_role`, y que
+  el guard de inmutabilidad podía conservar `PUBLIC` en schemas aislados. Se amplió la migración
+  `202608120008_revoke_login_tenant_api_grants` para revocar ambos casos y conservar solo `finops_runtime`.
+- La migración `202608120008` se aplicó en Supabase principal. `npx prisma migrate status` confirma 64/64 migraciones;
+  la consulta de ACL confirma cero grants de helpers `finops_*` a `PUBLIC`, `anon`, `authenticated` o `service_role`.
+  Los helpers críticos conservan ejecución para `finops_runtime`.
+- El runner aislado incorporó esta verificación de grants y la suite completa volvió a pasar: 10 archivos/17 pruebas,
+  auth cleanup, heartbeat/readiness, cleanup de schema y cero schemas E2E residuales.
+
+### 2026-08-12 — Suite PostgreSQL aislada completa y corrección de limpieza auth
+
+- Se añadió `npm run test:integration:isolated`: crea un schema efímero permitido, aplica las 64 migraciones
+  locales desde cero, ejecuta 10 archivos/17 pruebas PostgreSQL serialmente y después valida los runners de
+  limpieza auth y heartbeat/readiness. El schema `finops_e2e_suite_msqr8fcg` se eliminó en `finally` y la
+  inspección posterior confirmó cero schemas `finops_e2e_*` residuales.
+- La primera corrida expuso que la migración portable `202608120006` había reconstruido la policy de refresh
+  sin conservar la rama `finops_auth_cleanup_worker()` para `DELETE`; la migración `202608120007` restauró ese
+  permiso únicamente para tokens expirados. Auth cleanup pasó con `refreshTokens=1`, reset=1, MFA=1 y sesiones=1.
+- La batería PostgreSQL pasó completamente: `Test Files 10 passed`, `Tests 17 passed`; cost allocation verificó
+  10.000 costos y mantuvo el plan indexado. El runner especializado de heartbeat también pasó con RLS, readiness,
+  lease y transición a `STOPPED`.
+- La base principal de Supabase quedó con 64 migraciones aplicadas hasta `202608120008`; el head local y remoto
+  están alineados. No se ejecutaron pruebas destructivas contra datos de negocio.
+
+### 2026-08-12 — Canary live comparativo fail-closed y trazabilidad de aprendizaje
+
+- Se corrigió la visibilidad de memorias GLOBAL activas: ahora se seleccionan por alcance aunque el texto de consulta
+  no coincida en FTS; las memorias LOCAL conservan filtro tenant y búsqueda full-text. Se añadió regresión de
+  integración para excluir candidatos `SHADOW` y memorias LOCAL de otros tenants.
+- Las trazas de contexto ahora conservan referencias sanitizadas a `artifactIds`, `memoryIds`, `tenantRuleIds` y
+  conflictos. El endpoint de generación expone solo metadatos sanitizados de análisis (hash, conteos, tokens, modelo
+  y resumen del auditor), sin payloads ni secretos.
+- El canary comparativo aislado encontró y corrigió dos problemas de portabilidad del entorno: helpers de autenticación
+  que apuntaban a `public.*` y la política RLS de refresh pre-auth. La migración `202608120006_schema_portable_rls_helpers`
+  genera helpers calificados con el schema actual y permite crear el refresh únicamente para el usuario/tenant del login.
+- Se implementó `GlobalLearningPromotionService`: requiere `MASTER_ADMIN`, evidencia live comparativa estricta,
+  mejora no regresiva y un incremento de calidad; la promoción deja auditoría durable y el canary revierte el candidato.
+- La ejecución live del 2026-08-12 autenticó correctamente, pero el proveedor devolvió HTTP 422 en los dos brazos de
+  generación, con cero recomendaciones válidas. Esa corrida histórica no activó ninguna memoria GLOBAL; la revalidación
+  del 2026-08-13 está documentada al inicio de este archivo y mantiene `AI-008` abierto por falta de mejora estricta.
+- Verificación local posterior: `npm run test:all` pasó con 108 archivos, 447 pruebas pasadas y 11 omitidas; IA
+  offline 24/24, typecheck, build, arquitectura (359/1) y release hygiene (619) aprobados. El canary live se omite
+  por defecto y exige `AI_LIVE_TESTS=true`.
+- `npm run test:integration` ahora se abstiene con resultado explícito cuando no existen `TEST_DATABASE_URL` y
+  `ALLOW_DESTRUCTIVE_TEST_DATABASE=true`; con ambas variables ejecuta la batería contra la base aislada autorizada.
+
+### 2026-08-12 — Aprendizaje global en shadow y compuerta de promoción
+
+- Se corrigió el salto directo de patrones recurrentes a memorias GLOBAL activas. La memoria LOCAL auditada sigue
+  activa, pero el patrón transversal se persiste como candidato GLOBAL inactivo con `learningLifecycle=SHADOW`.
+- `learningPromotionEvaluator.ts` exige auditoría con score mínimo 90, al menos 5 eventos y 2 tenants, ausencia de
+  identificadores tenant-specific y todos los golden scenarios sin regresión. El resultado queda dentro del metadata
+  del candidato y el resumen expone `shadowMemories`.
+- Se añadió promoción explícita por `sourceLearningEventId`, inicialmente deshabilitada para nuevos candidatos hasta
+  completar el canary live comparativo. El resultado posterior y el bloqueo fail-closed quedan documentados en la
+  entrada más reciente de este archivo y en `AI-008`.
+- Backend `typecheck` y pruebas dirigidas de aprendizaje/promoción: 17/17 en la corrida focalizada; frontend lint/build:
+  aprobados.
+
+### 2026-08-12 — Runners de integración aislada acotados y revalidación PostgreSQL
+
+- Se centralizó la ejecución de `auth-cleanup`, `process-heartbeat`, `agent-quality`, `resource-lineage` y
+  `cost-allocation` en `scripts/testing/integrationRuntime.ts`: timeout de proceso configurable, timeout de
+  conexión/consulta, allowlist de schemas y cleanup garantizado en `finally`.
+- Una corrida que superó cinco minutos dejó un schema de prueba residual; se eliminó únicamente ese schema
+  permitido y las cinco integraciones se ejecutaron individualmente con resultado aprobado. La inspección final
+  confirmó cero schemas `finops_e2e_*` residuales.
+- Evidencia de esta revalidación: heartbeat `PASSED`, auth cleanup `PASSED`, agent quality 1/1, resource lineage
+  5/5 y cost allocation 3/3. El benchmark de asignación quedó documentado con preview 1.694,86 ms y cierre
+  8.712,79 ms en Supabase remoto; no se redefine el SLA representativo hasta contar con destino de despliegue.
+- El E2E completo se revalidó después de corregir la espera del selector de tenant: `test:e2e:full` pasó 7/7
+  escenarios contra 61 migraciones en un schema aislado de Supabase y eliminó sus dos tenants y el schema al finalizar.
+  La cobertura nueva `e2e/auth-lifecycle.spec.ts` verificó login, refresh rotativo, detección de reuse, cambio de tenant,
+  revocación individual/global, logout y recuperación de contraseña sin enumeración contra la API real.
+- El runner también elimina el manifiesto local de fixtures, que contiene la contraseña temporal, únicamente dentro
+  de `finops-backend/.test-artifacts`; la validación posterior confirmó que no quedó el archivo.
+
+### 2026-08-12 — Auditoría final local y reconciliación documental del runtime
+
+- Se revalidó el estado actual contra el goal y las cuatro fuentes autoritativas. Los repositorios quedaron
+  limpios en `feat/shared-cost-allocation`; no se hizo push, merge ni PR.
+- La validación vigente conserva 106 archivos de pruebas aprobados, 440 pruebas pasadas y 10 omitidas,
+  IA offline 24/24, arquitectura 358/1 excepción, release hygiene backend 617 y frontend 135.
+- Supabase reportó 61 migraciones aplicadas; `db:verify:quality-indexes`, integración de heartbeat/RLS,
+  typecheck, build, frontend lint/build y `npm audit --omit=dev --audit-level=high` pasaron.
+- Se corrigieron conteos obsoletos en `README.md`, `docs/DEUDA_TECNICA.md` y `docs/ESTADO_ACTUAL_FINOPS.md`.
+  Los snapshots fechados más antiguos permanecen como historia y no se interpretan como estado vigente.
+- El goal mantiene como abiertos, bloqueados o diferidos únicamente los elementos que requieren proveedores,
+  credenciales, IAM o destino de despliegue externo; no se fabricó evidencia para AWS, OCI Usage API ni mensajería.
+
+### 2026-08-12 — Roles de proceso granulares para operación separable
+
+- `APP_PROCESS_ROLE` ahora admite roles específicos para cada worker y
+  scheduler: ingesta, aprendizaje, análisis de recomendaciones, scheduler de
+  ingesta, análisis, reconciliación de valor, notificaciones y limpieza auth.
+- Se conserva la compatibilidad con `api`, `worker`, `scheduler` y `all`; una
+  resolución tipada de capacidades evita que un proceso granular arranque
+  responsabilidades ajenas.
+- Se añadieron pruebas para alias legacy, aislamiento de cada rol granular y
+  modo `all`, además de validación de configuración de desarrollo/producción.
+- La separación operativa queda implementada en el artefacto; el despliegue
+  24/7, alertas y rehearsal de recuperación siguen diferidos por falta de
+  destino productivo.
+- Los loops no solapables ahora registran `started`, `completed`, `failed`,
+  `skipped` y duración en Prometheus, etiquetados únicamente por rol de proceso
+  y resultado. Esto hace observable el backlog/atasco sin introducir IDs de alta
+  cardinalidad; el scheduler outbound usa el mismo mecanismo.
+
+### 2026-08-12 — Evaluación periódica de presupuestos opt-in
+
+- Se integró `budget-scheduler`, con actor técnico explícito, tenant scoping,
+  intervalo configurable y ejecución idempotente mediante el `BudgetService` ya
+  existente. Las alertas reutilizan la cola outbound y las notificaciones in-app.
+- Se añadieron `BUDGET_SCHEDULER_ENABLED`, `BUDGET_SCHEDULER_TENANT_ID`,
+  `BUDGET_SCHEDULER_USER_ID` y `BUDGET_SCHEDULER_INTERVAL_MS`; todas las
+  integraciones continúan apagadas por defecto durante desarrollo.
+- La activación permanente, alertas 24/7 y despliegue del scheduler siguen en
+  `OPS-002` diferido por falta de destino productivo.
+
+### 2026-08-12 — Readiness operativo, métricas de heartbeat y recuperación documentada
+
+- `GET /ready` dejó de comprobar únicamente la conexión de base: ahora devuelve
+  checks separados para base de datos, rol `finops_runtime`, migración esperada,
+  advisory lease, heartbeat fresco y disponibilidad opcional de IA. La IA sin
+  configuración no bloquea las capacidades determinísticas.
+- Se añadió `DB_EXPECTED_MIGRATION`, obligatorio en producción, para evitar que
+  una imagen incompatible reciba tráfico después de una migración futura. La
+  identidad de proceso se comparte entre heartbeat y readiness, y el heartbeat
+  exporta contadores/latencia sin etiquetas de alta cardinalidad.
+- `npm run test:integration:process-heartbeat` verifica ahora también readiness
+  contra migraciones desde cero, RLS runtime, lease y heartbeat. Se documentó el
+  runbook `docs/OPERACION_RECUPERACION.md`; el rehearsal productivo de backup y
+  restore queda diferido porque todavía no existe destino operativo autorizado.
+- La validación completa posterior pasó con 104 archivos de test aprobados, 4
+  omitidos, 433 pruebas pasadas y 10 omitidas; arquitectura 357/1 excepción y
+  release hygiene 616 rutas.
+
+### 2026-08-12 — Heartbeat durable de procesos y flags de runtime estrictos
+
+- Se añadió `ProcessHeartbeatService` con repositorio Prisma, tabla
+  `runtime_process_heartbeats` y migración `202608120005_runtime_process_heartbeats`.
+  Cada API/worker/scheduler registra su instancia al iniciar, renueva su liveness
+  con `PROCESS_HEARTBEAT_INTERVAL_MS`, marca `STOPPED` durante el shutdown y queda
+  stale si deja de renovar. La política RLS limita lectura/escritura al
+  `app.worker_id` propio; Supabase principal fue migrado y verificado sin grants
+  para `anon`, `authenticated` ni `service_role`.
+- La persistencia usa transacciones para que el contexto runtime se aplique de
+  forma consistente también en operaciones Prisma directas. La identidad combina
+  rol, instancia y PID para reutilizar la fila cuando el mismo proceso se reinicia.
+  El runner
+  `npm run test:integration:process-heartbeat` validó desde un schema aislado la
+  escritura del propietario, el aislamiento entre procesos y la transición a
+  `STOPPED`; la suite dirigida y typecheck pasan.
+- La validación de flags booleanos ahora rechaza valores ambiguos (`yes`, `1`,
+  vacíos, etc.) y mantiene semántica case-insensitive/trimmed en integraciones y
+  enforcement de producción. AWS, OCI Usage API, mensajería real y operación 24/7
+  siguen en sus estados externos/diferidos; no se simulan.
+
+### 2026-08-12 — Validación del slice de higiene auth
+
+- La suite vigente pasa con 102 archivos aprobados, 4 omitidos, 400 pruebas pasadas y
+  10 omitidas; arquitectura backend 352/1 excepción, typecheck, build e IA offline 24/24. El registro de higiene cubre 598 rutas backend y 134 frontend.
+
+### 2026-08-12 — Higiene acotada del ciclo de vida de autenticación
+
+- Se añadió `AuthLifecycleCleanupService` con repositorio Prisma bounded: solo elimina sesiones, refresh tokens,
+  tokens de recuperación y desafíos MFA cuyo `expiresAt` ya pasó; mantiene artefactos usados/revocados aún vigentes
+  para no perder detección de replay ni trazabilidad. La selección de sesiones usa `FOR UPDATE SKIP LOCKED` y
+  comprueba refresh tokens vigentes para evitar que una cascada elimine credenciales por una carrera concurrente.
+- El scheduler es opt-in (`AUTH_CLEANUP_SCHEDULER_ENABLED=false` en desarrollo) y utiliza el contexto RLS exacto
+  `finops-maintenance:auth-lifecycle`. Las migraciones `202608120002`, `202608120003` y `202608120004`
+  restringen la función, acotan el worker a filas expiradas, agregan índices por `expires_at` y revocan explícitamente
+  ejecución a `anon`, `authenticated` y `service_role`.
+- `npm run test:integration:auth-cleanup` pasó en schema Supabase aislado y lo eliminó en `finally`; se conservaron
+  los registros no expirados. La suite dirigida y typecheck también pasan.
+
+### 2026-08-12 — Compuerta reproducible de higiene de release
+
+- Backend y frontend incorporan `npm run check:release-hygiene`, que inspecciona las rutas rastreadas por Git y
+  rechaza `.env` no permitido, certificados/claves, bases locales, logs y artefactos E2E; `.env.example` queda como
+  única excepción explícita. La validación pasó con 588 archivos backend y 133 frontend.
+- Se reforzaron ambos `.gitignore` con extensiones de credenciales y bases locales. La compuerta quedó integrada al
+  `test:all` backend y al `build` frontend; no sustituye la rotación de secretos ni el secret manager productivo.
+
+### 2026-08-12 — Hardening de timeouts para mensajería externa
+
+- SMTP aplica `connectionTimeout`, `greetingTimeout` y `socketTimeout`; Telegram usa `AbortController` y transforma
+  expiraciones en `TELEGRAM_TIMEOUT`. Ambos comparten `OUTBOUND_PROVIDER_TIMEOUT_MS`, con 15 segundos por defecto y
+  rango 5–60 segundos validado en producción.
+- Se agregaron regresiones de configuración, transporte SMTP y timeout Telegram. La suite vigente queda en 97
+  archivos aprobados, 4 omitidos, 382 pruebas pasadas y 10 omitidas; IA offline 24/24, typecheck, arquitectura y
+  build pasan. Graphify quedó actualizado a 4.279 nodos, 11.633 relaciones y 238 comunidades. El canary real
+  SMTP/Telegram sigue abierto y no se simula.
+
+### 2026-08-12 — Canary seguro de proveedores de mensajería
+
+- Se agregó `npm run test:canary:messaging`, que envía únicamente a un destino de prueba explícito mediante
+  `MESSAGING_CANARY_EMAIL_TO` o `MESSAGING_CANARY_TELEGRAM_CHAT_ID` y exige una confirmación fuerte. Sin ella el
+  comando termina como `SKIPPED`; no usa la BD, no carga datos de tenants y sanitiza errores.
+- El canary prepara la validación externa de `MSG-001`, pero no la cierra: todavía requiere credenciales reales,
+  ejecución autorizada y validación adicional de la cola durable. Graphify quedó actualizado a 4.293 nodos,
+  11.657 relaciones y 242 comunidades.
+
+### 2026-08-12 — Cierre de modularidad crítica y evidencia de la beta
+
+- `MOD-001` queda cerrado: los hotspots críticos ya están divididos por responsabilidad, los contratos públicos se
+  conservan y `npm run check:architecture` pasa con 345 archivos de producción y una única excepción declarativa
+  (`goldenScenarios.ts`). Las extracciones futuras de módulos cohesivos entre 200 y 400 líneas quedan como
+  mantenimiento oportunista, no como bloqueo de la beta.
+- La validación completa vigente pasa: backend `npm run test:all` con 97 archivos aprobados, 4 omitidos, 382 pruebas
+  y 10 omitidas; IA offline 24/24; frontend arquitectura, typecheck, lint, build y bundle budget; auditorías de
+  dependencias de producción sin vulnerabilidades.
+- Permanecen explícitos los bloqueos/deferimientos externos de `AWS-001`, `OCI-001`, `MSG-001`, operación 24/7,
+  secret manager externo, rate limiting distribuido y benchmark representativo; no se simulan para cerrar el roadmap.
+
+### 2026-08-12 — Cierre de bypass de configuración y nomenclatura canónica de oportunidades
+
+- `APP_PROCESS_ROLE` ahora falla cerrado cuando se proporciona un valor inválido incluso en desarrollo; únicamente
+  la ausencia explícita de la variable conserva el shorthand `all`. Se agregó regresión de configuración.
+- El recálculo de analítica expone `opportunities` como campo canónico y conserva `anomalies` solo como alias de
+  compatibilidad. El frontend consume el campo canónico y mantiene fallback temporal para backends antiguos.
+- Validación dirigida: 2 archivos/19 pruebas de configuración, 1 prueba de analítica y typecheck frontend aprobados.
+
+### 2026-08-12 — Runner de recomendaciones IA aislado
+
+- Se extrajo el caso de uso de generación de recomendaciones a `FinOpsAiRecommendationRunner`, que concentra
+  preparación/evidencia, contexto determinístico, generación, auditoría, persistencia, deduplicación y trazas.
+- `FinOpsAiService` queda como fachada de casos de uso y conserva sin cambios los contratos de chat,
+  recomendaciones, preparación y planes. La lógica de auditoría y el bloqueo por evidencia siguen en las mismas
+  fronteras; no se habilita ninguna acción cloud automática.
+- La suite dirigida IA pasó 10 archivos/62 pruebas y el typecheck pasó. Graphify quedó actualizado a 4.259 nodos,
+  11.610 relaciones y 228 comunidades.
+
+### 2026-08-12 — Orquestación de backfill técnico modularizada
+
+- Se extrajo la generación idempotente de ventanas de métricas técnicas a `CloudIngestionBackfillService`; el
+  orquestador conserva activación, jobs manuales, cancelación, reintentos, salud e historial, y sigue exponiendo la
+  misma fachada pública.
+- La lógica conserva el límite histórico de 90 días, ventanas de 1–24 horas, omisión de ventanas cubiertas y
+  `maxAttempts=1` para backfills controlados. La validación dirigida y el typecheck pasan.
+- Graphify quedó actualizado a 4.256 nodos, 11.584 relaciones y 240 comunidades.
+
+### 2026-08-12 — Separación de facturación OCI
+
+- Se extrajo la recolección de facturación OCI (FOCUS por Object Storage y OCI Usage API) a
+  `OciBillingCollector`, manteniendo en `OciSdkIngestionProvider` la composición de clientes y la fachada del
+  proveedor. La lectura sigue siendo streaming, con cierre de clientes, retry y normalización hash de costos.
+- Se agregó caracterización del camino `PROVIDER_API` sin afirmar disponibilidad productiva de Usage API; el bloqueo
+  real de IAM continúa documentado en `OCI-001` y FOCUS permanece como fuente primaria.
+- La suite vigente quedó en 95 archivos aprobados, 4 omitidos, 377 pruebas pasadas y 10 omitidas; IA offline 24/24,
+  typecheck, arquitectura y build pasan. Graphify quedó actualizado a 4.250 nodos, 11.557 relaciones y 234
+  comunidades.
+
+### 2026-08-12 — Sanitización durable y error HTTP unificado
+
+- Los mensajes de proveedores ya se sanitizan en la frontera de persistencia antes de guardarse en eventos de
+  aprendizaje, trazas IA, trabajos de ingesta, corridas de contexto, resultados de Telegram y advertencias de
+  inventario OCI. La regresión cubre API key y cookies en el flujo de aprendizaje.
+- `AuthController`, `AuthSessionController`, `PasswordRecoveryController`, `MfaController`,
+  `NotificationController`, `RecommendationReadController`, middleware de roles y el manejador HTTP global
+  reutilizan `respondWithFinOpsError`; se eliminó mapeo duplicado y `AUTHENTICATION_FAILED` conserva 401.
+- La configuración de fuentes de conexión cloud se extrajo a `CloudConnectionSourceConfiguration`, dejando el
+  onboarding concentrado en registro, credenciales, validación y previsualización sin cambiar el contrato público.
+- Se reemplazaron mensajes visibles en inglés de estas rutas por mensajes en español. La suite vigente quedó en
+  95 archivos aprobados, 4 omitidos, 377 pruebas pasadas y 10 omitidas; IA offline 24/24, typecheck, arquitectura
+  y build pasan. Graphify quedó actualizado a 4.242 nodos, 11.525 relaciones y 231 comunidades.
+
+### 2026-08-12 — Redacción de headers sensibles en errores
+
+- `safeErrorMessage` ahora consume y redacta el valor completo de headers `Authorization`/`Proxy-Authorization`
+  (incluido el prefijo `Bearer`) y de `Cookie`/`Set-Cookie`, además de las credenciales, tokens, URLs autenticadas,
+  claves AWS, JWT y PEM que ya cubría.
+- Se agregó una regresión específica para bearer y cookies. La validación vigente quedó en `npm run test:unit`:
+  95 archivos aprobados, 4 omitidos, 373 pruebas pasadas y 10 omitidas; arquitectura, typecheck, IA offline y build
+  también pasan. Graphify quedó actualizado a 4.238 nodos, 11.442 relaciones y 237 comunidades.
+
+### 2026-08-12 — Configuración productiva fail-closed
+
+- Producción ahora exige `APP_PROCESS_ROLE` y rechaza valores desconocidos en vez de caer silenciosamente en
+  `all`. También valida que las integraciones habilitadas tengan sus credenciales y destinos: SMTP, Telegram,
+  scheduler de mensajes y scheduler de reconciliación.
+- Desarrollo conserva defaults seguros: las integraciones siguen apagadas y puede usarse `APP_PROCESS_ROLE=all`.
+- La suite de configuración quedó en 18 pruebas para roles, integraciones y destinos; la validación de
+  configuración, typecheck y arquitectura pasan.
+
+### 2026-08-12 — Manejo HTTP de errores centralizado
+
+- `AgentController`, `AiController`, `AnalyticsController`, `OutboundMessageController` y
+  `TelegramController` ya reutilizan `respondWithFinOpsError`; se eliminaron cinco implementaciones
+  divergentes de mapeo HTTP.
+- El helper central conserva `401`, `403`, `404`, `409`, `422` y `502`, incluye `diagnosticId`/auditoría
+  para rechazos IA y registra errores inesperados con `safeErrorMessage`. El identificador de auditoría IA
+  no se sobrescribe con el request ID cuando ambos existen.
+- Se añadieron regresiones para proveedor IA y `AiAuditRejectedError`. Las pruebas dirigidas de HTTP/agent/
+  Telegram pasan 8/8; arquitectura y typecheck pasan. Graphify quedó actualizado a 4.237 nodos y 11.441
+  relaciones.
+
+### 2026-08-12 — Extracción del despacho de canales externos
+
+- `OutboundMessageService` dejó de mezclar la orquestación tenant-scoped con el detalle de entrega por canal.
+  `OutboundChannelDeliveryService` concentra Telegram/SMTP, estados `SENT`/`SKIPPED`/`FAILED`, persistencia
+  y previews; el servicio coordinador quedó en 268 líneas y el nuevo módulo en 114.
+- Los errores de proveedores se sanitizan antes de persistirse en el historial de entregas, sin cambiar el
+  contrato HTTP ni los estados de la cola. El envío externo continúa deshabilitado por defecto hasta contar
+  con canaries SMTP/Telegram reales.
+- Se añadieron tres pruebas de despacho y se conservaron las cuatro pruebas del procesador de cola: 7/7
+  focalizadas aprobadas. `npm run typecheck`, `npm run check:architecture` y Graphify pasaron; Graphify quedó
+  actualizado a 4.238 nodos y 11.426 relaciones.
+
+### 2026-08-12 — Compatibilidad terminológica de oportunidades
+
+- La ruta canónica de analítica continúa siendo `/api/v1/analytics/opportunities`; la ruta histórica
+  `/api/v1/analytics/anomalies` conserva su payload por compatibilidad, pero ahora devuelve headers de
+  deprecación y enlaza explícitamente a su sucesora.
+- Se revisaron las cadenas visibles de frontend, Telegram y controladores: la interfaz usa “oportunidades”.
+  Los nombres internos de dominio/BD (`CostAnomaly`, `anomalies`) se mantienen únicamente como compatibilidad
+  técnica y no se renombraron de forma masiva para evitar una migración de contrato innecesaria.
+- Se corrigieron comentarios y variables de presentación que todavía hablaban de anomalías, y se corrigió la
+  documentación de la cola outbound para reflejar que su migración ya está aplicada en Supabase; los canaries
+  externos siguen deshabilitados por defecto.
+- Verificación dirigida: `npm run typecheck`, `npm run check:architecture` y `TelegramBotService.test.ts` (4/4)
+  pasaron. Graphify fue actualizado a 4.228 nodos y 11.398 relaciones.
+
+### 2026-08-12 — Verificación remota de paginación del reporte IA
+
+- Se aplicó en Supabase la migración `202608120001_quality_report_keyset_indexes` mediante `npx prisma migrate deploy`; `prisma migrate status` quedó al día.
+- Se añadió `npm run db:verify:quality-indexes`, una comprobación read-only que valida los dos índices y ejecuta `EXPLAIN (COSTS OFF)` sin imprimir credenciales ni datos de tenant.
+- La verificación encontró `recommendations_tenant_id_created_at_id_idx` y `ai_context_traces_tenant_id_created_at_id_idx`; ambos planes usan `Index Only Scan Backward` con filtro por tenant/fecha y límite de página.
+- `PERF-002` queda cerrado con evidencia remota. La integración aislada de calibración pasó 1/1 en un schema efímero creado por el runner `npm run test:integration:agent-quality`; `AI-007` queda cerrado sin inventar precisión ML ni precios LLM.
+
+### 2026-08-12 — Integración aislada del reporte de calidad IA
+
+- Se añadió `npm run test:integration:agent-quality`, que crea un schema `finops_e2e_*`, aplica todas las migraciones, ejecuta el caso tenant-scoped del reporte y elimina el schema en `finally`.
+- La ejecución remota pasó 1/1: el tenant AWS solo mostró sus dimensiones y el tenant OCI solo las suyas; no se observaron filas cross-tenant.
+- El runner exige un nombre de schema allowlisted y nunca usa la BD principal como destino de fixtures; `AI-007` queda cerrado con evidencia PostgreSQL real aislada.
+
+### 2026-08-12 — Pronóstico, mensajería durable, aprendizaje reversible y oportunidades deterministas
+
+- La analítica incorpora escenarios comparables de base, tendencia, aprobado, ejecutado y verificado; el dashboard los presenta con separación explícita entre proyección, ahorro aprobado y valor realizado.
+- El resumen ejecutivo tenant-scoped se encola como entrega `PENDING` para correo/Telegram, con deduplicación diaria y procesamiento posterior por la cola outbound existente.
+- Las memorias activas del agente pueden desactivarse de forma reversible mediante endpoint protegido; la operación registra auditoría y no elimina el evento de aprendizaje original.
+- La trazabilidad genera `finops-opportunity-rules-v1` antes de la IA para detectar vínculos pendientes, datos desactualizados, evidencia técnica débil y brechas de etiquetas. El catálogo no emite ahorros.
+- Migración `202608110012_executive_summary_delivery` aplicada en Supabase. La suite backend posterior pasó `test:unit` con 94 archivos aprobados, 4 omitidos, 364 pruebas y 10 omitidas; IA offline 24/24; typecheck, build y arquitectura aprobados. Frontend typecheck, lint, build y bundle budget aprobados.
+- Pendiente: E2E completo con el entorno de aplicación aislado, canaries SMTP/Telegram y revisión de seguridad operativa productiva. La evidencia histórica de 5 archivos/6 pruebas fue ampliada por la suite vigente `test:integration:isolated`, que pasó 10 archivos/17 pruebas más auth cleanup y heartbeat/readiness en schema efímero. Graphify y commits separados quedaron completados; AWS real y OCI Usage API permanecen bloqueados externamente.
+
+### 2026-08-12 — Calibración observable del agente IA
+
+- Se añadió `GET /api/v1/agent/quality`, protegido por `AGENT_OBSERVE`, para medir por tenant la tasa de revisión, aprobación/rechazo humano, abstenciones por evidencia débil, ahorro estimado frente a ahorro verificado, resultado verificado y latencia/tokens de las trazas IA.
+- El reporte desglosa recomendaciones por tipo, regla determinística y proveedor. La extracción tolera las formas históricas de evidencia y agrupa explícitamente lo que no tiene regla como `SIN_REGLA_DETERMINISTICA`; no usa coincidencias fuzzy ni datos de otro tenant.
+- La UI de `Agente IA > Evidencia` muestra la ventana, indicadores, desglose y notas de interpretación. El costo de tokens solo aparece cuando existen `AI_INPUT_COST_PER_MILLION_TOKENS_USD` y `AI_OUTPUT_COST_PER_MILLION_TOKENS_USD`; de lo contrario se declara no configurado.
+- Verificación: `AgentQualityService.test.ts` 2/2, `AgentController.test.ts` 2/2, integración aislada `npm run test:integration:agent-quality` 1/1, typecheck backend, arquitectura 340 archivos/1 excepción, typecheck frontend, lint dirigido y build/bundle frontend aprobados.
+- La integración aislada del nuevo caso ya está ejecutada; queda validar canary live de IA cuando el proveedor esté disponible y no interpretar aprobación como precisión ML sin un conjunto etiquetado.
+- El informe de calidad usa paginación keyset de 1.000 filas y agregación incremental para que ventanas históricas grandes no se materialicen en una única respuesta de PostgreSQL ni en un lote sin límite del repositorio.
+- `202608120001_quality_report_keyset_indexes` quedó aplicada y verificada en Supabase; la consulta permanente `npm run db:verify:quality-indexes` confirma ambos índices y sus planes `Index Only Scan Backward`.
+- Se retiraron los fallbacks `NVIDIA_*`/`NIM_*` del lector de configuración y se añadió una regresión que falla cerrado cuando solo existen variables heredadas; el contrato vigente es `AI_*`.
+- Se alineó el timeout runtime del auditor de aprendizaje con el contrato de 15 segundos y se añadió validación productiva de límites para evitar bloqueos prolongados.
+
+> **Estado vigente 2026-08-13:** las entradas inferiores son bitácora histórica. La fase de distribución
+> compartida continúa en `feat/shared-cost-allocation`; la beta, trazabilidad, canaries SEC-001/AI-001 y
+> la base de asignación por destino están documentadas. AWS-001/OCI-001 y la activación productiva permanente
+> permanecen bloqueados o diferidos según `docs/DEUDA_TECNICA.md`.
+
+> **Fuente de conteos vigente:** `npm run test:all` ejecutado el 2026-08-13: 109 archivos aprobados, 5 omitidos,
+> 451 pruebas pasadas y 11 omitidas; `npm run test:ai:offline`: 25/25. La integración PostgreSQL aislada completa
+> pasó 10 archivos/17 pruebas y los runners especializados de auth cleanup y heartbeat/readiness. Las cifras menores en entradas
+> fechadas son snapshots históricos y no representan regresiones.
+
+### 2026-08-11 — Cierre estructural, operación y validación reproducible
+
+- La configuración de MFA, TTL de sesiones, cookies, orígenes confiables, ingesta, analítica, recuperación de
+  contraseña y cifrado de credenciales queda inyectada desde el composition root; los adaptadores ya no leen
+  valores de entorno directamente. La revocación individual de una sesión también revoca sus refresh tokens.
+- El shutdown de `api`, `worker` y `scheduler` detiene los loops y espera a que termine la iteración activa antes
+  de desconectar Prisma. `GET /live`, `/health` y `/ready` distinguen liveness, readiness, rol de proceso y
+  enforcement runtime RLS; se agregó una prueba de drenaje.
+- El runtime Compose activa `init`, `no-new-privileges`, capabilities reducidas, healthcheck de API y ventana
+  de apagado de 20 segundos. La imagen no aplica migraciones automáticamente; la operación queda documentada.
+- `PrismaResourceMetricRepository` quedó en 372 líneas al extraer además la lectura paginada de series raw/agregadas,
+  cobertura y contexto de costos a lectores cohesivos; se conserva el contrato público y las pruebas de compatibilidad
+  de cursor. `FinOpsArtifactGenerator` pasó
+  de 562 a 340 líneas al extraer la normalización determinística de borradores contra evidencia canónica.
+- `PrismaCloudIngestionJobRepository` pasó de 949 a 835 líneas al extraer la construcción de recursos derivados
+  de métricas, la clasificación de namespace y la precedencia inventario-proveedor en
+  `ingestionResourceNormalizer.ts`; se agregaron pruebas de normalización y no se modificó el contrato de ingesta.
+- El proveedor de llamadas IA y auditoría de artefactos se aisló en `finOpsArtifactAiRunner.ts` (152 líneas);
+  `FinOpsArtifactGenerator` quedó en 234 líneas y conserva la orquestación de revisión, normalización y rúbrica.
+- `FinOpsAiService` quedó en 364 líneas al separar los casos de uso en `FinOpsAiChatRunner`,
+  `FinOpsAiExecutionPlanRunner` y `FinOpsAiRecommendationPreparer`; se mantienen la evidencia determinística,
+  la auditoría y las trazas sin cambiar el contrato público.
+- La rúbrica determinística IA quedó separada por responsabilidad: `qualityRubric.ts` conserva el facade público,
+  `recommendationQualityChecks.ts` concentra evidencia y ahorro de recomendaciones y
+  `executionPlanQualityChecks.ts` concentra alcance, seguridad y estructura de planes; los escenarios golden
+  existentes mantienen 23/23 aprobados.
+- `PrismaCloudConnectionRepository` quedó en 338 líneas al separar las operaciones de jobs, salud, readiness,
+  historial y calidad en `PrismaCloudIngestionReadRepository`, y la creación idempotente en
+  `PrismaCloudIngestionCommandRepository`; el puerto de conexiones cloud permanece sin cambios.
+- `CloudConnectionController` dejó de concentrar conexión e ingesta: el facade quedó en 58 líneas y delega
+  handlers de gestión (319), handlers de ingesta (228) y soporte común de parseo/error (71), manteniendo la
+  identidad de handlers que esperan los routers y sus 35 pruebas focalizadas.
+- `RecommendationController` quedó en 54 líneas como facade estable; ejecución/decisiones/planes viven en
+  `RecommendationExecutionController` (118), ahorro verificado en `RecommendationSavingsController` (270) y
+  consultas tenant-aware en `RecommendationReadController` (92). El contrato de rutas y las pruebas de
+  caracterización del controlador permanecen sin cambios (8/8).
+- `PrismaAgentLearningRepository` quedó en 92 líneas como puerto estable; los eventos y transiciones atómicas
+  viven en `PrismaAgentLearningEventRepository` (261), las memorias auditadas en
+  `PrismaAgentLearningMemoryRepository` (64) y las lecturas de contexto/resumen en
+  `PrismaAgentLearningQueryRepository` (146). Se mantiene la persistencia atómica de memorias aprobadas y
+  decisión; typecheck, arquitectura y 3 pruebas focalizadas del servicio de aprendizaje pasaron.
+- `PrismaRecommendationRepository` quedó en 149 líneas como facade; el ciclo de vida se aisló en
+  `PrismaRecommendationLifecycleRepository` (314), ahorro/medición en `PrismaRecommendationSavingsRepository`
+  (96) y timeline en `PrismaRecommendationTimelineRepository` (47). Las pruebas de recomendaciones y valor
+  focalizadas pasaron 12/12 y se conserva el puerto `IRecommendationRepository`.
+- `PrismaValueRealizationRepository` quedó en 47 líneas como facade; las consultas de cartera, resumen, tendencia
+  y exportación viven en `PrismaValueRealizationPortfolioRepository` (146), mientras que atribución por destino
+  y candidatos de conciliación viven en `PrismaValueRealizationAllocationRepository` (101). El SQL compartido
+  y el mapeo/cursor quedaron aislados en soportes pequeños; el puerto `IValueRealizationRepository` y las pruebas
+  de valor realizado permanecen sin cambios.
+- `RecommendationAnalysisService` quedó en 104 líneas como coordinador de autorización y consultas; el procesamiento
+  de corridas, compuerta de evidencia, auditoría, publicación y reintentos vive en
+  `RecommendationAnalysisRunProcessor` (201), con soporte de candidatos/periodos y notificación separados. Se
+  preservan el contrato del servicio, los estados de corrida y las 9 pruebas focalizadas de análisis/controlador.
+- `PrismaCostAllocationRepository` quedó en 258 líneas al separar el motor determinístico de asignación, validación,
+  hashes, sugerencias y mapeos a `costAllocationEngine.ts` (161); el contrato de reglas, cierres, líneas de evidencia
+  y transacciones serializables permanece sin cambios. Las pruebas focalizadas de asignación pasaron 11/11.
+- La consulta de mediciones de ahorro quedó en 382 líneas al extraer la evidencia agregada y el mapeo de dominio
+  a `savingsMeasurementEvidenceQueries.ts` y `savingsMeasurementMapping.ts`; se preservan la fórmula determinística,
+  la suficiencia técnica y la verificación inmutable.
+- `PrismaCloudIngestionJobRepository` quedó en 300 líneas al extraer el resumen de ejecución, watermark y
+  controles de calidad a `PrismaIngestionJobCompletionSupport` (139 líneas); las pruebas focalizadas de worker,
+  scheduler, provider OCI y rutas de ingesta pasaron 21/21.
+- `PrismaCloudConnectionRepository` pasó de 882 a 725 líneas al extraer credenciales cifradas, revocación,
+  conexión de ingesta y la invalidación de validación a `PrismaCloudCredentialRepository` (182 líneas) y
+  `cloudConnectionMetadata.ts`; el puerto `ICloudConnectionRepository` no cambió.
+- `PrismaCloudIngestionJobRepository` pasó de 834 a 599 líneas al extraer proyección de costos FOCUS/API,
+  upsert de cuentas, recursos históricos, resolución exacta de recursos y agregación de linkage a
+  `PrismaIngestionCostProjector` (141 líneas) y helpers tipados; el flujo transaccional de jobs conserva su contrato.
+- El mapeo de errores HTTP de conexiones cloud, presupuestos, asignación y valor realizado reutiliza
+  `finOpsErrorResponse.ts`, con diagnóstico por request y redacción de excepciones inesperadas; la prueba dirigida
+  y la suite completa cubren el contrato sin exponer el status interno en el JSON. El controlador cloud conserva
+  sus códigos y estados públicos, pero dejó de tener una ruta de logging divergente (`c2c0699`).
+- La higiene del repositorio excluye la metadata de fuentes de datos de IntelliJ (`.idea/dataSources.xml`), además
+  de `.env`, claves y artefactos de pruebas; la conexión local queda disponible solo fuera del índice Git (`a7ed749`).
+- Costos, administración MSP, trazabilidad, análisis de recomendaciones y métricas técnicas también usan el
+  responder compartido. Se agregó una regresión para dobles de respuesta sin `res.locals`; la suite vigente
+  queda en 89 archivos, 351 pruebas pasadas y 9 omitidas.
+- `finops-app` expone ahora `npm run typecheck`; typecheck, lint, build y `npm audit --omit=dev` pasaron. Recharts
+  no está presente en las dependencias ni en el código; la serie técnica usa uPlot.
+- El shell autenticado de `finops-app` ahora expone `AuthSessionProvider`, `useAuthSession` y `useAccessToken`;
+  las vistas y controladores ya no reciben el access token por prop desde `App.tsx`. Las funciones de transporte
+  conservan el token explícito para mantenerlas testeables y no se modificó el contrato HTTP. Commits `6f41988`,
+  `a6ebe47`.
+- Evidencia de validación: backend 89 archivos/351 pruebas/9 omitidas, IA offline 24/24, audit de producción
+  sin vulnerabilidades altas; Docker no está instalado en esta estación, por lo que Compose solo fue validado
+  sintácticamente con PyYAML. No se hizo push ni merge.
+- Se agregó `npm run check:architecture` al backend y frontend y a ambos workflows CI: el control detecta nuevos
+  archivos de producción por encima de 400 líneas y exige que las excepciones existentes tengan límite documentado.
+  La verificación vigente pasa con 340 archivos backend/1 excepción y 97 archivos frontend/0 excepciones;
+  los contratos de recomendaciones y conexiones cloud ya no requieren excepciones.
+- El build frontend ahora ejecuta `check:bundle` y falla si un chunk JavaScript supera 500 kB. La compilación actual
+  queda por debajo del presupuesto: chunk principal de aproximadamente 226 kB y carga por vistas lazy.
+- `RecommendationAnalysisRunsPanel.tsx` quedó en 257 líneas al separar el detalle de corrida, la presentación de
+  estados y los componentes Metric/Notice; conserva polling cancelable, retry, cancelación y navegación al detalle.
+  `AgentSettings.tsx` quedó en 149 líneas al separar su controlador de carga, formularios y canales en
+  `useAgentSettingsController.ts`. El typecheck, lint, build, bundle budget y architecture check del frontend
+  pasaron; el fitness check ya no tiene excepciones frontend. El smoke Playwright sin API/BD pasó 1/1.
+- Se agregó `docs/MODELO_AMENAZAS_STRIDE.md` como matriz compacta de amenazas para identidad, cambio de tenant,
+  administración MSP, credenciales cloud, ingesta, IA, ejecución manual, asignación, cierres, workers y mensajería.
+  El documento separa controles implementados, evidencia y riesgo residual; no sustituye una prueba DAST externa.
+- La configuración de fuentes de una conexión cloud se aisló en `PrismaCloudConnectionConfigurationRepository`
+  (110 líneas); `PrismaCloudConnectionRepository` quedó en 639 líneas sin cambiar el puerto ni los contratos HTTP.
+  La prueba dirigida de cloud/onboarding/ingesta pasó 25/25 y el typecheck quedó verde.
+- Las alertas de presupuesto ya no quedan como registros `PENDING` sin consumidor: se agregó una cola durable de
+  entregas outbound con cuerpo completo, lease `FOR UPDATE SKIP LOCKED`, estado `PROCESSING`, reintentos con backoff,
+  recuperación de leases vencidos y estados finales `SENT`, `FAILED` o `SKIPPED`. El scheduler procesa lotes
+  acotados antes de los recordatorios de ahorro y el frontend distingue “En proceso”. La migración
+`202608110009_outbound_delivery_queue`, `202608110010_revoke_api_function_grants` y
+`202608110011_add_missing_foreign_key_indexes` ya fueron aplicadas y verificadas en Supabase; todavía requiere validarse con
+  SMTP/Telegram reales.
+- La frontera de contexto IA marca nombres, etiquetas, identificadores y texto externo como no confiables para
+  reducir prompt injection; chat, recomendaciones y planes rechazan respuestas que contengan PEM, JWT, API keys,
+  URLs autenticadas o asignaciones de secretos. La rúbrica y los golden scenarios cubren este control sin enviar
+  credenciales al proveedor.
+- El motor determinístico de evidencia técnica usa la versión `technical-rules-2026-08-11.v1`, conserva los
+  umbrales críticos en cada evaluación y reconoce señales auxiliares porcentuales de red, disco e IOPS sin
+  convertirlas por sí solas en autorización de rightsizing. La regresión específica pasó 7/7.
+- El arranque de workers y schedulers quedó aislado en `src/bootstrap/backgroundProcessRuntime.ts`; `src/index.ts`
+  conserva únicamente composition root, servidor HTTP y shutdown, con los roles de proceso y semántica de loops
+  existentes.
+
+### 2026-08-11 — Modularización estructural del proveedor AWS (validación real en standby)
+
+- Se redujo `AwsSdkIngestionProvider.ts` de 1.032 a 363 líneas, manteniendo la fachada pública, la validación de capacidades y los dobles de prueba compatibles.
+- Se extrajeron contratos/configuración (`awsContracts.ts`, `awsConfiguration.ts`), métricas CloudWatch (`AwsMetricCollector.ts`), inventario EC2 (`AwsInventoryCollector.ts`) y facturación/FOCUS (`AwsBillingCollector.ts`). Los módulos quedan entre 88 y 300 líneas y conservan AssumeRole, streaming FOCUS, Cost Explorer, inventario y métricas.
+- La suite dirigida del proveedor AWS pasó 4/4 y `npm run test:all` pasó 81 archivos, 321 pruebas y 9 omitidas; no se ejecutó validación AWS real porque la cuenta/rol externo continúa bloqueado (`AWS-001`).
+
+### 2026-08-11 — Composición de runtime y entrypoint operativo
+
+- Se aisló el grafo de repositorios/servicios en `src/bootstrap/applicationComposition.ts`; `src/index.ts` quedó en 353 líneas y conserva los roles `api`, `worker`, `scheduler` y `all`, además de health/readiness, cierre ordenado y loops de fondo.
+- No se modificaron contratos HTTP ni la semántica de workers/schedulers. `npm run test:all` continúa en 81 archivos, 321 pruebas pasadas y 9 omitidas; typecheck y build permanecen verdes. Commit `296d7cb`.
+
+### 2026-08-11 — Dashboard frontend modularizado
+
+- Se redujo `finops-app/src/views/Dashboard.tsx` de 466 a 231 líneas. La carga paralela, fallback de analítica, presupuesto y KPIs viven en `useDashboardController.ts` (194 líneas), mientras los transformadores y formateadores viven en `dashboardPresentation.ts` (161 líneas).
+- Frontend typecheck, lint y build pasaron; no se ejecutó E2E en esta sesión porque el runner exige `TEST_DATABASE_URL` aislada y `ALLOW_DESTRUCTIVE_TEST_DATABASE=true`, variables que no estaban disponibles. Commit `92954f9`; no se hizo push.
+
+### 2026-08-11 — Administración MSP frontend modularizada
+
+- Se redujo `finops-app/src/views/MasterAdmin.tsx` de 426 a 225 líneas. El hook `useMasterAdminController.ts` concentra cargas y mutaciones de tenants, usuarios y asignaciones en 197 líneas; la vista conserva el selector, creación, suspensión, asignación y revocación.
+- Frontend typecheck, lint y build pasaron. Commit `54cb0d0`; no se hizo push.
+
+### 2026-08-11 — Detalle de recomendación modular y E2E desde migraciones cero
+
+- Se dividió `ResourceDetail.tsx` de 1.609 a 348 líneas, extrayendo el controlador de carga/acciones,
+  normalización de evidencia, presentación compartida, plan auditado, ejecución manual, ahorro verificado,
+  timeline y decisión. Los módulos resultantes tienen entre 38 y 310 líneas y preservan el contrato visual.
+- El runner `test:e2e:full` ahora aplica todas las migraciones al schema aislado antes de crear fixtures y el
+  cleanup tolera una preparación incompleta para poder eliminar el schema sin ocultar el error original.
+- La validación completa aplicó 52 migraciones desde cero y aprobó 5/5 escenarios Playwright: login, cambio de
+  tenant, detalle técnico, recomendación, plan/decisión, aislamiento, análisis y asignación de costos. El schema
+  `finops_e2e_resource_detail_refactor` y sus dos tenants fixture se eliminaron al finalizar.
+- Se redujo `MetricasTecnicas.tsx` de 876 a 216 líneas: estado/requests/cancelación/cache LRU quedaron en un hook
+  de 222 líneas, mientras modelo de rango/cache, formatters, tarjetas y paneles viven en módulos de 68 a 121
+  líneas. Se conservaron uPlot, granularidad raw, drilldown, paginación exacta y cancelación con AbortController.
+- La suite E2E reveló una carrera preexistente: dos archivos ejecutaban análisis durable sobre el mismo tenant
+  fixture en paralelo. El runner completo ahora usa un worker para ese fixture compartido; la repetición aprobó
+  5/5 y eliminó el schema `finops_e2e_metrics_refactor_serial`.
+
+### 2026-08-11 — Cierre de controles críticos de seguridad, ingesta e IA
+
+- Se centralizó la autorización backend en una matriz explícita de siete roles y dieciséis capacidades. Las
+  guardas de cloud, ingesta, agente, recomendaciones, ahorro, presupuestos, asignación, valor, mensajería, MFA
+  y administración MSP ya no mantienen listas independientes. Decisión, ejecución, creación y verificación de
+  mediciones tienen permisos separados; `CLIENT_APPROVER` no puede ejecutar ni calcular ahorros.
+- Se agregó `docs/MATRIZ_AUTORIZACION.md`, una prueba exhaustiva de la matriz y pruebas de adaptadores para las
+  cuatro guardas de recomendaciones.
+- Se cerró el hotspot principal OCI: contratos SDK, validación, Monitoring, compartimentos, inventario, fuentes
+  FOCUS y retries se extrajeron a módulos cohesivos de máximo 219 líneas. El coordinador bajó de 1.140 a 393
+  líneas y conserva el contrato, streaming FOCUS, Usage API e identidad exacta. Las pruebas dirigidas OCI
+  pasaron 22/22 y la suite final pasó con 76 archivos, 312 pruebas y 9 omitidas;
+  IA offline 19/19, typecheck y build aprobados.
+- Se dividió `CloudConnectionService` (979 líneas) en una fachada estable de 148 líneas y módulos
+  profundos para onboarding/configuración (400), orquestación de ingesta (361), contratos (133) y políticas
+  de entrada/credenciales (138). Se preservó el contrato de controladores y los 23 escenarios de caracterización.
+- Se redujo `TechnicalMetricsService` de 843 a 202 líneas: contratos, construcción de overview,
+  cobertura diaria/agregada y utilidades matemáticas quedaron en módulos de 108 a 252 líneas. Se preservaron
+  las granularidades exactas, el enlace canónico y los 12 escenarios de métricas.
+- Se completó recuperación MFA con diez códigos aleatorios de 80 bits: solo hashes persistidos, consumo único,
+  revocación del lote anterior al regenerar y presentación una sola vez en login/perfil.
+- El canary runtime RLS se amplió a sesiones, refresh, reset, TOTP, challenges y recovery codes. La ampliación
+  detectó recursión en políticas pre-auth; se reemplazaron subconsultas cruzadas por helpers SECURITY DEFINER
+  acotados y el canary final pasó con dos tenants y cero visibilidad cruzada.
+- Supabase quedó al día con 52 migraciones. La suite vigente subió a 76 archivos, 312 pruebas pasadas y 9
+  omitidas; frontend lint/build continúa verde.
+
+- Se consolidó la revocación persistida de sesiones: logout individual/global, revocación de dispositivos,
+  cambio de tenant y validación de cada request protegido. El frontend separó `authApi`/`authTypes` del facade
+  general y no usa almacenamiento web para tokens.
+- Se endureció el ciclo HTTP con rate limiting acotado, trust proxy explícito y timeouts de request, headers y
+  keep-alive. Se añadió `safeErrorMessage` para que errores de SDK/HTTP no filtren credenciales, JWT, API keys,
+  claves AWS, PEM o URLs autenticadas en logs.
+- La ingesta OCI descubre compartimentos accesibles de forma recursiva y conserva conteos y estado de cobertura
+  (`COMPLETE`, `FALLBACK`, `CONFIGURED_ONLY`, `FAILED`). El scheduler ya no encola conexiones con validación
+  de capacidades ausente o vencida; el TTL por defecto es 24 horas.
+- La compuerta IA ahora distingue métricas porcentuales de métricas absolutas, verifica el alcance exacto del plan
+  y limita el ahorro estimado al techo derivado de la evidencia determinística. Los golden scenarios offline
+  quedaron en 19/19.
+- El scheduler ahora encola INVENTORY antes de costos/métricas, exige validación/capacidades vigentes y aplica
+  cooldown configurable. Un job OCI controlado persistió 1 recurso en 3,4 s con 2 llamadas SDK.
+- Readiness de lineage incorpora gobierno de etiquetas requerido y la UI muestra cobertura, recursos cumplidos
+  y claves faltantes. La cuenta OCI actual tiene 1 recurso y 0 % de cobertura de las cuatro claves por defecto.
+- El resumen IA agrega feedback humano, estados del auditor y memorias activas por tenant; las métricas se
+  calculan en PostgreSQL y no se limitan a los últimos 20 eventos.
+- Se aisló el procesador de eventos de aprendizaje para que el coordinador quede en 130 líneas efectivas sin
+  alterar timeout, reintentos, estados `SKIPPED`/`ERROR` ni promoción global.
+- El frontend separó Agent Settings en módulos de gobierno, evidencia/aprendizaje, canales y UI compartida;
+  la vista principal quedó en 396 líneas efectivas sin cambiar contratos ni comportamiento visible.
+- Verificación final del bloque: `npm run test:all` pasó con 68 archivos, 287 pruebas pasadas y 9 omitidas;
+  typecheck, build y pruebas dirigidas de seguridad/OCI/scheduler/golden también pasaron. Se creó el commit
+  `e96097d` para logs seguros, `d638269` para inventario/gobierno de tags, `347d175` para métricas de
+  aprendizaje y `4e74693` para modularización del procesador; no se hizo push.
+
+
+### 2026-08-04 — Distribución compartida auditable y cierre financiero
+
+- Se extendió `CostAllocation` sin crear un segundo módulo: `DIRECT` conserva la asignación unitaria y
+  `SPLIT` distribuye con porcentajes Decimal exactos, primera coincidencia determinista, separación por
+  moneda y `UNALLOCATED` explícito.
+- El cierre financiero es reproducible por tenant/período/moneda: valida fuente y reglas dentro de una
+  transacción serializable, persiste hashes, versión, responsable y conserva versiones reemplazadas sin
+  mutar cierres cerrados.
+- La migración `202608040004_cost_allocation_line_snapshots` guarda evidencia por línea: recurso canónico,
+  hash de métrica, moneda, fuente, monto asignado, destino, regla y motivo de enlace. Los cierres antiguos
+  sin líneas siguen siendo visibles, pero no permiten atribución histórica por línea.
+- Presupuestos por destino y `Value Realization` consultan el cierre cerrado; el ahorro solo aparece por destino
+  cuando la evidencia exacta coincide. El frontend muestra preview, historial/comparación e impacto financiero.
+- La activación de una regla ahora exige un preview exitoso de la misma configuración; cualquier modificación
+  invalida el hash previsualizado y la UI informa el error en español.
+- El preview incorpora impacto de presupuestos por destino y separa ahorros potenciales, aprobados y verificados
+  con evidencia cerrada; la UI añade checklist y estados ABIERTO/LISTO/CERRADO/REEMPLAZADO.
+- Se reemplazó `express-rate-limit` por un limitador fijo en memoria; `npm audit --omit=dev` quedó sin
+  vulnerabilidades. El store distribuido queda diferido hasta escalar a múltiples instancias.
+- Verificación de esta fase: Supabase con 44 migraciones al día, 59 archivos unitarios, 255 pruebas pasadas,
+  9 omitidas, typecheck, build, frontend TypeScript y auditoría de dependencias aprobados.
+- Benchmark del cálculo: 10.000 costos, 10 reglas y cinco iteraciones; mediana 66,98 ms, con invariantes
+  de suma conservadas. El tiempo no representa todavía el cierre end-to-end contra una base productiva.
+- Validación inicial desde schema vacío: 5/5 pruebas con las 44 migraciones y permisos RLS de asignación;
+  readiness mediana 212,80 ms en cinco lecturas, con un outlier de 607,78 ms documentado.
+- La documentación del módulo y del modelo de datos quedó consolidada en
+  `docs/COST_ALLOCATION_SHARED_CLOSURES.md`, incluyendo ciclo de vida, invariantes,
+  API, RLS, integración financiera y límites conocidos.
+- Se corrigió el hash canónico para excluir estado/versión de ciclo de vida:
+  activar una regla no invalida su preview y una modificación funcional sí
+  incrementa la versión. Las reglas `DIRECT` nuevas persisten su destino del
+  100 %, los costos `UNALLOCATED` se agrupan por recurso canónico y el motor
+  comprueba que los grupos por moneda cuadren exactamente con la fuente.
+- Se añadió `npm run test:integration:cost-allocation`, con schema temporal y cleanup en `finally`,
+  para validar el flujo completo y la inmutabilidad tenant-aware contra PostgreSQL real.
+- La compuerta de cierre ahora revalida la huella canónica de las filas fuente además de conteo y total;
+  las reglas SPLIT persistidas con destinos o porcentajes inválidos se rechazan antes de asignar.
+- Verificación posterior: 59 archivos unitarios, 255 pruebas pasadas y 9 omitidas; integración PostgreSQL
+  3/3, preview 1.647,36 ms y cierre 6.604,64 ms con 10.000 líneas persistidas. `PERF-001` continúa diferido.
 
 ### 2026-08-03 — Cierre de canaries runtime RLS e IA
 
@@ -18,10 +1098,45 @@
   También se corrigió la referencia a periodos de facturación abiertos, se normalizaron candidatos antes de
   auditar y se reforzaron las instrucciones de generador/auditor sin relajar la rúbrica determinística.
 - El canary IA aislado pasó con `persist=false`: chat en español, tres recomendaciones, auditoría aprobada,
-  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.047 tokens. Latencia de
-  generación: 56.184 s. El schema y fixture se eliminaron automáticamente.
+  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.093 tokens. La última
+  generación tardó 54.662 s. El schema y fixture se eliminaron automáticamente.
 - `AI-001` y `SEC-001` quedaron cerrados técnicamente; AWS real y OCI Usage API siguen bloqueados por
   credenciales/policy externas.
+
+### 2026-08-03 — Cierre de trazabilidad canónica por recurso
+
+- Se agregaron las migraciones `202608030003_resource_lineage_readiness_indexes` y
+  `202608030004_analysis_run_canonical_resource`, aplicadas en Supabase; las corridas de análisis ahora
+  persisten también `cloudResourceId` para no depender solo de `externalResourceId`.
+- La identidad de cruce es exacta por `cloudConnectionId + externalResourceId`; si hay duplicidad, la compuerta
+  bloquea la recomendación hasta resolver el recurso canónico. Readiness expone estado, frescura, bloqueadores,
+  cobertura por conexión y contadores del backfill idempotente.
+- La suite aislada `npm run test:integration:resource-lineage` pasó 5/5. Con 10.000 costos y 20.000 muestras,
+  cinco lecturas de readiness dieron mediana 186,46 ms.
+- El canary IA real pasó después de endurecer artefactos de revisión técnica: 3 recomendaciones, auditoría
+  aprobada, snapshot canónico, trazas y ahorros no negativos; 54,662 s y 4.093 tokens estimados.
+- El canary OCI read-only pasó inventario Compute, Monitoring y FOCUS/Object Storage: 1 recurso y 20 objetos
+  descubiertos/5 retornados. `COSTS=DENIED` queda explícito por la policy faltante de OCI Usage API.
+- Verificación adicional: backend build/typecheck/unit/audit, frontend lint/build y `prisma migrate status` al día.
+
+### 2026-08-03 — Trazabilidad normalizada y readiness por recurso
+
+- Se integró el PR backend #17 antes de continuar y se creó `feat/resource-lineage-readiness` sin tocar
+  directamente `main`.
+- `cost_metrics`, `resource_metric_samples` y `recommendations` conservan el dato fuente y agregan el
+  vínculo explícito `cloudResourceId` más `resourceLinkReason`. La identidad válida es exacta por
+  `cloudConnectionId + externalResourceId`; no hay asociación por nombre ni por LLM.
+- La ingesta persiste inventario antes de costos/métricas y cada job registra cobertura de enlaces. El
+  script `db:reconcile:resource-links` funciona en dry-run/apply, procesa por cursor y se verificó
+  idempotente contra Supabase.
+- El backfill aplicado enlazó 36 costos OCI con inventario; clasificó 8.692 como inventario inexistente y
+  432 sin conexión. Las 19.367 muestras técnicas OCI permanecen enlazadas; 13 recomendaciones históricas
+  quedaron clasificadas como `EMPTY_RESOURCE_ID`. No se modificaron filas FOCUS crudas.
+- Se agregó `/api/v1/ingestion/resource-linkage` y la sección de cobertura en `Ingesta`, incluyendo estado,
+  razones, cobertura de costos/métricas y muestra por recurso. La rúbrica IA rechaza evidencia técnica
+  sin relación `cloudResourceId` explícita y coincidente con el snapshot canónico.
+- Migraciones nuevas aplicadas en Supabase: `202608030001_resource_lineage_normalization` y
+  `202608030002_recommendation_resource_guard`.
 
 ### 2026-08-01 — CI integrado de beta cerrado
 
@@ -358,8 +1473,8 @@ CPU/memoria/IOPS desde FOCUS; estas métricas provienen de monitorización/agent
 Marco determinista para medir la calidad del agente **sin llamar al modelo** ni depender de
 credenciales — base para endurecer prompts con medición en vez de a ciegas. Solo backend, puro, additivo.
 - `ai/evaluation/qualityRubric.ts`: funciones puras. `evaluateRecommendationDrafts` (controles:
-  count, accountScoping, severityValid, evidenceLevel, **focusHonesty** —COST_ONLY exige
-  requiresTechnicalValidation—, savingsRealism, spanishText) y `evaluateExecutionPlan` (requiredArrays,
+  count, accountScoping, severityValid, evidenceLevel, **focusHonesty** —COST_ONLY exige validación técnica o una
+  marca explícita de revisión financiera manual—, savingsRealism, spanishText) y `evaluateExecutionPlan` (requiredArrays,
   scopeAccount, **noAutoExecution**). Reusa `isRecord` de `ai/jsonReadHelpers`.
 - `ai/evaluation/goldenScenarios.ts`: 4 escenarios sintéticos (bueno con consumo; FOCUS-only honesto;
   cuenta inventada → rechazo del parser; ahorro irreal → reprobado por rúbrica). Datos marcados demo.
@@ -646,3 +1761,117 @@ npm run ingestion:worker:once completo en 929 ms y devolvio { processed: false }
 - Supabase: aplicada la migración `202607260001_value_realization_notification_dedupe` con índices para ejecuciones y mediciones; `prisma migrate status` quedó al día.
 - Evidencia de rendimiento en esquema aislado Supabase: 5 tenants, 10.000 recomendaciones y 20.000 mediciones; `summary=459 ms`, página de 100=`447 ms`, exportación de 10.000=`994 ms`, `EXPLAIN ANALYZE=131.263 ms`. Sin fixtures en el esquema principal.
 - Verificación: typecheck backend, 227 pruebas unitarias, integración PostgreSQL tenant-scoped, smoke HTTP autenticado de login/summary/items/trend/export, lint/build frontend y benchmark de lectura aprobados.
+
+### 2026-08-04 - Distribución compartida y cierre financiero reproducible
+
+- Se mantuvo el módulo actual de asignación y se añadieron reglas `DIRECT`/`SPLIT`, destinos porcentuales, hash/versionado de configuración y backfill explícito de reglas DIRECT existentes a 100 %.
+- El motor calcula con Decimal, conserva primera coincidencia, separa monedas, mantiene `UNALLOCATED` y asigna el residuo al último destino sin duplicar líneas.
+- Se implementaron cierres por tenant/período/moneda con fuente y reglas hasheadas, resultados por destino, versiones inmutables, reemplazo con motivo e idempotencia.
+- Se extendió la API con cierre, historial, detalle y comparación de versiones. La UI actual de `Asignación de costos` muestra suma SPLIT, preview con período anterior/reglas usadas, impacto presupuestal, costo compartido, confirmación de cierre e historial.
+- Los presupuestos por destino reutilizan únicamente cierres CLOSED; antes del cierre el actual se reporta explícitamente como no disponible y el preview conserva el valor como proyectado. Valor realizado solo atribuye ahorro con evidencia exacta.
+- Migraciones aplicadas en Supabase: `202608040001` a `202608040008`; el estado reporta 44 migraciones al día.
+- Evidencia de verificación: backend 59 archivos, 254 pruebas unitarias pasadas y 9 omitidas, typecheck, build, integración aislada 3/3 y audit de producción sin vulnerabilidades; frontend lint, typecheck, build y smoke E2E aprobados.
+- Pendiente: validación productiva AWS/OCI Usage API cuando existan prerrequisitos externos. Chargeback contable continúa fuera del alcance.
+
+### 2026-08-04 - Auditoría frontend del cierre
+
+- Se corrigió la compuerta de `Previsualizar`: el formulario identifica el botón que originó el envío y ya no crea una regla cuando el usuario solo solicita un preview.
+- El historial de cierres ahora permite abrir el detalle y comparar una versión seleccionada bajo demanda, mostrando hashes de fuente/reglas, responsable, totales, resultados por destino y razón de reemplazo sin duplicar cálculos financieros.
+- Se añadió `e2e/cost-allocation.spec.ts` para cubrir el flujo SPLIT, validación 100 %, preview sin persistencia, guardado, cierre, detalle, comparación y exportación CSV.
+- La UI ahora combina resumen live, cierres vigentes, periodo anterior, presupuestos de destino y ahorro con evidencia en un resumen financiero por destino; identifica explícitamente cuándo no existe un cierre o cuando hay filtros parciales.
+- Verificación vigente: frontend typecheck, lint y build; E2E de asignación 1/1 y smoke E2E 1/1. No se modificó el contrato HTTP.
+
+### 2026-08-04 - Benchmark E2E de cierre y persistencia masiva
+
+- La suite aislada de asignación incorporó una medición reproducible con 10.000 costos persistidos, preview, cierre, `EXPLAIN (ANALYZE, BUFFERS)` y validación de 10.000 líneas de evidencia.
+- Se corrigió la expiración del cierre por el timeout interactivo predeterminado de Prisma y se redujo el payload de líneas grandes a un `INSERT` parametrizado con `jsonb_to_recordset`; los lotes pequeños mantienen `createMany`.
+- La migración `202608040008_cost_metrics_tenant_period_index` se aplicó en Supabase; el plan usa `cost_metrics_tenant_period_idx` y ejecuta en 9,597 ms para 10.000 filas.
+- Resultado de la última ejecución en Supabase: preview `1.466,65 ms`, cierre `5.108,36 ms`; las 3 pruebas de integración pasaron. La brecha contra los objetivos orientativos de 500 ms/2 s queda registrada como `PERF-001` para una medición con infraestructura de despliegue representativa.
+
+### 2026-08-11 - Inventario OCI ampliado y cobertura elegible de linaje
+
+- Se integró OCI Resource Search con paginación, filtros include/exclude de compartimentos y normalización de
+  `instance`, `bootvolume`, `bootvolumebackup` y `vnic`, sin ampliar permisos ni inventar cobertura.
+- FOCUS puede producir referencias históricas exactas para OCID soportados que ya no existen en el inventario
+  vivo. Esas referencias quedan marcadas como `OCI_FOCUS_HISTORICAL_REFERENCE`, estado `UNKNOWN` y nunca
+  sobrescriben un recurso vivo.
+- El backfill controlado en Supabase creó 11 referencias históricas y enlazó 8.137 costos adicionales. Resultado:
+  8.173/8.173 costos elegibles enlazados (100 %), 36 vivos, 8.137 históricos, 555 IDs no soportados y 432 costos
+  sin conexión fuera del denominador técnico. La repetición fue idempotente: cero candidatos y cero cambios.
+- Readiness clasifica cada costo en siete categorías y expone agregación global, por servicio y por conexión.
+  La UI explica el denominador y diferencia evidencia viva, histórica, no elegible y pendiente.
+- Se dividieron `PrismaResourceLinkageReadinessRepository` (360 líneas) y `Ingesta.tsx` (363 líneas) en queries y
+  paneles cohesivos. El contrato HTTP solo se amplió con campos compatibles de clasificación.
+- Evidencia: backend `test:all` 81 archivos/321 pruebas y 19 escenarios IA offline; integración de linaje 5/5
+  con mediana de readiness de 352,34 ms; frontend typecheck, lint y build; audit productivo backend sin vulnerabilidades.
+
+### 2026-08-14 — Estabilización empresarial, portal cliente y Telegram
+
+- Se preservan estadísticas nativas en métricas técnicas: OCI genera consultas
+  percentile/last y AWS normaliza estadísticas de CloudWatch; la selección de
+  estadística queda disponible en la UI.
+- El inventario se filtra en SQL por costo positivo, estado, proveedor y texto,
+  manteniendo lineage tenant-scoped y evitando filtrado masivo en el navegador.
+- Se implementaron invitaciones de cliente con código efímero hasheado, portal
+  de aceptación, restricciones de navegación por rol y entrega SMTP directa
+  opcional sin persistir el token en el payload durable.
+- Se implementó auto-vinculación de Telegram con /start <código>, auditoría y
+  RLS worker-scoped.
+- Cobertura añadida: pruebas de invitaciones, entrega SMTP segura, OCI/AWS nativo,
+  filtros de inventario y webhook Telegram. Las migraciones 202608140001–004 están creadas
+  localmente y pendientes de despliegue controlado en Supabase.
+- No se hizo canary real contra la credencial empresarial compartida; requiere
+  revocación/rotación antes de usarla. AWS y OCI Usage API siguen bloqueados por
+  dependencias externas.
+
+### 2026-08-18 — Verificación real Tak 2.0 e IA con evidencia
+
+- Se completó una sincronización real de Tak 2.0: 953 recursos normalizados,
+  3.267 filas de OCI Usage API, 3.158 filas proyectadas y 30 referencias históricas
+  para OCID válidos ausentes del inventario vivo. Los costos no enlazables se
+  clasifican explícitamente; no se crean recursos sintéticos para forzar relaciones.
+- Se consolidaron 21.536 muestras técnicas con vínculo a recursos, 197 definiciones
+  confirmadas respaldadas por inventario y 660 definiciones descubiertas/persistidas.
+  La cuenta no entrega actualmente cobertura suficiente de `oci_computeagent` ni
+  `oci_vmi_resource_utilization`, por lo que las recomendaciones de CPU/memoria no
+  se presentan como ejecutables.
+- Se reforzó la compuerta determinística y el auditor IA para que la evidencia débil
+  se convierta en revisión técnica obligatoria. El canary live aislado pasó con dos
+  recomendaciones aprobadas, sin ahorros negativos y trazas con 4.025 tokens
+  estimados.
+- Se modularizaron hotspots de ingesta y frontend para cumplir la regla arquitectónica;
+  backend `test:all` y frontend typecheck/lint/build/arquitectura quedaron aprobados.
+- La persistencia de muestras sigue siendo el cuello de botella en Supabase remoto
+  (aprox. 256,8 s para 15.848 y 318,2 s para 13.044). La suite PostgreSQL aislada
+  completa quedó abierta por sesiones `idle in transaction` durante cleanup; se
+  registraron `QA-003` y `PERF-004` en `docs/DEUDA_TECNICA.md`.
+
+### 2026-08-24 — Estabilización de dashboard, métricas y jobs
+
+- El dashboard dejó de depender exclusivamente de los últimos 90 días de
+  calendario: usa el último periodo disponible y comunica la fecha de corte y
+  la antigüedad del dato.
+- Se añadió la proyección aditiva `resource_metric_rollups` para acelerar las
+  series técnicas agregadas desde PostgreSQL sin eliminar muestras raw. La
+  proyección conserva `avg`, `min`, `max`, `latest`, `sum`, conteo, timestamps de
+  extremos y granularidades de origen; el raw/drilldown permanece exacto.
+- La ingesta actualiza los rollups solo para las ventanas afectadas por cada
+  job técnico. El comando de mantenimiento es
+  `npm run metrics:rebuild-rollups`.
+- Los workers OCI ahora reciben `AbortSignal`, consultan cancelación durante la
+  persistencia y la readiness diferencia `WAITING_FOR_WORKER`, `RUNNING`,
+  `CANCEL_REQUESTED` y `STALE`. El wrapper local inicia API, worker y scheduler
+  juntos y usa lease local de 120 segundos.
+- La UI técnica mantiene un cache LRU/TTL acotado, cancela requests obsoletos,
+  pagina series con uPlot y conserva la serie cargada al solicitar páginas
+  posteriores.
+- El resumen interactivo dejó de ejecutar la agregación raw pesada: usa el
+  lector diario `PrismaResourceMetricSummaryReader` y reserva la consulta raw
+  exacta para percentiles y evidencia. En `Tak 2.0`, el resumen bajó de
+  aproximadamente 23,4 s a 0,75 s; el overview completo quedó en 264 ms en
+  una repetición local con buffers calientes.
+- La reconstrucción local quedó verificada: 1.871.897 muestras raw y
+  2.861.231 rollups derivados, con cobertura raw del 4 de mayo al 24 de agosto
+  de 2026. El build frontend y los typechecks backend/frontend quedaron
+  aprobados; falta cerrar la batería completa de validación y repetir la
+  medición contra un destino remoto representativo.

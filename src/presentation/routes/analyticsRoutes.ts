@@ -11,7 +11,7 @@ import { AnalyticsController } from '../controllers/AnalyticsController.js';
  * Endpoints expuestos:
  * | Método | Subruta                | Auth        | Handler                                  |
  * |--------|------------------------|-------------|------------------------------------------|
- * | GET    | /anomalies             | requireAuth | analyticsController.getAnomalies         |
+ * | GET    | /anomalies (deprecated) | requireAuth | analyticsController.getAnomalies         |
  * | GET    | /opportunities         | requireAuth | analyticsController.getOpportunities     |
  * | GET    | /forecast              | requireAuth | analyticsController.getForecast          |
  * | GET    | /trends                | requireAuth | analyticsController.getTrends            |
@@ -30,9 +30,19 @@ export function createAnalyticsRoutes(
 ): Router {
   const router = Router();
 
-  router.get('/anomalies', requireAuth, analyticsController.getAnomalies);
+  router.get(
+    '/anomalies',
+    requireAuth,
+    (_req, res, next) => {
+      res.setHeader('Deprecation', 'true');
+      res.setHeader('Link', '</api/v1/analytics/opportunities>; rel="successor-version"');
+      next();
+    },
+    analyticsController.getAnomalies,
+  );
   router.get('/opportunities', requireAuth, analyticsController.getOpportunities);
   router.get('/forecast', requireAuth, analyticsController.getForecast);
+  router.get('/forecast/scenarios', requireAuth, analyticsController.getForecastScenarios);
   router.get('/trends', requireAuth, analyticsController.getTrends);
   router.get('/usage', requireAuth, analyticsController.getUsage);
   router.get('/unit-economics', requireAuth, analyticsController.getUnitEconomics);
