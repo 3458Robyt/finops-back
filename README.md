@@ -117,15 +117,15 @@ El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La 
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local recomendada es `npm run test:all`: el corte vigente cubre 110 archivos aprobados,
-5 omitidos, 462 pruebas pasadas y 11 omitidas, además de typecheck, arquitectura (365 archivos/1 excepción),
+La verificación local recomendada es `npm run test:all`: el corte vigente cubre 126 archivos aprobados,
+5 omitidos, 545 pruebas pasadas y 11 omitidas, además de typecheck, arquitectura (414 archivos/1 excepción),
 escenarios IA offline 25/25, release hygiene y build; el fitness check backend mantiene una sola excepción justificada para los escenarios golden
 de IA. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración aisladas
 cuando existe un `TEST_DATABASE_URL` dedicado. Las cifras de snapshots históricos en documentos fechados no
 representan el estado vigente.
 
 La integración PostgreSQL reproducible completa se ejecuta con `npm run test:integration:isolated`: crea un
-schema `finops_e2e_*`, despliega las 64 migraciones locales, ejecuta 10 archivos/17 pruebas y los runners
+schema `finops_e2e_*`, despliega las migraciones locales vigentes, ejecuta las pruebas y los runners
 especializados de limpieza auth y heartbeat/readiness, y elimina el schema en `finally`. No debe apuntarse a la
 BD principal ni interpretarse como validación de AWS/OCI externo.
 

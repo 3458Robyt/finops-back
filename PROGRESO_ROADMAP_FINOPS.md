@@ -1,5 +1,64 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-09-02 — Evidencia visual actualizada y diagramas draw.io editables
+
+- Se levantó la beta local y se capturaron **18 pantallas actuales** con Playwright, cubriendo autenticación, panel, consola técnica, oportunidades, IA, ingesta, métricas, inventario, presupuestos, asignación, valor realizado, mensajería, seguridad y administración MSP.
+- Las capturas seleccionadas se conservaron en `docs/resultados_a_la_fecha/capturas_actuales/` junto con un catálogo de módulos, contexto de tenant y pasos de reproducción. La evidencia de métricas utiliza `Tak 2.0` con datos de `CpuUtilization`, cobertura y serie temporal renderizada con uPlot.
+- Se instaló y utilizó `Agents365-ai/drawio-skill` desde `C:\Users\DAVID\.agents\skills\drawio-skill`. Se generaron cuatro diagramas técnicos con Diagram IR, archivos `.drawio` editables, fuentes `.ir.json` y exportaciones `.svg`/`.png` en `docs/resultados_a_la_fecha/figuras/`.
+- El validador de la skill confirmó los cuatro diagramas con `0 error(s), 0 warning(s)` y sin cruces ni solapamientos geométricos. La validación y el inventario de archivos quedaron documentados junto a las figuras.
+- Se actualizó `docs/RESULTADOS_A_LA_FECHA.md` para reemplazar la evidencia visual histórica por las figuras actuales y las cuatro representaciones técnicas nuevas. Los diagramas Mermaid anteriores se conservan como antecedente, no como fuente autoritativa.
+- Limitación del entorno: no está instalado el ejecutable de escritorio de draw.io ni Graphviz; por ello la salida editable fue validada con la skill y las salidas SVG/PNG se generaron desde la misma especificación reproducible.
+
+### 2026-09-02 — Documento académico de resultados parciales
+
+- Se creó `docs/RESULTADOS_A_LA_FECHA.md` para sustentar el Criterio 4 del proyecto de grado.
+- El documento relaciona resultados con la metodología híbrida, objetivos funcionales, arquitectura, ingesta FOCUS/OCI, métricas técnicas, IA gobernada, gobernanza, seguridad y pruebas.
+- Se incorporaron dos diagramas propios en SVG/PNG con fuentes Mermaid y seis capturas reales de la aplicación local, conservando la fecha de captura y separándola del corte cuantitativo.
+- El corte cuantitativo usa consultas de solo lectura sobre `finops_local` al 2026-09-02: 167.624 costos normalizados, 2.307.078 muestras crudas y 3.378.792 rollups.
+- Se documentaron como limitaciones AWS real, operación manual durante desarrollo, validación periódica del proveedor IA, cobertura de linkage y operación productiva 24/7.
+
+### 2026-09-01 — Moneda explícita y generación manual no bloqueante
+
+- Se auditó la fuente de costos de `Tak 2.0`: sus registros FOCUS están almacenados
+  con `billing_currency = COP`; el costo unitario se deriva de
+  `billed_cost / consumed_quantity`. No se aplicó una conversión adicional para
+  evitar doble conversión. La Consola técnica ahora muestra el código ISO (`COP`,
+  `USD`, etc.) y conserva precisión suficiente para precios unitarios.
+- La evidencia de insights de consumo ahora expone la moneda y la fórmula usada,
+  dejando claro que el valor es nativo de FOCUS y no necesariamente USD.
+- La vista previa de readiness para generar recomendaciones dejó de bloquear la
+  carga del módulo y el botón manual. La cola se puede iniciar aunque la vista
+  previa sea lenta o temporalmente no disponible; el worker vuelve a validar la
+  evidencia antes de llamar a la IA. Se agregaron timeouts diferenciados: 60 s
+  para preview y 10 s para encolar.
+- Verificación inicial: `POST /api/v1/ai/analysis-runs` respondió `202` en ~241 ms
+  con la corrida persistida en `PENDING`; el API local permanece separado del
+  worker, por lo que el procesamiento requiere iniciar el proceso worker.
+- Se estabilizó la fixture del proveedor OCI que dependía de una fecha histórica
+  fija y empezó a fallar al superar la retención de 90 días; el reloj se fija
+  únicamente dentro de esa prueba. La suite unitaria completa queda en **545
+  pruebas aprobadas, 11 omitidas**.
+
+### 2026-08-31 — Mensajería durable por Telegram y correo SMTP
+
+- Se consolidó un bot Telegram global de chats privados. El webhook valida su
+  secreto y responde `202` después de encolar el `update_id`; un worker con
+  lease, deduplicación y reintentos procesa comandos y permite cambiar de tenant
+  únicamente a técnicos con asignaciones activas.
+- Se añadieron preferencias persistentes por usuario, módulo `Mensajería`,
+  auto-vinculación desde `Perfil`, historial de entregas y verificación segura
+  de SMTP y del bot mediante `getMe`.
+- Las notificaciones se almacenan como outbox `PENDING` y un scheduler las
+  entrega por SMTP/Telegram con límites, pool, timeout, reintentos y estados
+  sanitizados. Invitaciones y recuperación de contraseña conservan el envío
+  directo porque contienen tokens efímeros.
+- Se aplicaron localmente las migraciones `202608310001_messaging_channels_v2`
+  y `202608310002_messaging_preferences_worker_rls`; Supabase permanece
+  read-only y no fue modificado.
+- Verificación: **126 archivos unitarios aprobados, 545 pruebas aprobadas y 11
+  omitidas**, typecheck, build, arquitectura (414 archivos/1 excepción),
+  release hygiene y build frontend aprobados.
+
 ### 2026-08-29 — Optimización de lecturas técnicas, toolchain y verificación de migraciones
 
 - Las consultas de cobertura dejaron de lanzar tres barridos independientes de
@@ -11,7 +70,7 @@
   vez. No se reducen granularidades ni se descarta información raw.
 - Se separaron los mappers de corridas de análisis para cumplir la compuerta de
   arquitectura. Los runners E2E ahora validan la migración vigente
-  `202608290002_recommendation_candidate_audits`.
+  `202608310002_messaging_preferences_worker_rls`.
 - Se agregó una limpieza de artefactos de desarrollo en dry-run por defecto y se
   verificó localmente con 0 jobs y 0 schemas coincidentes; no se modificó ninguna
   base remota.

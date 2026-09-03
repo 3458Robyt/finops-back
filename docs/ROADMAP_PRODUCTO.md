@@ -10,7 +10,7 @@
 > mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
 > y operación productiva activable cuando exista destino de despliegue.
 
-## Roadmap vigente — corte 2026-08-29
+## Roadmap vigente — corte 2026-08-31
 
 ### Cierre de la iteración P0/P1
 
@@ -22,11 +22,14 @@
 - Preparado para AWS: STS AssumeRole/External ID, regiones, EC2/EBS, nombres
   de recursos, CloudWatch con discovery/paginación, Cost Explorer y FOCUS S3
   con manifiestos. Falta únicamente ejecutar contra una cuenta real.
-- Probado: backend 537 pruebas unitarias aprobadas, 25 escenarios IA offline,
-  arquitectura 405 archivos sin violaciones de límite y una excepción
+- Probado: backend 545 pruebas unitarias aprobadas, 25 escenarios IA offline,
+  arquitectura 414 archivos sin violaciones de límite y una excepción
   documentada; Playwright fixture-based completo 13/13 y ejecución rápida
   10/10; la suite Playwright real de solo lectura está implementada pero
   requiere credenciales locales.
+- Mensajería: preferencias persistentes, Telegram global con cola inbound y
+  selección multi-tenant, SMTP institucional con pool y cola outbound; queda
+  únicamente el canary real con destinos autorizados.
 
 ### Siguiente orden consecuente
 
@@ -60,11 +63,11 @@
   `COVERED`/`PARTIAL`/`NO_DATA` auditable.
 - Seguridad y calidad local: 20 helpers FinOps sin exposición a roles API,
   0 vulnerabilidades altas de producción, arquitectura 405/1 excepción,
-  suite unitaria 537/11 y suite PostgreSQL aislada aprobadas.
+  suite unitaria 545/11 y suite PostgreSQL aislada aprobadas.
 
 ### Cierre técnico inmediato
 
-1. Aplicar las migraciones locales hasta `202608290002_recommendation_candidate_audits` en el destino PostgreSQL
+1. Aplicar las migraciones locales hasta `202608310002_messaging_preferences_worker_rls` en el destino PostgreSQL
    definitivo. Supabase está read-only; no reintentar ni declarar el despliegue
    hasta que el administrador habilite escritura o se seleccione otro destino.
 2. Auditar y continuar el backfill de Tak 2.0 por cobertura diaria y por job;

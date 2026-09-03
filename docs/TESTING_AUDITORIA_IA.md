@@ -141,7 +141,7 @@ La auditoria offline valida escenarios dorados y rubricas deterministicas. La au
 
 ## Última evidencia local
 
-Al 2026-08-29, `npm run test:all` pasó con 125 archivos unitarios, 537 pruebas y 11 omitidas; `npm run test:ai:offline`
+Al 2026-08-31, `npm run test:all` pasó con 126 archivos unitarios, 545 pruebas y 11 omitidas; `npm run test:ai:offline`
 pasó 25/25. La rúbrica incluye alcance tenant/recurso, frescura y suficiencia técnica, idioma español,
 ahorro máximo determinístico, ausencia de ejecución automática y ausencia de payloads de tool, SQL, shell o código.
 El canary live requiere `AI_LIVE_TESTS=true`, crea un schema aislado y no es destructivo. El canary comparativo

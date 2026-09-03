@@ -39,7 +39,7 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
   no vinculables a inventario se conservan y se auditan aparte. FOCUS sigue
   siendo la fuente primaria y Usage API solo actúa como redundancia/fallback,
   sin sumar ambas fuentes.
-- Las 95 migraciones locales, hasta `202608290002_recommendation_candidate_audits`,
+- Las 97 migraciones locales, hasta `202608310002_messaging_preferences_worker_rls`,
   están aplicadas. Supabase está read-only y conserva una línea de migraciones
   divergente; no se debe afirmar que las migraciones locales estén allí hasta
   que el destino permita escritura y se haga una comparación controlada.

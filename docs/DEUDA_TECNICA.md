@@ -1,6 +1,6 @@
 # Deuda técnica y faltantes — FinOps Inteligente
 
-> Registro autoritativo del corte **2026-08-29**. Este archivo contiene únicamente
+> Registro autoritativo del corte **2026-08-31**. Este archivo contiene únicamente
 > trabajo abierto, bloqueado o diferido. El estado completo y lo ya entregado se
 > consulta en `docs/ESTADO_ACTUAL_FINOPS.md`; la secuencia futura está en
 > `docs/ROADMAP_PRODUCTO.md` y la evolución histórica en
@@ -11,7 +11,7 @@
 | ID | Prioridad | Área | Estado | Hallazgo y criterio de cierre | Evidencia y siguiente acción |
 |---|---|---|---|---|---|
 | SEC-001 | Alta | Seguridad/RLS | DIFERIDO | Activar enforcement obligatorio en el destino productivo y documentar rollback seguro. | El canary local confirma rol `finops_runtime`, aislamiento entre tenants, 20 helpers sin exposición a roles API y `search_path` seguro. Falta definir destino de despliegue y operar con `DB_RUNTIME_ENFORCE=true`, `DB_RUNTIME_ROLE=finops_runtime` y migración esperada. |
-| DB-001 | Alta | Supabase | BLOQUEADO | Aplicar de forma controlada las migraciones de hardening e índices al destino que vaya a operar la beta. | PostgreSQL local tiene 95 migraciones hasta `202608290002_recommendation_candidate_audits`. Supabase responde `read-only` y mantiene un historial divergente; no se deben reintentar escrituras indefinidamente. El administrador debe habilitar escritura o seleccionar otro destino y comparar la línea de migraciones antes de desplegar. |
+| DB-001 | Alta | Supabase | BLOQUEADO | Aplicar de forma controlada las migraciones de hardening e índices al destino que vaya a operar la beta. | PostgreSQL local tiene 97 migraciones hasta `202608310002_messaging_preferences_worker_rls`. Supabase responde `read-only` y mantiene un historial divergente; no se deben reintentar escrituras indefinidamente. El administrador debe habilitar escritura o seleccionar otro destino y comparar la línea de migraciones antes de desplegar. |
 | ING-004 | Alta | Métricas OCI | ABIERTO | Auditar y completar, cuando el proveedor tenga evidencia, el backfill técnico de Tak 2.0 sin declarar cobertura inexistente. | Último corte local: 2.123.297 muestras raw, 3.105.765 rollups, rango 2026-05-21..2026-08-18; en 2026-05-30..2026-08-30 hay 44.304 `COVERED`, 16.157 `PARTIAL` y 71.593 `NO_DATA`. Los leases stale ahora se reconcilian automáticamente; continuar por gaps con workers activos y emitir auditoría por día, stream y job. |
 | ING-006 | Alta | FOCUS | ABIERTO | Verificar disponibilidad y completitud de reportes FOCUS actuales de Tak 2.0 antes de presentarlos como histórico de costos. | La base local conserva 148.916 filas FOCUS hasta el 26 de agosto de 2026 y el backfill reciente cubrió 90/90 días operativos. Revisar watermark, completitud de nuevos reportes y vínculos de inventario; no sumar fuentes ni rellenar periodos con ceros. |
 | AWS-001 | Alta | AWS | BLOQUEADO | Ejecutar canary real de STS/EC2/CloudWatch/Cost Explorer/FOCUS y validar normalización. | Falta una cuenta AWS y un rol de prueba. Las credenciales bootstrap de la plataforma solo deben permitir `AssumeRole`; no son credenciales del tenant. |

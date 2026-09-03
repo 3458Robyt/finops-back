@@ -1,6 +1,6 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-29
+Fecha: 2026-08-31
 
 ## Corte de implementación verificable — 2026-08-29
 
@@ -35,13 +35,18 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
   playwright.real.config.ts y e2e-real/readonly.spec.ts. Exige variables
   locales explícitas, trabaja con un worker, recorre módulos en cuatro
   resoluciones, ejercita filtros técnicos y rechaza mutaciones no autorizadas.
+- Mensajería quedó separada en un módulo operativo: un bot Telegram global con
+  chats privados, auto-vinculación, selección de tenant para técnicos y cola
+  durable idempotente; y un SMTP institucional con pool, límites, verificación
+  de conexión, preferencias persistentes y entregas auditables. Las acciones de
+  gobierno permanecen en el portal web.
 
 ### Verificación de esta iteración
 
 - Backend `npm run test:all` queda compuesto por la verificación vigente:
-  **125 archivos unitarios aprobados, 537 pruebas aprobadas y 11 omitidas**;
+  **126 archivos unitarios aprobados, 545 pruebas aprobadas y 11 omitidas**;
   la evaluación IA offline adicional aprobó **25/25** pruebas.
-- `npm run check:architecture`: **405 archivos de producción**, sin violaciones;
+- `npm run check:architecture`: **414 archivos de producción**, sin violaciones;
   queda una excepción documentada para fixtures IA.
 - `npm run check:release-hygiene`, `npm audit --omit=dev --audit-level=high` y
   build backend: aprobados; producción reporta **0 vulnerabilidades**.
@@ -62,7 +67,7 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
   montar leyendas ni buscar cada recurso repetidamente.
 - El repositorio de corridas de análisis fue separado de sus mappers para
   mantener la regla de arquitectura; los scripts E2E ahora esperan la última
-  migración local `202608290002_recommendation_candidate_audits`.
+  migración local `202608310002_messaging_preferences_worker_rls`.
 - Se agregó una limpieza de desarrollo explícita y segura para jobs fallidos y
   schemas E2E permitidos. El dry-run local con el par `asd/asd` encontró 0 jobs
   y 0 schemas; no se ejecutó `--apply` ni se modificó el remoto.
@@ -79,8 +84,10 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
 ### Límites de esta verificación
 
 - Supabase sigue en modo `read-only` y con historial de migraciones divergente;
-  el clon local sí tiene aplicadas las **95 migraciones** hasta
-  `202608290002_recommendation_candidate_audits`. No se reintentaron escrituras
+  el clon local sí tiene aplicadas las **97 migraciones** hasta
+  `202608310002_messaging_preferences_worker_rls`. Las dos migraciones nuevas
+  de mensajería están listas para desplegarse cuando exista un destino escribible;
+  no se reintentaron escrituras
   remotas.
 - La auditoría de dependencias completa puede mostrar vulnerabilidades altas
   únicamente en herramientas de desarrollo transitivas (`esbuild`, `nanoid` y

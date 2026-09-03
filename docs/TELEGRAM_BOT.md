@@ -1,12 +1,36 @@
 # Telegram Bot FinOps
 
-## Alcance MVP
+## Modelo operativo
 
-- Chatbot FinOps desde Telegram usando el mismo motor IA del backend.
-- Recordatorios de ahorro bajo demanda con `/recordatorios`.
-- Consultas de recomendaciones, costos y oportunidades.
-- Vinculación autoasistida por el usuario desde Perfil; la vinculación manual queda como respaldo administrativo.
-- Sin aprobacion/rechazo de recomendaciones desde Telegram en esta version.
+- Existe un único bot global de FinOps, configurado una sola vez en el backend.
+- Solo se aceptan chats privados. Los grupos, canales y mensajes sin texto se ignoran y quedan registrados.
+- El webhook únicamente valida el secreto y persiste el `update_id`; responde `202` sin esperar a IA ni a Telegram.
+- El worker `telegram-inbound` procesa la cola con lease, idempotencia y reintentos acotados.
+- Las respuestas usan el mismo motor IA y los mismos datos tenant-scoped del portal, siempre en español.
+- Telegram es un canal de consulta. Aprobar, rechazar o ejecutar una recomendación siempre abre el portal web.
+
+## Flujo de acceso
+
+### Técnicos multi-tenant
+
+1. El técnico inicia sesión en el portal y genera un código de auto-vinculación desde `Perfil`.
+2. Envía `/start <código>` al bot antes de que expire (10 minutos).
+3. El bot consume el código una sola vez y vincula un único chat privado a su usuario FinOps.
+4. `/tenants` lista el tenant principal y los tenants activos asignados al técnico.
+5. `/tenant <número, slug o nombre>` cambia el tenant activo del chat. Las consultas siguientes usan ese tenant.
+
+El enlace de Telegram es global por usuario: cambiar de tenant no crea otro usuario, contraseña ni chat.
+
+### Clientes finales
+
+El cliente también puede auto-vincular su chat desde `Perfil`, pero queda limitado al tenant principal. No puede
+cambiar el tenant desde Telegram ni consultar información de otro tenant.
+
+### Respaldo administrativo
+
+Un usuario con `OUTBOUND_MANAGE` (`MASTER_ADMIN`, `OPERATOR_ADMIN` o `ADMIN`) puede registrar manualmente un chat
+privado desde la gestión de Telegram. El chat debe pertenecer al usuario indicado, el vínculo queda auditado y solo
+puede existir un vínculo activo por usuario y por `chat_id`.
 
 ## Variables
 
@@ -16,26 +40,69 @@ TELEGRAM_BOT_TOKEN=token_entregado_por_botfather
 TELEGRAM_WEBHOOK_SECRET=secreto_largo_aleatorio
 TELEGRAM_BOT_USERNAME=nombre_del_bot_sin_arroba
 OUTBOUND_PROVIDER_TIMEOUT_MS=15000
+TELEGRAM_INBOUND_WORKER_ENABLED=true
+TELEGRAM_INBOUND_WORKER_ID=telegram-inbound-01
+TELEGRAM_INBOUND_WORKER_INTERVAL_MS=1000
+TELEGRAM_INBOUND_WORKER_LEASE_MS=120000
+TELEGRAM_INBOUND_WORKER_RETRY_BACKOFF_MS=5000
 ```
 
-`OUTBOUND_PROVIDER_TIMEOUT_MS` limita cada envío hacia Telegram y SMTP. En producción se acepta un valor entre
-5.000 y 60.000 milisegundos; el valor por defecto es 15.000. Un timeout se registra como entrega fallida sin
-bloquear indefinidamente el worker.
+El secreto del webhook debe ser distinto del token del bot. La integración se rechaza en runtime si está habilitada
+sin token o secreto. El timeout aplica a las llamadas salientes; la cola evita que el webhook quede bloqueado.
 
-## Configurar Webhook
+## Configurar el webhook
 
-El backend debe estar disponible con una URL publica HTTPS. Para desarrollo local se puede usar ngrok o equivalente.
+El backend necesita una URL pública HTTPS. En desarrollo puede usarse un túnel temporal como ngrok.
 
 ```powershell
 npm run telegram:set-webhook -- --url https://<backend-public-url>/api/v1/telegram/webhook
 ```
 
-El script registra el webhook en Telegram y configura `secret_token`. El endpoint valida el header `X-Telegram-Bot-Api-Secret-Token`.
+Telegram enviará `X-Telegram-Bot-Api-Secret-Token`. El endpoint comprueba ese header, guarda el update de forma
+idempotente por `update_id` y devuelve `202 Accepted`. Si el mismo update llega otra vez no se duplica.
+
+## Comandos
+
+- `/start`: muestra el estado del vínculo o instrucciones para vincularse.
+- `/ayuda`: lista comandos disponibles.
+- `/chat <pregunta>`: consulta al asistente IA.
+- Texto libre: se trata como pregunta al asistente IA.
+- `/recordatorios`: muestra ahorro no capturado.
+- `/recomendaciones`: lista recomendaciones activas.
+- `/costos`: muestra el resumen de costos actual.
+- `/oportunidades`: muestra oportunidades detectadas.
+- `/tenants`: muestra tenants accesibles (solo técnicos pueden tener más de uno).
+- `/tenant <número, slug o nombre>`: cambia el tenant activo del técnico.
+
+Las acciones de gobierno no se ejecutan desde Telegram. El usuario debe abrir el enlace del portal para revisar y
+aprobar o rechazar una recomendación con trazabilidad.
+
+## Estado y trazabilidad
+
+- `telegram_inbound_updates`: cola durable, deduplicación, intentos, lease y error sanitizado.
+- `telegram_interaction_logs`: comando, resultado, tenant efectivo y vista previa acotada.
+- `telegram_chat_links`: vínculo global del usuario, tenant de origen y tenant activo seleccionado.
+- `audit_events`: auto-vinculación, creación/desactivación de vínculos y acciones administrativas.
+
+Las entregas salientes se guardan en `outbound_message_deliveries` como `PENDING`, `SENT`, `FAILED` o `SKIPPED` y
+las drena el scheduler de mensajes. Telegram respeta el límite del proveedor, reintenta fallos acotados y no
+expone errores crudos al usuario.
+
+Un administrador puede ejecutar la verificación del bot desde `Mensajería`; usa `getMe` y no envía mensajes. Las
+pruebas de entrega se encolan y se inspeccionan en el historial.
+
+## Seguridad
+
+- Los chats no vinculados nunca reciben datos FinOps.
+- Solo se aceptan mensajes de chats privados.
+- El bot no recibe ni almacena contraseñas, JWT, claves cloud ni secretos del portal.
+- El código de auto-vinculación se almacena únicamente como hash, expira y se consume atómicamente.
+- El `chat_id` no es una credencial; las vinculaciones administrativas exigen sesión, permiso y auditoría.
+- Los errores se registran con `safeErrorMessage`; no se guardan tokens ni PEM en logs.
 
 ## Canary real controlado
 
-El canary de proveedores no usa la base de datos ni datos de tenants. Por defecto se omite; para ejecutarlo se debe
-definir explícitamente un destino de prueba y la confirmación de envío real:
+El canary no usa datos de tenants. Para emitir un mensaje real hay que confirmar explícitamente el destino:
 
 ```powershell
 $env:MESSAGING_CANARY_CONFIRM='I_UNDERSTAND_THIS_SENDS_A_REAL_MESSAGE'
@@ -44,38 +111,5 @@ $env:MESSAGING_CANARY_TELEGRAM_CHAT_ID='<chat-id-de-prueba>'
 npm run test:canary:messaging
 ```
 
-El script imprime solo estados y errores sanitizados. Requiere que el canal correspondiente esté habilitado y que
-sus credenciales estén cargadas en el entorno; un resultado `PASSED` valida conectividad del proveedor, pero no
-cierra por sí solo el canary de la cola durable de producción.
-
-## Vincular Usuario
-
-1. El usuario entra en `Perfil` dentro de FinOps y genera un código de auto-vinculación.
-2. Abre el bot configurado y envía `/start <código>` antes de que expire (10 minutos).
-3. El webhook valida el secreto, consume el código una sola vez y vincula el chat al usuario y tenant exactos.
-4. El usuario puede comprobar el estado desde Perfil; el administrador puede enviar un mensaje de prueba desde la gestión de Telegram.
-
-### Respaldo administrativo
-
-Si el usuario no puede usar el código, un administrador autorizado puede vincular el chat desde `Agente IA > Telegram`.
-El Chat ID no es una credencial: la operación exige autenticación, tenant compartido y queda auditada.
-
-## Comandos
-
-- `/start`: muestra estado de vinculacion o Chat ID.
-- `/ayuda`: lista comandos.
-- `/chat <pregunta>`: consulta al asistente IA.
-- Texto libre: se trata como pregunta al asistente IA.
-- `/recordatorios`: muestra ahorro no capturado.
-- `/recomendaciones`: lista recomendaciones pendientes/aprobadas.
-- `/costos`: muestra resumen de costo actual.
-- `/oportunidades`: muestra oportunidades/insights actuales.
-
-## Seguridad
-
-- Chats no vinculados no acceden a datos FinOps.
-- Solo `ADMIN` y `OPERATOR_ADMIN` vinculan o desactivan chats.
-- El usuario vinculado debe pertenecer al tenant del admin.
-- No se guardan passwords ni tokens de usuario.
-- Las interacciones quedan en `telegram_interaction_logs`.
-- Las acciones administrativas quedan en `audit_events`.
+Un `PASSED` valida conectividad del proveedor, pero la cola durable debe verificarse además desde `Mensajería` y
+los registros de entregas.

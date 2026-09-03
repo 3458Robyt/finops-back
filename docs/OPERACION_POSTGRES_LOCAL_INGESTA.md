@@ -6,8 +6,8 @@
 ## Estado actual
 
 - PostgreSQL 17 local está activo en `127.0.0.1:5433/finops_local` y tiene las
-  95 migraciones aplicadas hasta
-  `202608290002_recommendation_candidate_audits`.
+  97 migraciones aplicadas hasta
+  `202608310002_messaging_preferences_worker_rls`.
 - La base observa aproximadamente 14.678 MB. Tak 2.0 tiene 2.123.297 muestras
   raw y 3.105.765 rollups; el backfill no está completo: la ventana de auditoría
   conserva `COVERED`, `PARTIAL` y `NO_DATA` explícitos.
