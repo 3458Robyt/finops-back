@@ -2,7 +2,6 @@
 
 > Instantánea pública del backlog y tablero de control. La fuente operativa de seguimiento continúa siendo Azure DevOps.
 
-**Última actualización de esta instantánea:** 2026-09-02 23:10
 
 ## Enlaces de consulta
 
