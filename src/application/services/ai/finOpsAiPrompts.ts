@@ -76,13 +76,15 @@ export function buildRecommendationSystemPrompt(
   technicalEvidence?: string,
   readinessEvidence?: string,
   scopedExternalResourceId?: string,
+  scopedCloudResourceId?: string,
 ): string {
 return [
     'Eres un motor IA de optimización FinOps.',
     'Analiza el contexto FOCUS proporcionado y produce recomendaciones como JSON estricto, solo desde candidatos permitidos.',
     'Todas las recomendaciones deben estar redactadas en español: title, description y cualquier texto dentro de evidence.',
-    'Devuelve solo esta forma: {"recommendations":[{"cloudAccountId":"...","type":"...","severity":"LOW|MEDIUM|HIGH|CRITICAL","title":"...","description":"...","estimatedMonthlySavings":0,"currency":"USD","evidence":{"candidateId":"...","evidenceLevel":"COST_ONLY|COST_AND_USAGE|COST_USAGE_AND_TECHNICAL","evidenceStrength":"LOW|MEDIUM|HIGH","sourceFacts":["..."],"costEvidenceRefs":["..."],"technicalEvidenceRefs":["..."],"requiresTechnicalValidation":true,"confidence":0.0,"assumptions":["..."]}}]}',
+    'Devuelve solo esta forma: {"recommendations":[{"cloudAccountId":"...","cloudResourceId":"...","resourceLinkReason":"...","type":"...","severity":"LOW|MEDIUM|HIGH|CRITICAL","title":"...","description":"...","estimatedMonthlySavings":0,"currency":"USD","evidence":{"candidateId":"...","evidenceLevel":"COST_ONLY|COST_AND_USAGE|COST_USAGE_AND_TECHNICAL","evidenceStrength":"LOW|MEDIUM|HIGH","sourceFacts":["..."],"costEvidenceRefs":["..."],"technicalEvidenceRefs":["..."],"requiresTechnicalValidation":true,"confidence":0.0,"assumptions":["..."]}}]}',
     'Usa solo cloudAccountId presentes en accounts. No inventes recursos ni proveedores.',
+    'cloudResourceId solo puede copiarse literalmente desde el candidato/evidencia técnica autorizada; si no existe, déjalo ausente y conserva resourceLinkReason cuando corresponda.',
     'Usa topUsage y unit economics cuando existan. Incluye evidence.evidenceLevel como COST_ONLY, COST_AND_USAGE o COST_USAGE_AND_TECHNICAL.',
     'FOCUS aporta consumo facturado, no métricas técnicas como CPU, memoria, IOPS, throughput o utilización. No hagas rightsizing técnico fuerte si solo existe FOCUS; marca evidence.requiresTechnicalValidation=true.',
     'Si un candidato tiene readiness VALIDATION_ONLY, redacta la recomendacion como revision o validacion tecnica previa; no presentes ejecucion directa ni ahorro garantizado.',
@@ -100,6 +102,9 @@ return [
     ...(scopedExternalResourceId === undefined
       ? []
       : [`Este análisis está limitado al recurso ${scopedExternalResourceId}. Incluye exactamente evidence.externalResourceId="${scopedExternalResourceId}" en cada recomendación; no menciones ni propongas otros recursos.`]),
+    ...(scopedCloudResourceId === undefined
+      ? []
+      : [`El vínculo canónico obligatorio de este análisis es cloudResourceId="${scopedCloudResourceId}". Cópialo literalmente; no uses otro recurso ni conexión.`]),
     'Prioriza recomendaciones accionables: ciclo de vida de almacenamiento, compromisos/descuentos por consumo estable, investigación de divergencia costo-consumo, revisión de bases de datos y egreso de red.',
     'Solo puedes usar evidence.evidenceLevel=COST_USAGE_AND_TECHNICAL si la evidencia incluye technicalEvidenceRefs, cloudResourceId o externalResourceId, technicalSampleCount o technicalCoverageDays, latestTechnicalSampleAt y una metrica relevante para la accion.',
     'Si la evidencia tecnica es debil, antigua, no enlazada al recurso o insuficiente, no recomiendes ejecutar cambios tecnicos; recomienda validar primero y marca requiresTechnicalValidation=true.',

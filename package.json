@@ -14,6 +14,7 @@
     "test:unit": "vitest run",
     "test:integration": "cross-env RUN_DB_INTEGRATION_TESTS=true vitest run src/testing/e2eFixtures.test.ts src/testing/technicalMetrics.integration.test.ts src/testing/recommendationAnalysis.integration.test.ts src/testing/verifiedSavingsMeasurement.integration.test.ts src/testing/tenantContext.integration.test.ts",
     "test:integration:docker": "docker compose -f docker-compose.test.yml up -d --wait && cross-env DATABASE_URL=postgresql://finops:finops@localhost:55432/finops_test prisma migrate deploy && cross-env TEST_DATABASE_URL=postgresql://finops:finops@localhost:55432/finops_test ALLOW_DESTRUCTIVE_TEST_DATABASE=true RUN_DB_INTEGRATION_TESTS=true vitest run src/testing/e2eFixtures.test.ts src/testing/**/*.integration.test.ts",
+    "test:integration:resource-lineage": "tsx scripts/testing/resource-linkage-integration.ts",
     "test:api:smoke": "tsx scripts/testing/api-smoke.ts",
     "test:api:onboarding": "tsx scripts/testing/cloud-onboarding-api-smoke.ts",
     "test:canary:runtime-rls": "tsx scripts/testing/runtime-rls-canary.ts",
@@ -40,6 +41,7 @@
     "ingestion:worker:once": "tsx scripts/run-ingestion-worker-once.ts",
     "ingestion:worker:preflight": "tsx scripts/run-ingestion-worker-once.ts --preflight",
     "ingestion:preview-focus": "tsx scripts/preview-focus-sources.ts",
+    "db:reconcile:resource-links": "tsx scripts/reconcile-resource-links.ts",
     "oci:register-profile": "tsx scripts/register-oci-profile-credential.ts",
     "telegram:set-webhook": "tsx scripts/telegram-set-webhook.ts",
     "users:consolidate-admin-tenants": "tsx scripts/consolidate-admin-tenants.ts"

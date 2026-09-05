@@ -774,11 +774,14 @@ model CloudResource {
   tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   cloudConnection    CloudConnection        @relation(fields: [cloudConnectionId], references: [id], onDelete: Cascade)
   metricSamples      ResourceMetricSample[]
+  costMetrics        CostMetric[]
+  recommendations    Recommendation[]
   agentInstallations AgentInstallation[]
 
   @@unique([cloudConnectionId, externalResourceId])
   @@index([tenantId, provider, resourceType])
   @@index([tenantId, status])
+  @@index([tenantId, lastSeenAt], map: "cloud_resources_tenant_last_seen_at_idx")
   @@map("cloud_resources")
 }
 
@@ -787,6 +790,7 @@ model ResourceMetricSample {
   tenantId           String              @map("tenant_id")
   cloudConnectionId  String              @map("cloud_connection_id")
   cloudResourceId    String?             @map("cloud_resource_id")
+  resourceLinkReason String?             @map("resource_link_reason")
   provider           CloudProvider
   externalResourceId String              @map("external_resource_id")
   metricName         String              @map("metric_name")
@@ -803,6 +807,7 @@ model ResourceMetricSample {
 
   @@unique([cloudConnectionId, externalResourceId, metricName, sampledAt])
   @@index([tenantId, sampledAt])
+  @@index([tenantId, cloudConnectionId, sampledAt], map: "resource_metric_samples_tenant_connection_sampled_at_idx")
   @@index([tenantId, metricName, sampledAt])
   @@index([tenantId, externalResourceId, metricName, sampledAt])
   @@index([cloudResourceId, sampledAt])
@@ -855,6 +860,8 @@ model CostMetric {
   tenantId           String        @map("tenant_id")
   cloudAccountId     String        @map("cloud_account_id")
   cloudConnectionId  String?       @map("cloud_connection_id")
+  cloudResourceId    String?       @map("cloud_resource_id")
+  resourceLinkReason String?       @map("resource_link_reason")
   ingestionRunId     String?       @map("ingestion_run_id")
   provider           CloudProvider
   billingSource      CostBillingSource @default(UNKNOWN) @map("billing_source")
@@ -895,6 +902,7 @@ model CostMetric {
   tenant             Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   cloudAccount       CloudAccount  @relation(fields: [cloudAccountId], references: [id], onDelete: Cascade)
   cloudConnection    CloudConnection? @relation(fields: [cloudConnectionId], references: [id], onDelete: SetNull)
+  cloudResource      CloudResource? @relation(fields: [cloudResourceId], references: [id], onDelete: SetNull)
   ingestionRun       IngestionRun? @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
 
   @@id([chargePeriodStart, metricIdentityHash])
@@ -902,6 +910,8 @@ model CostMetric {
   @@index([tenantId, serviceName, chargePeriodStart])
   @@index([tenantId, provider, chargePeriodStart])
   @@index([tenantId, cloudConnectionId, billingSource, chargePeriodStart])
+  @@index([tenantId, cloudConnectionId, chargePeriodEnd], map: "cost_metrics_tenant_connection_period_end_idx")
+  @@index([tenantId, cloudResourceId, chargePeriodStart])
   @@index([resourceId])
   @@index([cloudAccountId], map: "cost_metrics_cloud_account_id_idx")
   @@index([cloudConnectionId], map: "cost_metrics_cloud_connection_id_idx")
@@ -913,6 +923,8 @@ model Recommendation {
   id                       String                        @id @default(cuid())
   tenantId                 String                        @map("tenant_id")
   cloudAccountId           String                        @map("cloud_account_id")
+  cloudResourceId          String?                       @map("cloud_resource_id")
+  resourceLinkReason       String?                       @map("resource_link_reason")
   sourceChargePeriodStart  DateTime?                     @map("source_charge_period_start") @db.Timestamptz(6)
   sourceMetricIdentityHash String?                       @map("source_metric_identity_hash")
   deduplicationKey         String?                       @map("deduplication_key")
@@ -928,6 +940,7 @@ model Recommendation {
   updatedAt                DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
   tenant                   Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   cloudAccount             CloudAccount                  @relation(fields: [cloudAccountId], references: [id], onDelete: Cascade)
+  cloudResource             CloudResource?                @relation(fields: [cloudResourceId], references: [id], onDelete: SetNull)
   decisions                RecommendationDecision[]
   executionPlans           RecommendationExecutionPlan[]
   learningEvents           AgentLearningEvent[]
@@ -938,6 +951,7 @@ model Recommendation {
   analysisRunLinks         RecommendationAnalysisRunRecommendation[]
 
   @@index([tenantId, status, createdAt])
+  @@index([tenantId, cloudResourceId, createdAt])
   @@index([cloudAccountId, severity])
   @@index([sourceChargePeriodStart, sourceMetricIdentityHash])
   @@unique([tenantId, deduplicationKey])
@@ -953,6 +967,7 @@ model RecommendationAnalysisRun {
   scope                    RecommendationAnalysisScope               @default(TENANT)
   scopeKey                 String                                    @map("scope_key")
   externalResourceId       String?                                   @map("external_resource_id")
+  cloudResourceId          String?                                   @map("cloud_resource_id")
   status                   RecommendationAnalysisRunStatus           @default(PENDING)
   stage                    RecommendationAnalysisRunStage            @default(QUEUED)
   periodStart              DateTime?                                 @map("period_start") @db.Timestamptz(6)
@@ -993,6 +1008,7 @@ model RecommendationAnalysisRun {
   @@index([tenantId, createdAt])
   @@index([tenantId, status, nextAttemptAt])
   @@index([tenantId, scopeKey, evidenceHash])
+  @@index([tenantId, cloudResourceId, createdAt])
   @@index([status, nextAttemptAt, createdAt])
   @@index([requestedByUserId, createdAt])
   @@index([retriedFromRunId], map: "recommendation_analysis_runs_retried_from_run_id_idx")

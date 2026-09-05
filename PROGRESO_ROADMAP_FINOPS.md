@@ -1,7 +1,8 @@
 # Progreso — FinOps Inteligente (Backend)
 
 > **Estado vigente 2026-08-03:** las entradas inferiores son bitácora histórica. La beta se integró en
-> `main` mediante PR #19 frontend y PR #16 backend; los canaries SEC-001 y AI-001 están cerrados
+> `main` mediante PR #19 frontend y PR #16 backend; el cierre posterior de trazabilidad continúa en
+> la rama `feat/resource-lineage-readiness` con PR #18 backend y PR #20 frontend; los canaries SEC-001 y AI-001 están cerrados
 > técnicamente. Los bloqueos externos AWS-001/OCI-001 y la activación productiva permanente permanecen
 > abiertos o diferidos según `docs/DEUDA_TECNICA.md`.
 
@@ -18,10 +19,45 @@
   También se corrigió la referencia a periodos de facturación abiertos, se normalizaron candidatos antes de
   auditar y se reforzaron las instrucciones de generador/auditor sin relajar la rúbrica determinística.
 - El canary IA aislado pasó con `persist=false`: chat en español, tres recomendaciones, auditoría aprobada,
-  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.047 tokens. Latencia de
-  generación: 56.184 s. El schema y fixture se eliminaron automáticamente.
+  snapshot canónico, rúbrica 100/100, trazas, ahorro no negativo y estimación de 4.093 tokens. La última
+  generación tardó 54.662 s. El schema y fixture se eliminaron automáticamente.
 - `AI-001` y `SEC-001` quedaron cerrados técnicamente; AWS real y OCI Usage API siguen bloqueados por
   credenciales/policy externas.
+
+### 2026-08-03 — Cierre de trazabilidad canónica por recurso
+
+- Se agregaron las migraciones `202608030003_resource_lineage_readiness_indexes` y
+  `202608030004_analysis_run_canonical_resource`, aplicadas en Supabase; las corridas de análisis ahora
+  persisten también `cloudResourceId` para no depender solo de `externalResourceId`.
+- La identidad de cruce es exacta por `cloudConnectionId + externalResourceId`; si hay duplicidad, la compuerta
+  bloquea la recomendación hasta resolver el recurso canónico. Readiness expone estado, frescura, bloqueadores,
+  cobertura por conexión y contadores del backfill idempotente.
+- La suite aislada `npm run test:integration:resource-lineage` pasó 5/5. Con 10.000 costos y 20.000 muestras,
+  cinco lecturas de readiness dieron mediana 186,46 ms.
+- El canary IA real pasó después de endurecer artefactos de revisión técnica: 3 recomendaciones, auditoría
+  aprobada, snapshot canónico, trazas y ahorros no negativos; 54,662 s y 4.093 tokens estimados.
+- El canary OCI read-only pasó inventario Compute, Monitoring y FOCUS/Object Storage: 1 recurso y 20 objetos
+  descubiertos/5 retornados. `COSTS=DENIED` queda explícito por la policy faltante de OCI Usage API.
+- Verificación adicional: backend build/typecheck/unit/audit, frontend lint/build y `prisma migrate status` al día.
+
+### 2026-08-03 — Trazabilidad normalizada y readiness por recurso
+
+- Se integró el PR backend #17 antes de continuar y se creó `feat/resource-lineage-readiness` sin tocar
+  directamente `main`.
+- `cost_metrics`, `resource_metric_samples` y `recommendations` conservan el dato fuente y agregan el
+  vínculo explícito `cloudResourceId` más `resourceLinkReason`. La identidad válida es exacta por
+  `cloudConnectionId + externalResourceId`; no hay asociación por nombre ni por LLM.
+- La ingesta persiste inventario antes de costos/métricas y cada job registra cobertura de enlaces. El
+  script `db:reconcile:resource-links` funciona en dry-run/apply, procesa por cursor y se verificó
+  idempotente contra Supabase.
+- El backfill aplicado enlazó 36 costos OCI con inventario; clasificó 8.692 como inventario inexistente y
+  432 sin conexión. Las 19.367 muestras técnicas OCI permanecen enlazadas; 13 recomendaciones históricas
+  quedaron clasificadas como `EMPTY_RESOURCE_ID`. No se modificaron filas FOCUS crudas.
+- Se agregó `/api/v1/ingestion/resource-linkage` y la sección de cobertura en `Ingesta`, incluyendo estado,
+  razones, cobertura de costos/métricas y muestra por recurso. La rúbrica IA rechaza evidencia técnica
+  sin relación `cloudResourceId` explícita y coincidente con el snapshot canónico.
+- Migraciones nuevas aplicadas en Supabase: `202608030001_resource_lineage_normalization` y
+  `202608030002_recommendation_resource_guard`.
 
 ### 2026-08-01 — CI integrado de beta cerrado
 

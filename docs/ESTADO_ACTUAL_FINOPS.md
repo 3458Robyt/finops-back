@@ -13,6 +13,10 @@ La plataforma ya tiene backend Node.js/TypeScript, frontend React, Supabase/Post
 - AWS tiene base SDK para EC2, CloudWatch y Data Exports, pendiente de credencial/rol real para validacion productiva.
 - `cloud_resources` se pobla desde inventario declarativo (`ociInventoryResources` / `awsInventoryResources`) y desde definiciones/muestras de metricas cuando aun no hay inventario completo.
 - Las muestras tecnicas nuevas se enlazan a `cloudResourceId` y se reconcilian muestras anteriores por conexion/recurso.
+- Costos, muestras y recomendaciones tienen `cloudResourceId`/`resourceLinkReason`; el enlace canónico exige `cloudConnectionId + externalResourceId` exactos, sin fuzzy matching.
+- La ingesta persiste el orden inventario → costos/métricas, el resumen de linkage en cada job y el endpoint `/api/v1/ingestion/resource-linkage` muestra cobertura por tabla y por recurso en `Ingesta`.
+- El backfill idempotente `npm run db:reconcile:resource-links` ya se aplicó en Supabase. En la cuenta OCI actual: 36 costos enlazados, 9.124 sin enlace por inventario/conexión y 19.367/19.367 muestras técnicas enlazadas. Los costos sin inventario no se presentan como evidencia técnica.
+- Las corridas de análisis por recurso también persisten `cloudResourceId` (`202608030004_analysis_run_canonical_resource`), por lo que el alcance durable no depende solo de `externalResourceId`.
 
 ## IA y recomendaciones
 
@@ -62,12 +66,18 @@ Estado de cierre:
   bajo demanda y renderiza la serie principal con uPlot.
 - Los reportes FOCUS de OCI/AWS se procesan por batches asíncronos para evitar cargar el CSV completo en
   memoria; la persistencia mantiene inserción idempotente por hash.
-- Backend: `npm run test:all` pasó con 56 archivos, 236 pruebas y 1 omitida; IA offline 16/16, build,
-  typecheck y `npm audit --omit=dev` sin vulnerabilidades.
+- Backend: `npm run typecheck`, `npm run test:unit` (57 archivos aprobados, 245 pruebas pasadas y 6 omitidas),
+  `npm run test:ai:offline` (17/17), build y `npm audit --omit=dev` sin vulnerabilidades.
 - Frontend: lint y build aprobados; el CI de la beta ejecutó el smoke E2E con éxito.
 - Canary IA real aislado: chat en español, generación, auditor, snapshot canónico, rúbrica determinística,
   ahorros no negativos, trazabilidad y `persist=false` aprobados con el modelo `gpt-5.4-mini`.
-  Latencia de generación: 56.184 s; estimación de trazas: 4.047 tokens; recomendaciones: 3.
+  Latencia de generación: 54.662 s; estimación de contexto/trazas: 4.093 tokens; recomendaciones: 3.
+- Canary OCI read-only de onboarding: identidad, inventario, métricas y Object Storage disponibles;
+  1 recurso Compute leído en una llamada, preview FOCUS sin errores (20 objetos descubiertos, 5 retornados);
+  la capacidad de costos directa quedó denegada y el resultado fue `PARTIAL`, consistente con el bloqueo
+  documentado de OCI Usage API.
+- Integración de trazabilidad en PostgreSQL aislado: 5/5 pruebas; readiness con 10.000 costos y 20.000
+  muestras técnicas tuvo mediana de 186,46 ms en cinco lecturas.
 - Canary principal: la prueba `tenantContext.integration.test.ts` pasó con enforcement runtime contra
   Supabase `public`; el plan de métricas usa el índice `(tenant_id, sampled_at)` y la línea base
   observada fue 52.029 ms raw y 7.692 ms agregada para 660 filas/grupos.
@@ -78,6 +88,7 @@ Estado de cierre:
 
 - Asignación de costos: reglas persistentes por tenant y showback determinístico ya están disponibles; la distribución porcentual de costos compartidos y el chargeback contable siguen fuera de alcance.
 - Validar inventario SDK OCI Compute y AWS EC2 con cuentas reales, benchmark y cobertura por tenant.
+- Completar la cobertura histórica de costos OCI: requiere que el inventario real exponga los mismos identificadores de recurso; los registros sin coincidencia quedan visibles con razón, no se enlazan por nombre.
 - AWS productivo con rol real y bucket/prefix FOCUS.
 - Mantener un canary periódico de IA real con fixtures controlados; no persistir datos de prueba en tenants normales.
 - Activar permanentemente el enforcement runtime RLS solo al desplegar, usando el procedimiento de

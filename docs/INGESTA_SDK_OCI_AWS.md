@@ -8,6 +8,15 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
 
 ## Estado verificado
 
+### Validación 2026-08-03
+
+- `npm run test:canary:oci-onboarding` pasó en modo read-only contra la conexión OCI real: una llamada de
+  Compute devolvió un recurso, Monitoring quedó disponible y el preview FOCUS descubrió 20 objetos y devolvió 5.
+- La capacidad directa `COSTS` de OCI quedó `DENIED`; no se presenta como fallo de inventario/FOCUS y permanece
+  bloqueada hasta aplicar la policy mínima de Usage API. FOCUS continúa como fuente operativa primaria.
+- El cruce posterior usa `cloud_resources` y exige la identidad exacta `cloudConnectionId + externalResourceId`;
+  no se permite vincular costos históricos por nombre o similitud.
+
 ### OCI
 
 - Credencial operativa: perfil OCI CLI registrado cifrado con `npm run oci:register-profile`.
