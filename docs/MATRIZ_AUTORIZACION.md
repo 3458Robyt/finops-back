@@ -1,7 +1,7 @@
 # Matriz de autorización FinOps
 
 > Fuente autoritativa de capacidades: `src/domain/security/AuthorizationPolicy.ts`.
-> Última verificación: 2026-08-11.
+> Última verificación: 2026-09-04.
 
 ## Principios
 
@@ -14,24 +14,24 @@
 
 ## Capacidades por rol
 
-| Capacidad | MASTER_ADMIN | OPERATOR_ADMIN | ADMIN | FINOPS_TECHNICIAN | CLIENT_APPROVER | CLIENT_VIEWER | VIEWER |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Lectura FinOps | Sí | Sí | Sí | Sí | Sí | Sí | Sí |
-| Administrar tenants y asignaciones | Sí | — | — | — | — | — | — |
-| Administrar conexiones cloud | Sí | Sí | Sí | Sí | — | — | — |
-| Administrar ingesta | Sí | Sí | Sí | Sí | — | — | — |
-| Observar trazas técnicas del agente | Sí | Sí | Sí | Sí | — | — | — |
-| Configurar agente y reglas | Sí | Sí | Sí | — | — | — | — |
-| Generar recomendaciones/análisis | Sí | Sí | Sí | Sí | — | — | — |
-| Aprobar o rechazar recomendaciones | Sí | Sí | Sí | Sí | Sí | — | — |
-| Generar planes y registrar ejecución | Sí | Sí | Sí | Sí | — | — | — |
-| Crear mediciones de ahorro | Sí | Sí | Sí | Sí | — | — | — |
-| Verificar o rechazar mediciones | Sí | Sí | Sí | Sí | Sí | — | — |
-| Administrar presupuestos | Sí | Sí | Sí | Sí | — | — | — |
-| Administrar asignación y cierres | Sí | Sí | Sí | Sí | — | — | — |
-| Conciliar valor realizado | Sí | Sí | Sí | Sí | — | — | — |
-| Gestionar correo y Telegram | Sí | Sí | Sí | — | — | — | — |
-| Cuenta privilegiada/MFA | Sí | Sí | Sí | Sí | — | — | — |
+| Capacidad | MASTER_ADMIN | OPERATOR_ADMIN | LEAD_TECHNICIAN | ADMIN | FINOPS_TECHNICIAN | CLIENT_APPROVER | CLIENT_VIEWER | VIEWER |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Lectura FinOps | Sí | Sí | Sí | Sí | Sí | Sí | Sí | Sí |
+| Administrar tenants y asignaciones | Sí | — | — | — | — | — | — | — |
+| Administrar conexiones cloud | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Administrar ingesta | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Observar trazas técnicas del agente | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Configurar agente y reglas | Sí | Sí | Sí | Sí | — | — | — | — |
+| Generar recomendaciones/análisis | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Aprobar o rechazar recomendaciones | Sí | Sí | Sí | Sí | Sí | Sí | — | — |
+| Generar planes y registrar ejecución | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Crear mediciones de ahorro | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Verificar o rechazar mediciones | Sí | Sí | Sí | Sí | Sí | Sí | — | — |
+| Administrar presupuestos | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Administrar asignación y cierres | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Conciliar valor realizado | Sí | Sí | Sí | Sí | Sí | — | — | — |
+| Gestionar correo y Telegram | Sí | Sí | — | Sí | — | — | — | — |
+| Cuenta privilegiada/MFA | Sí | Sí | Sí | Sí | — | — | — | — |
 
 ## Identificadores de permiso
 
@@ -68,7 +68,8 @@ un ahorro por sí mismo.
 
 ## Reglas adicionales que no son permisos del actor
 
-- El módulo maestro solo crea usuarios `OPERATOR_ADMIN` o `FINOPS_TECHNICIAN`.
+- El módulo maestro crea usuarios `OPERATOR_ADMIN`, `LEAD_TECHNICIAN` o `FINOPS_TECHNICIAN`.
+- `LEAD_TECHNICIAN` conserva la operación FinOps y puede configurar el agente, pero no administra tenants ni canales de salida.
 - Una asignación de tenant solo acepta usuarios operativos privilegiados existentes.
 - Las reglas anteriores validan el objeto administrado; no sustituyen `TENANT_MANAGE` para el actor.
 - Los IDs de tenant, conexión, recurso, recomendación y plan se validan nuevamente en repositorios tenant-aware.

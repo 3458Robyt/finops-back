@@ -10,7 +10,30 @@
 > mantenimiento de Supabase, rendimiento de dependencias, calificación periódica del proveedor IA
 > y operación productiva activable cuando exista destino de despliegue.
 
-## Roadmap vigente — corte 2026-08-31
+## Roadmap vigente — corte 2026-09-04
+
+### Roles multi-tenant e IA — cierre de implementación local
+
+- La autorización interactiva usa el rol efectivo del tenant, no una cuenta
+  duplicada por cliente. El administrador maestro ve todos los tenants y los
+  usuarios operativos pueden cambiar entre los tenants que tengan asignados.
+- `LEAD_TECHNICIAN` ya forma parte del modelo, la política, el JWT, el selector
+  de tenant, la navegación y el módulo de administración MSP.
+- Las interfaces se filtran por rol sin confiar únicamente en el frontend:
+  clientes conservan lecturas y aprobación cuando corresponde; técnicos tienen
+  operación FinOps; el líder agrega configuración del agente; el administrador
+  maestro conserva la administración MSP. La sesión también revalida el rol
+  efectivo contra la asignación vigente.
+- El proveedor IA objetivo es `gpt-5.6-luna`, con variables `AI_*`, payload
+  estándar OpenAI-compatible, auditoría y escenarios offline. El canary live de
+  análisis anterior terminó 3/3 corridas consecutivas aprobadas y `AI-001` queda
+  cerrado funcionalmente. La validación ampliada confirmó el formato seguro del
+  chat, pero también detectó una respuesta intermitente HTTP 500 y rechazo del
+  auditor en planes; la calidad/latencia queda abierta en `AI-002`.
+- Las migraciones `202609040001` y `202609040002` ya están aplicadas en local y
+  Supabase; ambos destinos reportan **99/99 migraciones**. El comando de Prisma
+  para Supabase requiere la opción de conexión que desactiva el modo de
+  transacción read-only por defecto.
 
 ### Cierre de la iteración P0/P1
 
@@ -22,8 +45,8 @@
 - Preparado para AWS: STS AssumeRole/External ID, regiones, EC2/EBS, nombres
   de recursos, CloudWatch con discovery/paginación, Cost Explorer y FOCUS S3
   con manifiestos. Falta únicamente ejecutar contra una cuenta real.
-- Probado: backend 545 pruebas unitarias aprobadas, 25 escenarios IA offline,
-  arquitectura 414 archivos sin violaciones de límite y una excepción
+- Probado: backend 555 pruebas unitarias aprobadas, 25 escenarios IA offline,
+  arquitectura 415 archivos sin violaciones de límite y una excepción
   documentada; Playwright fixture-based completo 13/13 y ejecución rápida
   10/10; la suite Playwright real de solo lectura está implementada pero
   requiere credenciales locales.
@@ -38,10 +61,12 @@
 2. Auditar el backfill local de Tak 2.0 con cobertura diaria y por job, y
    resolver INVENTORY_RESOURCE_NOT_FOUND completando el inventario sin
    eliminar costos válidos.
-3. Repetir el canary IA live aislado cuando el proveedor esté disponible y
-   registrar latencia, tokens, score del auditor, bloqueadores y abstenciones.
-4. Aplicar migraciones al destino definitivo cuando deje de ser read-only;
-   después ejecutar el canary de OCI Usage API sin duplicar FOCUS.
+3. Mantener la calificación periódica IA con escenarios dorados, registrar
+   latencia, tokens, score del auditor, bloqueadores y abstenciones. Investigar
+   los rechazos de planes y respuestas HTTP 500 observados en el canary ampliado
+   antes de operar a escala.
+4. Mantener sincronizados local y Supabase en cada migración; después ejecutar
+   el canary de OCI Usage API sin duplicar FOCUS.
 5. Con una cuenta AWS autorizada, ejecutar el canary de STS/EC2/EBS/CloudWatch/
    Cost Explorer/FOCUS y ajustar únicamente con métricas reales de latencia,
    rate limits y cobertura.
@@ -63,13 +88,13 @@
   `COVERED`/`PARTIAL`/`NO_DATA` auditable.
 - Seguridad y calidad local: 20 helpers FinOps sin exposición a roles API,
   0 vulnerabilidades altas de producción, arquitectura 405/1 excepción,
-  suite unitaria 545/11 y suite PostgreSQL aislada aprobadas.
+  suite unitaria 555/13 y suite PostgreSQL aislada aprobadas.
 
 ### Cierre técnico inmediato
 
-1. Aplicar las migraciones locales hasta `202608310002_messaging_preferences_worker_rls` en el destino PostgreSQL
-   definitivo. Supabase está read-only; no reintentar ni declarar el despliegue
-   hasta que el administrador habilite escritura o se seleccione otro destino.
+1. Mantener aplicadas las 99 migraciones en local y Supabase; cualquier nueva
+   migración debe ejecutarse con el procedimiento de conexión read-write
+   documentado y verificarse con `npx prisma migrate status` en ambos destinos.
 2. Auditar y continuar el backfill de Tak 2.0 por cobertura diaria y por job;
    no declarar 90/90 mientras existan `NO_DATA`, `PARTIAL`, jobs pendientes o
    ausencia de FOCUS actual.
@@ -78,19 +103,17 @@
 4. Mantener el worker y scheduler manuales durante desarrollo. Antes de operar
    24/7, ejecutar el diseño de despliegue, secret manager, rate limiting
    compartido, healthchecks, logging/alertas y rehearsal de backup/restore.
-5. Ejecutar canary IA live con fixtures `persist=false` y registrar latencia,
-   tokens, auditoría y abstenciones; no exponer secretos ni cerrar la calidad
-   por una indisponibilidad del proveedor. El intento del 2026-08-28 recibió
-   HTTP 503 en `/ai/chat`; repetirlo cuando el proveedor esté disponible.
+5. Mantener el canary IA live con fixtures `persist=false`; la disponibilidad
+   funcional ya fue comprobada. Optimizar la latencia y repetir la comparación
+   de aprendizaje antes de declarar calidad productiva sostenida.
 
 ### Bloqueados externamente o diferidos
 
 - AWS real: requiere cuenta, rol `AssumeRole` y permisos de prueba.
 - OCI Usage API: requiere policy de `usage-report` y canary read-only si la
   cuenta actual no puede administrarla.
-- IA live: `AI-001` queda bloqueado temporalmente por indisponibilidad HTTP 503
-  del proveedor; los escenarios offline y las compuertas determinísticas siguen
-  siendo la validación vigente.
+- IA live: `AI-001` está cerrado funcionalmente tras 3/3 canaries aprobados.
+  `AI-002` permanece abierto para calificación periódica y rendimiento.
 - Mensajería SMTP/Telegram real: requiere proveedores y credenciales de prueba.
 - Operación productiva, secret manager externo, observabilidad centralizada,
   Azure/GCP, distribución de costos compartidos y chargeback financiero.

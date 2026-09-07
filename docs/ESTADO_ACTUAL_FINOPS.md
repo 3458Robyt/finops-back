@@ -1,6 +1,82 @@
 # Estado Actual FinOps Inteligente
 
-Fecha: 2026-08-31
+Fecha: 2026-09-04
+
+## Corte de chat IA y validación ampliada — 2026-09-04
+
+### Entregado
+
+- El chat web renderiza las respuestas Markdown como contenido semántico y no
+  muestra marcadores literales como `**`; HTML, scripts e imágenes remotas se
+  descartan por diseño.
+- Web y Telegram usan contratos de salida separados: Markdown GFM para el
+  navegador y texto plano para Telegram.
+- El Context Engine dejó de duplicar el snapshot y la recomendación cuando
+  cada operación ya los incorpora en su prompt específico, reduciendo contexto
+  innecesario sin retirar evidencia factual.
+
+### Verificación y límite conocido
+
+- Playwright focalizado en chat/recomendaciones: **8/8**; typecheck, lint y
+  build del frontend aprobados. Backend: contratos de prompt, Telegram y
+  Context Engine cubiertos por pruebas unitarias.
+- El canary live ampliado validó chat seguro y abstención ante métricas técnicas
+  no disponibles. Las recomendaciones respondieron 2/3 veces y una corrida
+  recibió HTTP 500 del proveedor; los tres planes fueron rechazados por el
+  auditor con HTTP 409 y no se persistieron. La compuerta funcionó de forma
+  segura, pero `AI-002` continúa abierto para mejorar la calidad/latencia de
+  planes y estabilizar el proveedor.
+
+## Corte de roles por tenant y proveedor IA — 2026-09-04
+
+### Entregado
+
+- La sesión distingue la identidad global del usuario de su rol efectivo dentro
+  del tenant activo. Un técnico puede cambiar de tenant sin crear otra cuenta y
+  el JWT, el selector superior y el frontend reciben el permiso efectivo de ese
+  tenant.
+- Se formalizó `LEAD_TECHNICIAN`: conserva la operación FinOps y puede configurar
+  el agente, pero no administra tenants ni canales de salida. El administrador
+  maestro puede crear este rol y asignarlo a varios tenants.
+- Login, refresh, cambio de tenant e invitación de clientes devuelven un resumen
+  de autorización; las rutas sensibles y la navegación usan el mismo rol
+  efectivo. La validación de sesiones compara el rol efectivo vigente de la
+  asignación, por lo que un token no conserva permisos después de cambiar de
+  tenant o de asignación. El backend continúa siendo la autoridad.
+- El proveedor IA quedó configurado para el modelo `gpt-5.6-luna` mediante las
+  variables genéricas `AI_*`. El gateway envía únicamente el payload estándar
+  compatible con OpenAI y ya no incluye parámetros específicos de NVIDIA/NIM.
+
+### Verificación
+
+- Backend: **129 archivos aprobados, 555 pruebas aprobadas y 13 omitidas**;
+  typecheck, build y evaluación IA offline **25/25** aprobados.
+- Frontend: typecheck, lint, build, bundle fitness y arquitectura aprobados.
+- El canary live de tres corridas del corte de análisis previo para GPT-5.6 Luna
+  terminó 3/3 aprobado. La validación ampliada de chat y planes se documenta en
+  el corte superior y dejó `AI-002` abierto por calidad, latencia y disponibilidad.
+- El canary comparativo de aprendizaje generó línea base y candidato; el
+  candidato obtuvo menor calidad y fue rechazado sin promoción, como exige la
+  compuerta de seguridad.
+
+### Migraciones aplicadas
+
+- Las migraciones `202609040001_lead_technician_role` y
+  `202609040002_lead_role_rls_compatibility` se aplicaron en PostgreSQL local y
+  en Supabase. `npx prisma migrate status` confirma **99/99 migraciones al día**
+  en ambos destinos. Para Supabase fue necesario ejecutar Prisma con la opción
+  de conexión `default_transaction_read_only=off`; el runtime de la aplicación
+  ya fuerza transacciones de escritura cuando corresponde.
+
+### Verificación live de IA — 2026-09-04
+
+- `/models`: HTTP 200 y `gpt-5.6-luna` disponible.
+- `/chat/completions`: HTTP 200 para `gpt-5.6-luna` y `gpt-5.4-mini`, tanto
+  en respuesta normal como en streaming de Luna.
+- Canary aislado de análisis: **3/3 corridas aprobadas**; no se persistieron
+  fixtures productivos ni se expusieron secretos.
+- Canary de aprendizaje: generación y auditoría aprobadas; promoción bloqueada
+  correctamente porque el candidato degradó la calidad de 96 a 93.
 
 ## Corte de implementación verificable — 2026-08-29
 
@@ -81,19 +157,16 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
   fixtures: el cliente ya ignora respuestas 401 de peticiones antiguas durante
   la rotación y evita expulsar al usuario después de cambiar de tenant.
 
-### Límites de esta verificación
+### Límites históricos de la verificación del 2026-08-29
 
-- Supabase sigue en modo `read-only` y con historial de migraciones divergente;
-  el clon local sí tiene aplicadas las **97 migraciones** hasta
-  `202608310002_messaging_preferences_worker_rls`. Las dos migraciones nuevas
-  de mensajería están listas para desplegarse cuando exista un destino escribible;
-  no se reintentaron escrituras
-  remotas.
+- En ese corte Supabase seguía en modo `read-only` y con historial divergente;
+  esta limitación fue resuelta para la aplicación de las migraciones del corte
+  2026-09-04 mediante la opción explícita de transacción de escritura.
 - La auditoría de dependencias completa puede mostrar vulnerabilidades altas
   únicamente en herramientas de desarrollo transitivas (`esbuild`, `nanoid` y
   `postcss`); la auditoría de producción continúa en cero.
-- No se ejecutó un canary live de IA, AWS, Usage API ni Playwright real: siguen
-  dependiendo de proveedor, cuenta o credenciales externas.
+- No se ejecutó un canary live **exitoso** de IA, AWS, Usage API ni Playwright
+  real: siguen dependiendo de proveedor, cuenta o credenciales externas.
 
 ### Límites que siguen vigentes
 
@@ -102,10 +175,12 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
   npm run test:e2e:real después de definirlas; nunca se deben pegar
   credenciales en código o fixtures.
 - AWS real permanece bloqueado hasta disponer de cuenta, role ARN, External ID
-  y permisos de prueba. OCI Usage API y el canary IA live dependen igualmente
-  de permisos/proveedor externos.
-- Supabase continúa sin recibir cambios mientras el destino permanezca
-  read-only; PostgreSQL local es el destino reproducible de desarrollo.
+  y permisos de prueba. OCI Usage API y un canary IA live exitoso dependen
+  igualmente de permisos/proveedor externos.
+- Supabase requiere la opción explícita de transacción de escritura para
+  comandos Prisma administrativos; la aplicación de runtime ya opta por
+  transacciones read-write cuando corresponde. PostgreSQL local sigue siendo
+  el destino reproducible de desarrollo.
 - Workers 24/7, secret manager externo, rate limiting distribuido,
   observabilidad centralizada, backup/restore operativo y mensajería real se
   mantienen diferidos hasta definir infraestructura de despliegue.
@@ -170,7 +245,7 @@ siguen identificadas como bloqueadas; no se presentan como verificadas.
 
 ## Resumen
 
-La plataforma ya tiene backend Node.js/TypeScript, frontend React, PostgreSQL local como base primaria de desarrollo y Supabase conservada como staging/rollback, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas. El corte vigente distingue lo verificado localmente de las operaciones externas bloqueadas por permisos o por el estado read-only de Supabase.
+La plataforma ya tiene backend Node.js/TypeScript, frontend React, PostgreSQL local como base primaria de desarrollo y Supabase conservada como staging/rollback con 99/99 migraciones aplicadas, autenticacion JWT, analitica de costos/consumo, recomendaciones IA con auditor, planes de ejecucion, aprendizaje por aprobacion/rechazo, trazabilidad, Telegram MVP, ingesta FOCUS/metricas para OCI y visualizacion de metricas tecnicas. Las conexiones Prisma administrativas de Supabase requieren optar explícitamente por transacciones read-write; el runtime ya contempla esa condición.
 
 ## Corte histórico verificable — 2026-08-28
 
@@ -220,7 +295,7 @@ Supabase.
 - El canary local de RLS confirma **20 helpers FinOps**, ejecución runtime para
   los 20, cero exposición a roles API y cero `search_path` inseguro.
 
-### Límites externos vigentes
+### Límites externos vigentes en el corte del 2026-08-28
 
 - Supabase conserva sus datos, pero está en `read-only`: las migraciones locales
   202608280001–007 no pueden aplicarse remotamente hasta que el administrador
@@ -231,7 +306,7 @@ Supabase.
   ese bloqueo.
 - La operación 24/7, secret manager externo, observabilidad centralizada y
   alertas productivas siguen diferidos hasta definir un destino de despliegue.
-- La última ejecución del canary IA live aislado, el 2026-08-28, recibió HTTP
+- La ejecución del canary IA live aislado del 2026-08-28 recibió HTTP
   `503 Service temporarily unavailable` del proveedor configurado en `/ai/chat`.
   No se persistieron fixtures ni se expuso la clave; por eso `AI-001` permanece
   bloqueado externamente aunque los escenarios offline sigan aprobados.
@@ -240,9 +315,9 @@ Supabase.
 > conservan evidencia y decisiones anteriores; no sustituyen el corte vigente
 > anterior.
 
-> El bloque fechado 2026-08-29 es la única fotografía autoritativa de esta
-> revisión. Los bloques posteriores conservan bitácora histórica y pueden
-> contener cifras de una base o proveedor que luego cambió.
+> El bloque inicial fechado 2026-09-04 es la fotografía autoritativa vigente.
+> Los bloques posteriores conservan bitácora histórica y pueden contener
+> cifras de una base o proveedor que luego cambió.
 
 ## Corte de estabilizacion de lecturas y jobs — 2026-08-24
 

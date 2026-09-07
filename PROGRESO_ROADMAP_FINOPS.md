@@ -1,5 +1,83 @@
 # Progreso — FinOps Inteligente (Backend)
 
+### 2026-09-04 — Chat Markdown seguro y validación IA ampliada
+
+- El chat web ahora renderiza Markdown GFM sin exponer HTML, scripts ni imágenes
+  remotas; Telegram solicita texto plano para no mostrar marcadores incompatibles.
+- Se retiró la duplicación del snapshot y la recomendación en el contexto común
+  del agente. Los prompts específicos siguen siendo la fuente factual de cada
+  operación.
+- Playwright focalizado en chat/recomendaciones aprobó **8/8**, incluyendo
+  encabezados, negrita y bloqueo de `**`, `script` e imágenes; typecheck, lint y
+  build del frontend también aprobaron.
+- El canary live ampliado pasó chat seguro y abstención técnica. Las
+  recomendaciones respondieron 2/3 veces (una respuesta HTTP 500) y los tres
+  planes fueron rechazados por el auditor con HTTP 409; no se persistió ningún
+  plan no aprobado. `AI-002` sigue abierto para calidad/latencia y disponibilidad
+  del proveedor.
+
+### 2026-09-04 — Validación live exitosa de GPT-5.6 Luna
+
+- La API compatible con OpenAI respondió HTTP 200 en `/models`, en chat no
+  streaming y en streaming; `gpt-5.6-luna` aparece como modelo configurado y
+  también se verificó `gpt-5.4-mini` como control.
+- `npm run test:canary:ai:gpt56` con `AI_CANARY_SCOPE=analysis` aprobó **3/3
+  canaries consecutivos** sobre `finops_local`: chat en español, 3
+  recomendaciones, evidencia determinística/FOCUS/técnica, auditor IA,
+  trazabilidad, ahorros no negativos y modelo esperado.
+- La generación tardó aproximadamente 72–89 s y el canary completo 96–112 s;
+  la integración es funcional, pero `AI-002` conserva la optimización de
+  latencia como trabajo pendiente.
+- El canary de aprendizaje ejecutó baseline y candidato correctamente. El
+  candidato obtuvo 93 frente a 96, por lo que no fue promovido; la compuerta
+  rechazó la degradación sin activar memoria global.
+- Los artefactos sanitizados quedaron en `.test-artifacts/ai-audit/`, ruta
+  ignorada por Git; no se persistieron datos productivos ni secretos.
+
+### 2026-09-04 — Migraciones aplicadas y revalidación live de GPT-5.6 Luna
+
+- Se aplicaron las 99 migraciones del repositorio en PostgreSQL local
+  (`127.0.0.1:5433`) y en Supabase. `npx prisma migrate status` confirma ambos
+  destinos al día, incluyendo `202609040001_lead_technician_role` y
+  `202609040002_lead_role_rls_compatibility`.
+- Supabase mantiene `default_transaction_read_only=on` para conexiones Prisma
+  directas; la aplicación de migraciones se realizó de forma controlada con la
+  opción de conexión `default_transaction_read_only=off`. No se modificaron
+  credenciales ni se imprimieron secretos.
+- Revalidación IA: `/models` respondió 200 y anunció `gpt-5.6-luna`, pero el
+  proveedor respondió HTTP 503 en `/chat/completions`. Los modelos Luna y
+  `gpt-5.4-mini` devolvieron el mismo 503. El canary aislado de tres corridas
+  falló cerrado, sin persistir fixtures productivos; `AI-001` continúa
+  bloqueado por indisponibilidad externa.
+- Verificación local: `npm run test:all` aprobó arquitectura, higiene de release,
+  typecheck, 553 pruebas (13 omitidas), IA offline 25/25 y build. Las pruebas
+  dirigidas de gateway/servicio/evaluación IA aprobaron 43/43.
+
+### 2026-09-04 — Interfaces por rol y migración controlada a GPT-5.6 Luna
+
+- Se cerró en código la autorización por rol efectivo del tenant: el JWT, el
+  selector superior y los módulos usan la asignación vigente sin duplicar
+  usuarios por tenant. El administrador maestro mantiene visibilidad global y
+  puede asignar varios tenants a un mismo usuario operativo.
+- Se incorporó `LEAD_TECHNICIAN` al esquema Prisma, política de permisos,
+  sesiones, refresh, frontend y administración MSP. El líder puede configurar
+  el agente, pero no administrar tenants ni canales de salida.
+- Login, cambio de tenant e invitaciones exponen un resumen de autorización; las
+  rutas de generación de recomendaciones exigen el permiso correspondiente y
+  las interfaces cliente ocultan acciones operativas no permitidas. La
+  validación de sesión comprueba el rol efectivo vigente para evitar que un JWT
+  antiguo conserve permisos al cambiar una asignación.
+- Se reemplazó el modelo por defecto por `gpt-5.6-luna`, se eliminaron campos
+  específicos de NVIDIA del gateway y se añadió `test:canary:ai:gpt56`, que
+  ejecuta tres canaries aislados y no persiste datos de prueba. El canary live
+  quedó revalidado contra el proveedor; el endpoint de modelos funciona, pero
+  las completions están temporalmente no disponibles (HTTP 503); offline IA
+  aprobó 25/25.
+- Verificación del corte: backend 553 pruebas aprobadas/13 omitidas, typecheck,
+  build y suite offline aprobados; frontend typecheck, lint, build, bundle y
+  arquitectura aprobados. Las migraciones `202609040001` y `202609040002` ya
+  están aplicadas en local y Supabase.
+
 ### 2026-09-02 — Evidencia visual actualizada y diagramas draw.io editables
 
 - Se levantó la beta local y se capturaron **18 pantallas actuales** con Playwright, cubriendo autenticación, panel, consola técnica, oportunidades, IA, ingesta, métricas, inventario, presupuestos, asignación, valor realizado, mensajería, seguridad y administración MSP.

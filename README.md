@@ -1,10 +1,11 @@
 # ☁️ FinOps Inteligente: Core Backend & API RESTful
 
-> **Estado vigente (2026-08-28):** beta funcional avanzada con OCI real, FOCUS,
+> **Estado vigente (2026-09-04):** beta funcional avanzada con OCI real, FOCUS,
 > métricas técnicas, IA gobernada, auditoría, aprendizaje reversible, presupuestos,
 > asignación y realización de valor. PostgreSQL local es la base de desarrollo;
-> Supabase está conservada como staging/rollback y actualmente responde read-only.
-> AWS real, OCI Usage API y el canary IA live permanecen condicionados por
+> Supabase está conservada como staging/rollback con 99/99 migraciones aplicadas;
+> las conexiones Prisma administrativas requieren habilitar explícitamente la
+> transacción read-write. AWS real y OCI Usage API permanecen condicionados por
 > dependencias externas; la operación 24/7 se activa únicamente al definir un
 > destino de despliegue. Para conocer el estado verificable, consulta
 > [`docs/ESTADO_ACTUAL_FINOPS.md`](docs/ESTADO_ACTUAL_FINOPS.md) y
@@ -75,8 +76,8 @@ src/
    CREDENTIAL_ENCRYPTION_KEY=base64_de_32_bytes
    AI_API_KEY=tu_api_key_openai_compatible
    AI_BASE_URL=https://api.example.com/v1
-   AI_MODEL=gpt-5.4-mini
-   AI_AUDITOR_MODEL=gpt-5.4-mini
+   AI_MODEL=gpt-5.6-luna
+   AI_AUDITOR_MODEL=gpt-5.6-luna
    DB_RUNTIME_ENFORCE=false
    DB_RUNTIME_ROLE=finops_runtime
    CORS_ORIGIN=http://localhost:5173
@@ -106,6 +107,7 @@ src/
 - `npm run test:api:onboarding`: Verifica API, roles, aislamiento y exposición de secretos del onboarding.
 - `npm run test:canary:oci-onboarding`: Canary OCI real read-only cuando existe configuración local.
 - `npm run test:ai:offline`: Ejecuta los escenarios dorados sin llamar a un proveedor LLM.
+- `npm run test:canary:ai:gpt56`: Ejecuta tres canaries IA aislados consecutivos y verifica GPT-5.6 Luna; requiere `AI_LIVE_TESTS=true`.
 
 Las integraciones aisladas que crean schemas `finops_e2e_*` tienen cleanup en `finally` y límites de conexión,
 consulta y proceso. `TEST_COMMAND_TIMEOUT_MS` permite ajustar el límite entre 30 segundos y 10 minutos
@@ -117,8 +119,8 @@ El flujo normal para conectar OCI/AWS se realiza desde la vista **Ingesta**. La 
 credenciales, estados, endpoints y troubleshooting está en
 [`docs/ONBOARDING_CLOUD.md`](docs/ONBOARDING_CLOUD.md).
 
-La verificación local recomendada es `npm run test:all`: el corte vigente cubre 126 archivos aprobados,
-5 omitidos, 545 pruebas pasadas y 11 omitidas, además de typecheck, arquitectura (414 archivos/1 excepción),
+La verificación local recomendada es `npm run test:all`: el corte vigente cubre 129 archivos aprobados,
+5 omitidos, 555 pruebas pasadas y 13 omitidas, además de typecheck, arquitectura (415 archivos/1 excepción),
 escenarios IA offline 25/25, release hygiene y build; el fitness check backend mantiene una sola excepción justificada para los escenarios golden
 de IA. El workflow de CI repite el build, la auditoría de producción y las pruebas de integración aisladas
 cuando existe un `TEST_DATABASE_URL` dedicado. Las cifras de snapshots históricos en documentos fechados no
@@ -145,8 +147,8 @@ Los errores de dominio se modelan con `FinOpsBaseError` (con un `code` semántic
 
 ### Pendientes de hardening antes de producción
 - Activar `DB_RUNTIME_ENFORCE=true` solo al desplegar el backend con el rol `finops_runtime`; el canary,
-  las migraciones RLS, el hardening de funciones y los índices FK están aplicados y verificados localmente.
-  Supabase está read-only y requiere habilitar escritura antes de aplicar las migraciones pendientes.
+  las migraciones RLS, el hardening de funciones y los índices FK están aplicados y verificados localmente
+  y en Supabase.
 - Rotación de claves JWT/cifrado y gestión de secretos vía un gestor externo; `.env` es solo para desarrollo.
 - Observabilidad centralizada con retención, alertas y métricas de latencia.
 - Las pruebas de integración contra schema efímero y el cleanup automático ya están verificados;
