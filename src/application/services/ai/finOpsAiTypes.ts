@@ -1,7 +1,7 @@
 import type { CostAnalyticsSnapshot } from '../../../domain/interfaces/ICostAnalyticsRepository.js';
 import type { CreateRecommendationInput } from '../../../domain/interfaces/IRecommendationRepository.js';
 import type { FinOpsRecommendation } from '../../../domain/models/FinOpsRecommendation.js';
-import type { AiAuditReport } from '../../../domain/models/RecommendationExecutionPlan.js';
+import type { AiAuditReport, AiCandidateAuditArtifact } from '../../../domain/models/RecommendationExecutionPlan.js';
 import type { RecommendationEvidenceSnapshot } from './RecommendationEvidenceSnapshot.js';
 import type { RecommendationReadinessReport } from './RecommendationReadinessGate.js';
 import type { DeterministicTrendAnalysis } from './DeterministicTrendAnalysis.js';
@@ -29,6 +29,9 @@ export interface AiChatMessage {
   readonly content: string;
 }
 
+/** Formato interno solicitado por cada canal que consume el asistente. */
+export type AiChatOutputFormat = 'MARKDOWN' | 'PLAIN_TEXT';
+
 /**
  * Entrada del caso de uso de chat FinOps.
  */
@@ -40,6 +43,11 @@ export interface AiChatInput {
   readonly message: string;
   /** Historial de conversación previo (se normaliza y limita a los últimos turnos). */
   readonly history?: readonly AiChatMessage[];
+  /**
+   * Formato de salida solicitado por el canal. La web usa Markdown; canales
+   * sin parser, como Telegram, solicitan texto plano.
+   */
+  readonly outputFormat?: AiChatOutputFormat;
 }
 
 /**
@@ -63,6 +71,7 @@ export interface GenerateAiRecommendationsInput {
   readonly persist?: boolean;
   /** Limita la generación a un recurso que exista en el snapshot factual del tenant. */
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
   /** Corrida durable que origina las recomendaciones; solo para orquestación interna. */
   readonly analysisRunId?: string;
   /** Preparación factual ya calculada para garantizar que generador y auditor usen el mismo snapshot. */
@@ -94,7 +103,9 @@ export interface GenerateAiRecommendationsResponse {
     readonly technicalEvidenceSnapshot?: RecommendationEvidenceSnapshot;
     readonly evidenceHash: string;
     readonly auditReport?: AiAuditReport;
+    readonly candidateAudits?: readonly AiCandidateAuditArtifact[];
     readonly generatedCount: number;
+    readonly rejectedCount?: number;
     readonly promptTokenEstimate: number;
     readonly responseTokenEstimate: number;
     readonly model: string;

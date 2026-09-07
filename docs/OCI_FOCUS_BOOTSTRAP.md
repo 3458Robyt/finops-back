@@ -1,5 +1,9 @@
 # OCI FOCUS Bootstrap
 
+> **Contexto histórico:** esta guía describe el bootstrap inicial por CLI. El flujo vigente de onboarding,
+> validación de capacidades y operación está en `docs/ONBOARDING_CLOUD.md`; no usar este documento como
+> fuente del estado actual.
+
 Este documento describe el flujo inicial para preparar una tenancy OCI para FinOps usando Cost Reports FOCUS.
 
 ## Decision

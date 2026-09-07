@@ -6,22 +6,16 @@ import type {
   QueueRecommendationAnalysisRunInput,
 } from '../../domain/interfaces/IRecommendationAnalysisRunRepository.js';
 import type {
-  RecommendationAnalysisCandidateResult,
   RecommendationAnalysisRun,
 } from '../../domain/models/RecommendationAnalysisRun.js';
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
+import {
+  runDetailInclude,
+  runInclude,
+  toRecommendationAnalysisRunDomain,
+} from './mappers/recommendationAnalysisRunMappers.js';
 
-const runInclude = {
-  recommendationLinks: {
-    include: {
-      recommendation: {
-        select: { title: true },
-      },
-    },
-  },
-} as const;
-
-type RunRow = Prisma.RecommendationAnalysisRunGetPayload<{ include: typeof runInclude }>;
+const toDomain = toRecommendationAnalysisRunDomain;
 
 export class PrismaRecommendationAnalysisRunRepository implements IRecommendationAnalysisRunRepository {
   public constructor(private readonly prisma: PrismaClient) {}
@@ -29,7 +23,7 @@ export class PrismaRecommendationAnalysisRunRepository implements IRecommendatio
   public async queue(
     input: QueueRecommendationAnalysisRunInput,
   ): Promise<{ readonly run: RecommendationAnalysisRun; readonly reused: boolean }> {
-    const scopeKey = input.externalResourceId ?? '__tenant__';
+    const scopeKey = input.cloudResourceId ?? input.externalResourceId ?? '__tenant__';
 
     try {
       const row = await this.prisma.recommendationAnalysisRun.create({
@@ -41,6 +35,7 @@ export class PrismaRecommendationAnalysisRunRepository implements IRecommendatio
           scope: input.scope,
           scopeKey,
           ...(input.externalResourceId !== undefined ? { externalResourceId: input.externalResourceId } : {}),
+          ...(input.cloudResourceId !== undefined ? { cloudResourceId: input.cloudResourceId } : {}),
           ...(input.maxAttempts !== undefined ? { maxAttempts: input.maxAttempts } : {}),
         },
         include: runInclude,
@@ -68,7 +63,7 @@ export class PrismaRecommendationAnalysisRunRepository implements IRecommendatio
   public async findById(tenantId: string, runId: string): Promise<RecommendationAnalysisRun | null> {
     const row = await this.prisma.recommendationAnalysisRun.findFirst({
       where: { id: runId, tenantId },
-      include: runInclude,
+      include: runDetailInclude,
     });
     return row === null ? null : toDomain(row);
   }
@@ -113,6 +108,7 @@ export class PrismaRecommendationAnalysisRunRepository implements IRecommendatio
       trigger: 'RETRY',
       scope: source.scope,
       ...(source.externalResourceId !== null ? { externalResourceId: source.externalResourceId } : {}),
+      ...(source.cloudResourceId !== null ? { cloudResourceId: source.cloudResourceId } : {}),
       maxAttempts: source.maxAttempts,
     });
     return queued.run;
@@ -249,6 +245,32 @@ export class PrismaRecommendationAnalysisRunRepository implements IRecommendatio
         });
       }
 
+      if ((input.candidateAudits?.length ?? 0) > 0) {
+        await tx.recommendationAnalysisCandidateAudit.createMany({
+          data: input.candidateAudits!.map((item) => ({
+            tenantId: item.tenantId,
+            runId,
+            candidateId: item.candidateId,
+            draftIndex: item.draftIndex,
+            ...(item.recommendationId === undefined ? {} : { recommendationId: item.recommendationId }),
+            ...(item.deterministicEvidence === undefined ? {} : { deterministicEvidence: item.deterministicEvidence as Prisma.InputJsonValue }),
+            ...(item.draft === undefined ? {} : { draft: item.draft as Prisma.InputJsonValue }),
+            auditVerdict: item.auditVerdict,
+            auditScore: item.auditScore,
+            auditChecks: item.auditChecks as unknown as Prisma.InputJsonValue,
+            blockingIssues: item.blockingIssues as unknown as Prisma.InputJsonValue,
+            requiredChanges: item.requiredChanges as unknown as Prisma.InputJsonValue,
+            repairAttempt: item.repairAttempt,
+            finalDisposition: item.finalDisposition,
+            ...(item.model === undefined ? {} : { model: item.model }),
+            ...(item.auditorModel === undefined ? {} : { auditorModel: item.auditorModel }),
+            ...(item.promptHash === undefined ? {} : { promptHash: item.promptHash }),
+            ...(item.evidenceHash === undefined ? {} : { evidenceHash: item.evidenceHash }),
+          })),
+          skipDuplicates: true,
+        });
+      }
+
       return tx.recommendationAnalysisRun.update({
         where: { id: runId },
         data: {
@@ -296,54 +318,4 @@ export class PrismaRecommendationAnalysisRunRepository implements IRecommendatio
     });
     return toDomain(row);
   }
-}
-
-function toDomain(row: RunRow): RecommendationAnalysisRun {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    ...(row.requestedByUserId !== null ? { requestedByUserId: row.requestedByUserId } : {}),
-    ...(row.retriedFromRunId !== null ? { retriedFromRunId: row.retriedFromRunId } : {}),
-    trigger: row.trigger,
-    scope: row.scope,
-    scopeKey: row.scopeKey,
-    ...(row.externalResourceId !== null ? { externalResourceId: row.externalResourceId } : {}),
-    status: row.status,
-    stage: row.stage,
-    ...(row.periodStart !== null ? { periodStart: row.periodStart } : {}),
-    ...(row.periodEnd !== null ? { periodEnd: row.periodEnd } : {}),
-    ...(row.evidenceHash !== null ? { evidenceHash: row.evidenceHash } : {}),
-    ...(row.snapshot !== null ? { snapshot: row.snapshot } : {}),
-    ...(row.evidenceSnapshot !== null ? { evidenceSnapshot: row.evidenceSnapshot } : {}),
-    ...(row.readinessReport !== null ? { readinessReport: row.readinessReport } : {}),
-    ...(row.candidateResults !== null
-      ? { candidateResults: row.candidateResults as unknown as RecommendationAnalysisCandidateResult[] }
-      : {}),
-    attempts: row.attempts,
-    maxAttempts: row.maxAttempts,
-    resourcesEvaluated: row.resourcesEvaluated,
-    candidatesFound: row.candidatesFound,
-    candidatesSkipped: row.candidatesSkipped,
-    recommendationsGenerated: row.recommendationsGenerated,
-    recommendationsRejected: row.recommendationsRejected,
-    recommendationsPersisted: row.recommendationsPersisted,
-    ...(row.model !== null ? { model: row.model } : {}),
-    ...(row.auditorModel !== null ? { auditorModel: row.auditorModel } : {}),
-    promptTokenEstimate: row.promptTokenEstimate,
-    responseTokenEstimate: row.responseTokenEstimate,
-    ...(row.latencyMs !== null ? { latencyMs: row.latencyMs } : {}),
-    ...(row.workerId !== null ? { workerId: row.workerId } : {}),
-    ...(row.errorCode !== null ? { errorCode: row.errorCode } : {}),
-    ...(row.errorMessage !== null ? { errorMessage: row.errorMessage } : {}),
-    ...(row.startedAt !== null ? { startedAt: row.startedAt } : {}),
-    ...(row.completedAt !== null ? { completedAt: row.completedAt } : {}),
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    recommendations: row.recommendationLinks.map((link) => ({
-      recommendationId: link.recommendationId,
-      ...(link.candidateId !== null ? { candidateId: link.candidateId } : {}),
-      disposition: link.disposition,
-      title: link.recommendation.title,
-    })),
-  };
 }

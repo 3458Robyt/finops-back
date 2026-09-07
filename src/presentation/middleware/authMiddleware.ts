@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { ITokenService } from '../../domain/interfaces/ITokenService.js';
+import type { IAuthSessionRepository } from '../../domain/interfaces/IAuthSessionRepository.js';
 import type { UserRole } from '../../domain/models/AuthContext.js';
-import { AuthorizationError } from '../../domain/errors/errors.js';
+import { AuthenticationError, AuthorizationError } from '../../domain/errors/errors.js';
 import { runWithDatabaseContext } from '../../infrastructure/database/tenantContext.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 
 /**
  * Crea el middleware de autenticación basado en Bearer token.
@@ -19,31 +21,44 @@ import { runWithDatabaseContext } from '../../infrastructure/database/tenantCont
  * @param tokenService Servicio de tokens usado para verificar el JWT.
  * @returns Middleware de Express que protege rutas exigiendo un token válido.
  */
-export function createAuthMiddleware(tokenService: ITokenService) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export function createAuthMiddleware(
+  tokenService: ITokenService,
+  sessionRepository: IAuthSessionRepository,
+) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const header = req.header('authorization');
 
     if (header === undefined || !header.startsWith('Bearer ')) {
       res.status(401).json({
         success: false,
-        error: 'Missing Bearer token',
+        error: 'Se requiere un token Bearer.',
         code: 'AUTHENTICATION_REQUIRED',
       });
       return;
     }
 
     try {
-      req.auth = tokenService.verifyToken(header.slice('Bearer '.length).trim());
-      runWithDatabaseContext({
-        tenantId: req.auth.tenantId,
-        userId: req.auth.userId,
-        role: req.auth.role,
+      const auth = tokenService.verifyToken(header.slice('Bearer '.length).trim());
+      const databaseContext = {
+        tenantId: auth.tenantId,
+        userId: auth.userId,
+        role: auth.role,
         requestId: res.locals.requestId,
-      }, next);
+      } as const;
+      const active = await runWithDatabaseContext(
+        databaseContext,
+        () => sessionRepository.isActive(auth),
+      );
+      if (!active) {
+        throw new AuthenticationError('La sesión no está activa. Inicia sesión nuevamente.');
+      }
+
+      req.auth = auth;
+      runWithDatabaseContext(databaseContext, next);
     } catch {
       res.status(401).json({
         success: false,
-        error: 'Invalid or expired token',
+        error: 'El token no es válido o ha expirado.',
         code: 'AUTHENTICATION_FAILED',
       });
     }
@@ -69,19 +84,20 @@ export function requireRole(allowedRoles: readonly UserRole[]) {
     if (req.auth === undefined) {
       res.status(401).json({
         success: false,
-        error: 'Authentication is required',
+        error: 'Se requiere autenticación.',
         code: 'AUTHENTICATION_REQUIRED',
       });
       return;
     }
 
     if (!allowedRoles.includes(req.auth.role)) {
-      const error = new AuthorizationError();
-      res.status(403).json({
-        success: false,
-        error: error.message,
-        code: error.code,
-      });
+      respondWithFinOpsError(
+        res,
+        new AuthorizationError(),
+        'No estás autorizado para realizar esta acción.',
+        'authorization_role_denied',
+        req.path,
+      );
       return;
     }
 

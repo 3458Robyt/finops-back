@@ -59,7 +59,7 @@ async function main(): Promise<void> {
     where: { email: 'ejecutivo@cliente.com' },
     update: {
       passwordHash,
-      role: UserRole.VIEWER,
+      role: UserRole.CLIENT_VIEWER,
       tenantId: tenant.id,
       status: 'ACTIVE',
     },
@@ -68,7 +68,7 @@ async function main(): Promise<void> {
       email: 'ejecutivo@cliente.com',
       name: 'Ejecutivo Cliente',
       passwordHash,
-      role: UserRole.VIEWER,
+      role: UserRole.CLIENT_VIEWER,
     },
   });
 
@@ -282,6 +282,7 @@ async function seedRecommendations(
       update: {
         tenantId,
         cloudAccountId,
+        origin: 'DEMO_SEEDED',
         type: template.type,
         status: RecommendationStatus.PENDING,
         severity: template.severity,
@@ -295,6 +296,7 @@ async function seedRecommendations(
         id: template.id,
         tenantId,
         cloudAccountId,
+        origin: 'DEMO_SEEDED',
         type: template.type,
         status: RecommendationStatus.PENDING,
         severity: template.severity,

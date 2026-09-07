@@ -5,6 +5,7 @@ import { goldenScenarios } from './goldenScenarios.js';
 import { runScenarioOffline } from './goldenScenarioRunner.js';
 import { evaluateExecutionPlan, evaluateRecommendationDrafts } from './qualityRubric.js';
 import type { RecommendationEvidenceSnapshot } from '../RecommendationEvidenceSnapshot.js';
+import type { FinOpsRecommendation } from '../../../../domain/models/FinOpsRecommendation.js';
 
 const snapshot: CostAnalyticsSnapshot = {
   tenantId: 'tenant-demo',
@@ -74,6 +75,28 @@ describe('qualityRubric — recommendations', () => {
     expect(report.checks.find((check) => check.name === 'focusHonesty')?.passed).toBe(true);
   });
 
+  test('passes a cost-only financial review without pretending to have technical evidence', () => {
+    const report = evaluateRecommendationDrafts(
+      [draft({
+        type: 'SERVICE_COST_REVIEW',
+        title: 'Revisar facturación de S3',
+        description: 'Revisar el costo facturado y el consumo registrado del servicio.',
+        evidence: {
+          candidateId: 'service-1',
+          evidenceLevel: 'COST_ONLY',
+          costEvidenceRefs: ['cost_metrics:aggregate:2026-04-01:2026-05-01:service:AWS:Amazon S3'],
+          financialReviewOnly: true,
+          reviewScope: 'FINANCIAL',
+          requiresManualValidation: true,
+          operationalAuthorization: 'NONE',
+        },
+      })],
+      snapshot,
+    );
+
+    expect(report.checks.find((check) => check.name === 'focusHonesty')?.passed).toBe(true);
+  });
+
   test('fails savings realism when savings exceed the total cost', () => {
     const report = evaluateRecommendationDrafts([draft({ estimatedMonthlySavings: 999999 })], snapshot);
     expect(report.checks.find((check) => check.name === 'savingsRealism')?.passed).toBe(false);
@@ -121,6 +144,26 @@ describe('qualityRubric — recommendations', () => {
 
     expect(report.passed).toBe(true);
     expect(report.checks.find((check) => check.name === 'canonicalTechnicalEvidence')?.passed).toBe(true);
+  });
+
+  test('rejects technical evidence without the normalized resource relationship', () => {
+    const report = evaluateRecommendationDrafts([
+      draft({
+        type: 'RIGHTSIZING',
+        estimatedMonthlySavings: 40,
+        evidence: {
+          evidenceLevel: 'COST_USAGE_AND_TECHNICAL',
+          externalResourceId: 'i-requested',
+          technicalEvidenceRefs: ['resource_metric_samples:i-requested:CpuUtilization:2026-04-30T00:00:00.000Z'],
+          technicalSampleCount: 96,
+          technicalCoverageDays: 14,
+          latestTechnicalSampleAt: '2026-04-30T00:00:00.000Z',
+        },
+      }),
+    ], snapshot, undefined, undefined, buildCanonicalEvidenceSnapshot());
+
+    expect(report.passed).toBe(false);
+    expect(report.checks.find((check) => check.name === 'canonicalTechnicalEvidence')?.passed).toBe(false);
   });
 
   test('rejects an invented metric reference even when the auditor would approve it', () => {
@@ -255,9 +298,93 @@ describe('qualityRubric — execution plan', () => {
     expect(report.checks.find((check) => check.name === 'noAutoExecution')?.passed).toBe(false);
   });
 
+  test('fails when the plan contains an executable tool or shell payload', () => {
+    const unsafePlan = { ...validPlan, steps: ['Ejecutar tool_call para correr rm -rf /tmp/cache.'] };
+    const report = evaluateExecutionPlan(unsafePlan, snapshot);
+    expect(report.checks.find((check) => check.name === 'noExecutablePayload')?.passed).toBe(false);
+  });
+
   test('fails when a required section is missing', () => {
     const { rollback: _omitted, ...incomplete } = validPlan;
     const report = evaluateExecutionPlan(incomplete, snapshot);
     expect(report.checks.find((check) => check.name === 'requiredArrays')?.passed).toBe(false);
+  });
+
+  test('rejects recommendation text without Spanish language signals', () => {
+    const report = evaluateRecommendationDrafts([
+      draft({ title: 'Optimize storage', description: 'Move old objects to cold storage.' }),
+    ], snapshot);
+
+    expect(report.checks.find((check) => check.name === 'spanishText')?.passed).toBe(false);
+  });
+
+  test('rejects recommendation output that contains a provider credential pattern', () => {
+    const report = evaluateRecommendationDrafts([
+      draft({ description: 'Usar esta clave sk-abcdefghijklmnop para consultar el proveedor.' }),
+    ], snapshot);
+
+    expect(report.checks.find((check) => check.name === 'noSensitiveOutput')?.passed).toBe(false);
+  });
+
+  test('rejects an execution plan without Spanish language signals', () => {
+    const report = evaluateExecutionPlan({
+      summary: 'Optimize the storage resource.',
+      scope: { cloudAccountId: 'acc-prod-aws' },
+      prerequisites: ['Confirm change window.'],
+      steps: ['Move objects to cold storage.'],
+      validation: ['Compare costs.'],
+      risks: ['Slower retrieval.'],
+      rollback: ['Delete the lifecycle rule.'],
+      successCriteria: ['Lower storage cost.'],
+    }, snapshot);
+
+    expect(report.checks.find((check) => check.name === 'spanishText')?.passed).toBe(false);
+  });
+
+  test('rejects an execution plan that contains an authenticated database URL', () => {
+    const report = evaluateExecutionPlan({
+      ...validPlan,
+      validation: ['Consultar postgresql://finops:supersecret@db.example.com/finops antes del cambio.'],
+    }, snapshot);
+
+    expect(report.checks.find((check) => check.name === 'noSensitiveOutput')?.passed).toBe(false);
+  });
+
+  test('fails when a plan contradicts the recommendation resource', () => {
+    const recommendation = {
+      cloudAccountId: 'acc-prod-aws',
+      cloudResourceId: 'cloud-resource-1',
+      evidence: { externalResourceId: 'bucket-logs' },
+    } as FinOpsRecommendation;
+    const mismatchedPlan = {
+      ...validPlan,
+      scope: {
+        cloudAccountId: 'acc-prod-aws',
+        service: 'Amazon S3',
+        cloudResourceId: 'cloud-resource-2',
+      },
+    };
+
+    const report = evaluateExecutionPlan(mismatchedPlan, snapshot, recommendation);
+    expect(report.checks.find((check) => check.name === 'recommendationScope')?.passed).toBe(false);
+  });
+
+  test('fails when normalized savings exceed the candidate cap', () => {
+    const draft = {
+      cloudAccountId: 'acc-prod-aws',
+      type: 'STORAGE_LIFECYCLE',
+      severity: 'MEDIUM',
+      title: 'Optimizar almacenamiento',
+      description: 'Revisar el ciclo de vida del almacenamiento.',
+      estimatedMonthlySavings: 20,
+      currency: 'USD',
+      evidence: {
+        evidenceLevel: 'COST_AND_USAGE',
+        maxEstimatedMonthlySavings: 10,
+      },
+    } as AiRecommendationDraft;
+
+    const report = evaluateRecommendationDrafts([draft], snapshot);
+    expect(report.checks.find((check) => check.name === 'candidateSavingsCap')?.passed).toBe(false);
   });
 });

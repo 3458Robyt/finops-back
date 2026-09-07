@@ -1,6 +1,6 @@
 # Evidencia de aceptación — Onboarding cloud
 
-> Corte verificado: 2026-07-16. Este documento no sustituye `ONBOARDING_CLOUD.md`; registra la
+> **Documento histórico.** Corte verificado: 2026-07-16. Este documento no sustituye `ONBOARDING_CLOUD.md`; registra la
 > evidencia de cierre y los límites del entorno local.
 
 ## Resultado de verificaciones

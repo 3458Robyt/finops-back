@@ -6,10 +6,68 @@
 
 Este documento resume la configuracion operativa actual para ingesta productiva de costos, consumo facturado y metricas tecnicas. La regla de diseno se mantiene: FOCUS/Data Exports alimenta costos y uso facturado; Monitoring/CloudWatch alimenta CPU, red, disco y memoria cuando el proveedor o agente la entregue.
 
+## Estado vigente — 2026-08-29
+
+- La recuperación de jobs stale está implementada en el repositorio de leases:
+  un trabajo `RUNNING` vencido vuelve a `PENDING` si conserva intentos,
+  termina como `FAILED` si agotó reintentos o pasa a `CANCELLED` si recibió una
+  cancelación. La consola master puede ejecutar la reconciliación global sin
+  entrar tenant por tenant.
+- El adaptador AWS ya no es solo un contrato: coordina STS `AssumeRole` con
+  External ID, regiones, EC2/EBS, CloudWatch, Cost Explorer y FOCUS S3. El
+  descubrimiento de CloudWatch y manifiestos FOCUS está acotado, pagina cursores
+  y destruye clientes SDK después de operar. Sigue faltando un canary con una
+  cuenta AWS real.
+- Los clientes específicos de OCI permanecen separados del paquete paraguas;
+  la compilación usa únicamente los módulos OCI realmente utilizados
+  (`oci-common`, `oci-core`, `oci-identity`, `oci-monitoring`,
+  `oci-objectstorage`, `oci-resourcesearch` y `oci-usageapi`). Cinco arranques en
+  frío locales registraron una mediana aproximada de 2,3 s y un peor tiempo de
+  proceso de 4,2 s.
+
+- El camino de desarrollo activo es PostgreSQL local 17 en
+  `127.0.0.1:5433/finops_local`; el worker raw-first persiste por lotes y el
+  projection worker actualiza rollups de forma asíncrona. La última auditoría
+  de Tak 2.0 registra 2.123.297 muestras raw, 3.105.765 rollups y cuatro
+  estadísticas nativas (`MEAN`, `MIN`, `MAX`, `P95`).
+- La cobertura se mide por ventana, stream y job con estados `COVERED`, `PARTIAL`
+  y `NO_DATA`; no se asume que una métrica declarada disponible tenga muestras
+  para cada periodo. El scheduler oldest-first y la concurrencia están acotados
+  para respetar los límites del proveedor.
+- Tak 2.0 conserva 148.916 filas FOCUS locales hasta el 26 de agosto de 2026;
+  el backfill reciente cubrió la ventana operativa local de 90 días. Los costos
+  no vinculables a inventario se conservan y se auditan aparte. FOCUS sigue
+  siendo la fuente primaria y Usage API solo actúa como redundancia/fallback,
+  sin sumar ambas fuentes.
+- Las 97 migraciones locales, hasta `202608310002_messaging_preferences_worker_rls`,
+  están aplicadas. Supabase está read-only y conserva una línea de migraciones
+  divergente; no se debe afirmar que las migraciones locales estén allí hasta
+  que el destino permita escritura y se haga una comparación controlada.
+- AWS tiene adaptador y pruebas unitarias, pero el canary real sigue bloqueado
+  hasta disponer de una cuenta y rol. Las credenciales bootstrap configuradas
+  por la plataforma sirven para obtener credenciales temporales mediante
+  `AssumeRole`; no son las credenciales de los tenants.
+
+> Las validaciones fechadas debajo conservan benchmarks y hallazgos históricos.
+> Para el estado actual prevalece este bloque y `docs/ESTADO_ACTUAL_FINOPS.md`.
+
 ## Estado verificado
+
+### Validación 2026-08-03
+
+- `npm run test:canary:oci-onboarding` pasó en modo read-only contra la conexión OCI real: una llamada de
+  Compute devolvió un recurso, Monitoring quedó disponible y el preview FOCUS descubrió 20 objetos y devolvió 5.
+- La capacidad directa `COSTS` de OCI quedó `DENIED`; no se presenta como fallo de inventario/FOCUS y permanece
+  bloqueada hasta aplicar la policy mínima de Usage API. FOCUS continúa como fuente operativa primaria.
+- El cruce posterior usa `cloud_resources` y exige la identidad exacta `cloudConnectionId + externalResourceId`;
+  no se permite vincular costos históricos por nombre o similitud.
 
 ### OCI
 
+- Estructura del adaptador: `OciSdkIngestionProvider` coordina las fuentes; módulos `oci/` separados encapsulan
+  contratos SDK, validación de capacidades, Monitoring, descubrimiento de compartimentos, inventario, FOCUS y
+  retries. Ninguno supera 219 líneas y el coordinador queda en 393; esta separación permite probar cada frontera
+  sin mezclar normalización, discovery y orquestación.
 - Credencial operativa: perfil OCI CLI registrado cifrado con `npm run oci:register-profile`.
 - Worker: `npm run ingestion:worker:once`.
 - Job manual: `npm run ingestion:create-job`.
@@ -32,6 +90,29 @@ Este documento resume la configuracion operativa actual para ingesta productiva 
   - warnings: ninguno.
 - Hallazgo de diseno corregido: los FOCUS reales ya no quedan solo como tabla cruda; se proyectan tambien a `cost_metrics`, que alimenta dashboard, analitica, contexto IA y recomendaciones.
 - Hallazgo de rendimiento: con Supabase remoto, la persistencia sigue siendo el costo principal del job. Mantener `maxObjects` bajo hasta implementar persistencia por lotes/staging SQL.
+
+#### Resource Search y referencias históricas (2026-08-11)
+
+- El inventario combina fuentes con prioridad explícita: metadata declarativa, Compute, Resource Search y,
+  por último, definiciones de Monitoring. Las fuentes posteriores complementan campos, pero no degradan una
+  identidad ya observada por una fuente más fuerte.
+- Resource Search usa consultas estructuradas paginadas y solo busca tipos presentes en el FOCUS OCI actual:
+  `instance`, `bootvolume`, `bootvolumebackup` y `vnic`. La lista puede reducirse mediante
+  `metadata.ociInventoryResourceTypes`; no se amplía automáticamente a tipos no normalizados.
+- Los compartimentos respetan `metadata.ociInventoryIncludeCompartments` y
+  `metadata.ociInventoryExcludeCompartments`. Search no concede visibilidad adicional: devuelve únicamente
+  recursos que el principal puede inspeccionar o leer.
+- Cuando FOCUS contiene un OCID válido soportado que ya no aparece como recurso vivo, se crea una referencia
+  `OCI_FOCUS_HISTORICAL_REFERENCE` con estado `UNKNOWN`, período de evidencia y normalizador versionado. La
+  inserción usa `skipDuplicates`, por lo que nunca sobrescribe inventario vivo ni afirma que el recurso siga activo.
+- El backfill real creó 11 referencias históricas y enlazó 8.137 filas adicionales. La cobertura resultante es
+  8.173/8.173 costos elegibles (100 %). Otros 987 registros se conservan fuera del denominador: 555 IDs de
+  telemetría no soportados y 432 filas sin conexión cloud identificable.
+- La segunda ejecución del backfill reportó cero candidatos y cero actualizaciones, demostrando idempotencia.
+- Fuentes oficiales:
+  - https://docs.oracle.com/en-us/iaas/tools/typescript/latest/classes/_resourcesearch_lib_client_.resourcesearchclient.html
+  - https://docs.oracle.com/en-us/iaas/Content/Search/Concepts/queryoverview.htm
+  - https://docs.oracle.com/en-us/iaas/Content/Identity/policyreference/searchpolicyreference.htm
 
 ### AWS
 
@@ -207,7 +288,7 @@ INGESTION_SCHEDULER_METRIC_WINDOW_MINUTES=30
 INGESTION_SCHEDULER_METRIC_COOLDOWN_MINUTES=25
 INGESTION_SCHEDULER_BILLING_WINDOW_HOURS=24
 INGESTION_SCHEDULER_BILLING_COOLDOWN_HOURS=6
-INGESTION_SCHEDULER_MAX_ATTEMPTS=1
+INGESTION_SCHEDULER_MAX_ATTEMPTS=3
 ```
 
 Operacion recomendada para MVP productivo:

@@ -1,5 +1,3 @@
-import type { UserRole } from './AuthContext.js';
-
 /**
  * Estado del ciclo de vida de un perfil de instrucciones del agente de IA.
  *
@@ -57,7 +55,6 @@ export interface AgentInstructionRules {
   /** Acciones explícitamente prohibidas para el agente. */
   readonly forbiddenActions: readonly string[];
 }
-
 /**
  * Perfil versionado de instrucciones que gobierna el comportamiento del agente
  * de IA. Cada cambio relevante produce una nueva versión; solo una suele estar
@@ -180,20 +177,16 @@ export interface AiContextTrace {
   readonly responseTokenEstimate?: number | undefined;
   /** Latencia de la operación en milisegundos, si se midió. */
   readonly latencyMs?: number | undefined;
+  /** Identificadores de los artefactos que entraron en el contexto, si se registraron. */
+  readonly artifactIds?: readonly string[] | undefined;
+  /** Identificadores de las memorias que entraron en el contexto, si se registraron. */
+  readonly memoryIds?: readonly string[] | undefined;
+  /** Identificadores de las reglas tenant que entraron en el contexto, si se registraron. */
+  readonly tenantRuleIds?: readonly string[] | undefined;
+  /** Conflictos detectados al ensamblar el contexto, si se registraron. */
+  readonly conflicts?: readonly string[] | undefined;
   /** Fecha de creación de la traza. */
   readonly createdAt: Date;
   /** Fecha de expiración de la traza (para retención/limpieza). */
   readonly expiresAt: Date;
 }
-
-/**
- * Roles con permisos de administración del agente (gestión de perfiles y reglas).
- * Se usa para autorizar operaciones administrativas sobre el agente.
- */
-export const agentAdminRoles: readonly UserRole[] = ['ADMIN', 'MASTER_ADMIN', 'OPERATOR_ADMIN'];
-
-/**
- * Roles con permisos técnicos sobre el agente (operaciones técnicas además de las
- * administrativas). Incluye al técnico FinOps junto a los roles administrativos.
- */
-export const agentTechnicalRoles: readonly UserRole[] = ['ADMIN', 'MASTER_ADMIN', 'OPERATOR_ADMIN', 'FINOPS_TECHNICIAN'];

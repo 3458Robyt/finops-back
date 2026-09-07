@@ -4,6 +4,7 @@ import type {
   AgentMemory,
   AgentMemoryScope,
   AgentMemoryType,
+  GlobalLearningCanaryEvidence,
   RecommendationFeedbackReason,
 } from '../models/AgentLearning.js';
 import type {
@@ -84,6 +85,22 @@ export interface CreateAgentMemoryInput {
   readonly auditReport: unknown;
   /** Huella única para deduplicar memorias equivalentes. */
   readonly fingerprint: string;
+  /** Si es `false`, la memoria queda en shadow y no se incorpora al contexto. */
+  readonly active?: boolean;
+}
+
+/**
+ * Cierre atómico de un aprendizaje aprobado y sus memorias derivadas.
+ *
+ * Si falla la actualización del evento o de la decisión, ninguna memoria debe
+ * quedar persistida a medias.
+ */
+export interface RecordApprovedLearningInput {
+  readonly eventId: string;
+  readonly auditVerdict: string;
+  readonly auditScore: number;
+  readonly auditReport: unknown;
+  readonly memories: readonly CreateAgentMemoryInput[];
 }
 
 /**
@@ -171,6 +188,27 @@ export interface IAgentLearningRepository {
    */
   createMemory(input: CreateAgentMemoryInput): Promise<AgentMemory>;
 
+  /** Desactiva una memoria activa sin borrar su evidencia histórica. */
+  deactivateMemory?(input: {
+    readonly tenantId: string;
+    readonly memoryId: string;
+    readonly allowGlobal: boolean;
+    readonly actorUserId: string;
+  }): Promise<AgentMemory | null>;
+
+  /**
+   * Promueve un candidato GLOBAL únicamente con evidencia de canary live
+   * comparativo y un actor trazable. No se expone como una promoción genérica.
+   */
+  promoteGlobalMemoryWithEvidence?(input: {
+    readonly sourceLearningEventId: string;
+    readonly actorUserId: string;
+    readonly evidence: GlobalLearningCanaryEvidence;
+  }): Promise<AgentMemory | null>;
+
+  /** Persiste memorias auditadas y cierra evento/decisión en una transacción. */
+  recordApprovedLearning(input: RecordApprovedLearningInput): Promise<AgentLearningEvent>;
+
   /**
    * Recupera el contexto de aprendizaje relevante a una recomendación.
    *
@@ -210,4 +248,7 @@ export interface IAgentLearningRepository {
    * @returns `true` si ya existe una memoria global activa equivalente; `false` en caso contrario.
    */
   hasActiveGlobalMemory(fingerprint: string): Promise<boolean>;
+
+  /** Indica si el fingerprint GLOBAL ya tiene candidato activo o shadow. */
+  hasGlobalMemoryCandidate?(fingerprint: string): Promise<boolean>;
 }

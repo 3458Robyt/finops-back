@@ -1,5 +1,11 @@
 # Centro de Realización de Valor FinOps
 
+> **Referencia funcional con evidencia histórica:** las reglas y contratos del
+> módulo siguen vigentes, pero los conteos, migraciones y benchmarks de la
+> sección de verificación corresponden a su fecha de ejecución. El estado actual
+> de la beta está en `docs/ESTADO_ACTUAL_FINOPS.md` y la deuda vigente en
+> `docs/DEUDA_TECNICA.md`.
+
 ## Propósito
 
 El Centro de Realización de Valor conecta cada oportunidad con su ciclo operativo: estimación, decisión, ejecución manual, medición posterior y verificación humana. Responde cuánto valor se esperaba, cuánto se observó y cuánto fue validado, sin presentar una declaración manual como ahorro comprobado.

@@ -6,7 +6,9 @@ import type {
   TechnicalMetricsService,
 } from '../../application/services/TechnicalMetricsService.js';
 import { FinOpsBaseError } from '../../domain/errors/errors.js';
-import { resolveFinOpsError } from '../http/finOpsErrorResponse.js';
+import { METRIC_STATISTICS, type MetricStatistic } from '../../domain/interfaces/ICloudIngestionProvider.js';
+import type { CloudResourceCostFilter, CloudResourceFilters, CloudResourceStatus } from '../../domain/interfaces/IResourceMetricRepository.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 
 /**
  * Controlador de la capa de presentación para las métricas técnicas de recursos
@@ -28,6 +30,10 @@ export class TechnicalMetricsController {
    *
    * Parámetros de consulta (`req.query`):
    * - `limit` (opcional): máximo de resultados; el servicio lo acota a [1, 200].
+   * - `costFilter=WITH_COST|ALL`: filtra recursos con costo asociado.
+   * - `status`: lista separada por comas de estados ACTIVE, STOPPED, TERMINATED o UNKNOWN.
+   * - `provider`: OCI, AWS u otro proveedor normalizado.
+   * - `query`: búsqueda por nombre, identificador, servicio o tipo.
    *
    * Respuestas:
    * - 200: `{ success: true, resources }`.
@@ -40,8 +46,10 @@ export class TechnicalMetricsController {
       const resources = await this.technicalMetricsService.listResources(
         tenantId,
         this.parseLimit(req.query['limit']),
+        this.parseResourceFilters(req),
       );
 
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, resources });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -53,11 +61,13 @@ export class TechnicalMetricsController {
       const resource = await this.technicalMetricsService.getResource(
         this.requireTenant(req),
         this.requireParam(req, 'externalResourceId'),
+        this.parseString(req.query['cloudResourceId']),
       );
       if (resource === undefined) {
         res.status(404).json({ success: false, error: 'Recurso no encontrado.', code: 'NOT_FOUND' });
         return;
       }
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, resource });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -69,11 +79,13 @@ export class TechnicalMetricsController {
       const summary = await this.technicalMetricsService.getResourceSummary(
         this.requireTenant(req),
         this.requireParam(req, 'externalResourceId'),
+        this.parseString(req.query['cloudResourceId']),
       );
       if (summary === undefined) {
         res.status(404).json({ success: false, error: 'Recurso no encontrado.', code: 'NOT_FOUND' });
         return;
       }
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, summary });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -102,6 +114,7 @@ export class TechnicalMetricsController {
         this.parseLimit(req.query['limit']),
       );
 
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, samples });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -116,6 +129,7 @@ export class TechnicalMetricsController {
         this.parseMetricQuery(req),
       );
 
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, overview });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -138,6 +152,7 @@ export class TechnicalMetricsController {
 
       const result = await this.technicalMetricsService.getSeries(tenantId, query);
 
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, series: result.series, meta: result.meta });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -152,6 +167,7 @@ export class TechnicalMetricsController {
         this.parseMetricQuery(req),
       );
 
+      setTechnicalReadCacheHeaders(res);
       res.status(200).json({ success: true, coverage });
     } catch (error: unknown) {
       this.respondWithError(res, error);
@@ -194,19 +210,23 @@ export class TechnicalMetricsController {
     const startDate = this.parseDate(req.query['startDate']);
     const endDate = this.parseDate(req.query['endDate']);
     const externalResourceId = this.parseString(req.query['externalResourceId']);
+    const cloudResourceId = this.parseString(req.query['cloudResourceId']);
     const metricNames = this.parseStringList(req.query['metricNames']);
     const bucket = includeBucket ? this.parseBucket(req.query['bucket']) : undefined;
     const cursor = includeBucket ? this.parseString(req.query['cursor']) : undefined;
     const pageSize = includeBucket ? this.parseLimit(req.query['pageSize']) : undefined;
+    const statistic = this.parseStatistic(req.query['statistic']);
 
     return {
       ...(startDate !== undefined ? { startDate } : {}),
       ...(endDate !== undefined ? { endDate } : {}),
       ...(externalResourceId !== undefined ? { externalResourceId } : {}),
+      ...(cloudResourceId !== undefined ? { cloudResourceId } : {}),
       ...(metricNames !== undefined ? { metricNames } : {}),
       ...(bucket !== undefined ? { bucket } : {}),
       ...(cursor !== undefined ? { cursor } : {}),
       ...(pageSize !== undefined ? { pageSize } : {}),
+      ...(statistic !== undefined ? { statistic } : {}),
     };
   }
 
@@ -266,13 +286,64 @@ export class TechnicalMetricsController {
     return raw;
   }
 
+  private parseResourceFilters(req: Request): CloudResourceFilters {
+    const rawCostFilter = this.parseString(req.query['costFilter'])?.toUpperCase();
+    if (rawCostFilter !== undefined && rawCostFilter !== 'ALL' && rawCostFilter !== 'WITH_COST') {
+      throw new FinOpsBaseError('Invalid resource cost filter', 'VALIDATION_ERROR');
+    }
+    const costFilter = rawCostFilter as CloudResourceCostFilter | undefined;
+    const rawStatuses = this.parseStringList(req.query['status']);
+    const allowedStatuses: readonly CloudResourceStatus[] = ['ACTIVE', 'STOPPED', 'TERMINATED', 'UNKNOWN'];
+    const statuses = rawStatuses?.map((status) => status.toUpperCase() as CloudResourceStatus);
+    if (statuses?.some((status) => !allowedStatuses.includes(status))) {
+      throw new FinOpsBaseError('Invalid resource status filter', 'VALIDATION_ERROR');
+    }
+    const provider = this.parseString(req.query['provider']);
+    const query = this.parseString(req.query['query']);
+
+    return {
+      ...(costFilter !== undefined ? { costFilter } : {}),
+      ...(statuses !== undefined ? { statuses } : {}),
+      ...(provider !== undefined ? { provider } : {}),
+      ...(query !== undefined ? { query } : {}),
+    };
+  }
+
+  private parseStatistic(value: unknown): MetricStatistic | undefined {
+    const raw = this.parseString(value)?.toUpperCase();
+    if (raw === undefined) {
+      return undefined;
+    }
+
+    if (!(METRIC_STATISTICS as readonly string[]).includes(raw)) {
+      throw new FinOpsBaseError('Invalid metric statistic', 'VALIDATION_ERROR');
+    }
+
+    return raw as MetricStatistic;
+  }
+
   /**
    * Manejador centralizado de errores que traduce excepciones de dominio a
    * códigos de estado HTTP: `AUTHENTICATION_REQUIRED` -> 401; cualquier otro
    * código -> 500. Error no controlado -> 500 con mensaje genérico.
    */
   private respondWithError(res: Response, error: unknown): void {
-    const response = resolveFinOpsError(error, 'An unexpected error occurred processing technical metrics');
-    res.status(response.status).json({ success: false, error: response.error, ...(response.code === undefined ? {} : { code: response.code }) });
+    respondWithFinOpsError(
+      res,
+      error,
+      'An unexpected error occurred processing technical metrics',
+      'technical_metrics_operation_failed',
+    );
   }
+}
+
+/**
+ * Short, private HTTP caching is safe for read-only technical projections and
+ * prevents repeated filter changes from re-running an identical query while
+ * keeping tenant data out of shared proxies.
+ */
+function setTechnicalReadCacheHeaders(res: Response): void {
+  if (typeof res.setHeader !== 'function') return;
+  res.setHeader('Cache-Control', 'private, max-age=5, stale-while-revalidate=15');
+  res.setHeader('Vary', 'Authorization, Cookie');
 }

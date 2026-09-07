@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CostAllocationService } from './CostAllocationService.js';
 import type { ICostAllocationRepository } from '../../domain/interfaces/ICostAllocationRepository.js';
 import type { CostAllocationRule } from '../../domain/models/CostAllocation.js';
+import type { CostAllocationRuleInput } from '../../domain/interfaces/ICostAllocationRepository.js';
 
 const actor = { userId: 'user-1', tenantId: 'tenant-1', email: 'admin@example.com', role: 'ADMIN', jwtId: 'jwt-1' } as const;
 const ruleInput = { name: 'Compute producción', priority: 10, status: 'DRAFT' as const, serviceName: 'Compute', costCenter: 'CC-100' };
@@ -10,7 +11,7 @@ describe('CostAllocationService', () => {
   it('creates an auditable rule and validates criteria and target', async () => {
     const repository = new FakeRepository();
     const service = new CostAllocationService(repository as unknown as ICostAllocationRepository);
-    await expect(service.createRule(actor, ruleInput)).resolves.toMatchObject({ name: 'Compute producción' });
+    await expect(service.createRule(actor, ruleInput)).resolves.toMatchObject({ name: 'Compute producción', allocationTargets: [{ percentage: 100, costCenter: 'CC-100' }] });
     expect(repository.auditActions).toEqual(['COST_ALLOCATION_RULE_CREATED']);
     await expect(service.createRule(actor, { ...ruleInput, serviceName: undefined })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
   });
@@ -20,6 +21,33 @@ describe('CostAllocationService', () => {
     const viewer = { ...actor, role: 'CLIENT_VIEWER' as const };
     await expect(service.summary(viewer, { period: '2026-05' })).resolves.toEqual([]);
     await expect(service.createRule(viewer, ruleInput)).rejects.toMatchObject({ code: 'AUTHORIZATION_FAILED' });
+  });
+
+  it('requires an exact 100% split and a business destination for every target', async () => {
+    const service = new CostAllocationService(new FakeRepository() as unknown as ICostAllocationRepository);
+    const split = { ...ruleInput, allocationMode: 'SPLIT' as const, allocationTargets: [{ percentage: 60, project: 'Platform' }, { percentage: 30, project: 'Product' }] };
+    await expect(service.createRule(actor, split)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(service.createRule(actor, { ...split, allocationTargets: [{ percentage: 50 }, { percentage: 50, project: 'Product' }] })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(service.createRule(actor, { ...split, allocationTargets: [{ percentage: 50, project: 'Platform' }, { percentage: 50, project: 'Product' }] })).resolves.toMatchObject({ allocationMode: 'SPLIT', configurationVersion: 1 });
+    await expect(service.createRule(actor, { ...split, allocationTargets: [{ percentage: 50.00001, project: 'Platform' }, { percentage: 49.99999, project: 'Product' }] })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(service.createRule(actor, { ...split, allocationTargets: [{ percentage: 50, project: 'Platform' }, { percentage: 50, project: 'Platform' }] })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  it('requires a successful preview before activation', async () => {
+    const repository = new FakeRepository();
+    const service = new CostAllocationService(repository as unknown as ICostAllocationRepository);
+    const created = await service.createRule(actor, ruleInput);
+    await expect(service.activateRule(actor, created.id)).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await service.preview(actor, { ...ruleInput, configurationHash: created.configurationHash }, '2026-05', created.id);
+    await expect(service.activateRule(actor, created.id)).resolves.toMatchObject({ status: 'ACTIVE', configurationVersion: 1, configurationHash: created.configurationHash, lastPreviewedHash: created.configurationHash });
+    expect(repository.auditActions).toEqual(expect.arrayContaining(['COST_ALLOCATION_RULE_PREVIEWED', 'COST_ALLOCATION_RULE_ACTIVATED']));
+  });
+
+  it('records the explicit unallocated confirmation when closing a period', async () => {
+    const repository = new FakeRepository();
+    const service = new CostAllocationService(repository as unknown as ICostAllocationRepository);
+    await service.closePeriod(actor, { period: '2026-05', confirmUnallocated: true });
+    expect(repository.auditMetadata).toEqual(expect.arrayContaining([expect.objectContaining({ confirmUnallocated: true, unallocatedTotal: 12 })]));
   });
 
   it('keeps preview read-only and never resolves a rule from another tenant', async () => {
@@ -35,16 +63,18 @@ describe('CostAllocationService', () => {
 
 class FakeRepository {
   public readonly auditActions: string[] = [];
+  public readonly auditMetadata: unknown[] = [];
   public readonly rules: CostAllocationRule[] = [];
   public lastPreviewTenantId: string | undefined;
   public async listRules(): Promise<readonly CostAllocationRule[]> { return this.rules; }
   public async findRule(tenantId: string, id: string): Promise<CostAllocationRule | null> { return this.rules.find((rule) => rule.id === id && rule.tenantId === tenantId) ?? null; }
-  public async createRule(tenantId: string, userId: string, input: typeof ruleInput): Promise<CostAllocationRule> { const now = new Date(); const rule: CostAllocationRule = { id: `rule-${this.rules.length + 1}`, tenantId, createdByUserId: userId, createdAt: now, updatedAt: now, ...input }; this.rules.push(rule); return rule; }
-  public async updateRule(): Promise<CostAllocationRule | null> { return this.rules[0] ?? null; }
+  public async createRule(tenantId: string, userId: string, input: CostAllocationRuleInput): Promise<CostAllocationRule> { const now = new Date(); const rule: CostAllocationRule = { id: `rule-${this.rules.length + 1}`, tenantId, createdByUserId: userId, createdAt: now, updatedAt: now, allocationMode: 'DIRECT', allocationTargets: [], configurationVersion: 1, ...input }; this.rules.push(rule); return rule; }
+  public async updateRule(tenantId: string, ruleId: string, input: Partial<CostAllocationRuleInput>): Promise<CostAllocationRule | null> { const index = this.rules.findIndex((rule) => rule.tenantId === tenantId && rule.id === ruleId); if (index < 0) return null; const updated = { ...this.rules[index]!, ...input, updatedAt: new Date() }; this.rules[index] = updated; return updated; }
   public async archiveRule(): Promise<CostAllocationRule | null> { return this.rules[0] ?? null; }
   public async summarize() { return []; }
-  public async preview(tenantId: string) { this.lastPreviewTenantId = tenantId; return { summary: [], metricCount: 0, resourceCount: 0, examples: [] }; }
+  public async preview(tenantId: string, input: CostAllocationRuleInput, _period: Date, ruleId?: string) { this.lastPreviewTenantId = tenantId; if (ruleId !== undefined) { const current = this.rules.find((rule) => rule.id === ruleId); if (current !== undefined) this.rules[this.rules.indexOf(current)] = { ...current, lastPreviewedHash: input.configurationHash }; } return { summary: [], previousSummary: [], rulesUsed: [], metricCount: 0, resourceCount: 0, examples: [], financialImpact: { budgets: [], savings: [] } }; }
   public async resourceSummary() { return []; }
   public async unallocated() { return []; }
-  public async writeAudit(_tenantId: string, _userId: string, action: string): Promise<void> { this.auditActions.push(action); }
+  public async closePeriod(): Promise<readonly any[]> { return [{ id: 'closure-1', period: '2026-05', currency: 'USD', version: 1, sourceHash: 'source-hash', rulesHash: 'rules-hash', unallocatedTotal: 12 }]; }
+  public async writeAudit(_tenantId: string, _userId: string, action: string, _entityId: string, metadata: unknown): Promise<void> { this.auditActions.push(action); this.auditMetadata.push(metadata); }
 }

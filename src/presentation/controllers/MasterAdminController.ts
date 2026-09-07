@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { FinOpsBaseError } from '../../domain/errors/errors.js';
-import { resolveFinOpsError } from '../http/finOpsErrorResponse.js';
+import { respondWithFinOpsError } from '../http/finOpsErrorResponse.js';
 import type { MasterAdminService } from '../../application/services/MasterAdminService.js';
 import type { TenantAccessRole, TenantStatus, UserRole } from '../../generated/prisma/client.js';
 
@@ -154,8 +154,8 @@ export class MasterAdminController {
   }
 
   private parseUserRole(value: unknown): UserRole {
-    if (value !== 'OPERATOR_ADMIN' && value !== 'FINOPS_TECHNICIAN') {
-      throw new FinOpsBaseError('role must be OPERATOR_ADMIN or FINOPS_TECHNICIAN', 'VALIDATION_ERROR');
+    if (value !== 'OPERATOR_ADMIN' && value !== 'LEAD_TECHNICIAN' && value !== 'FINOPS_TECHNICIAN') {
+      throw new FinOpsBaseError('role must be OPERATOR_ADMIN, LEAD_TECHNICIAN or FINOPS_TECHNICIAN', 'VALIDATION_ERROR');
     }
 
     return value;
@@ -178,7 +178,11 @@ export class MasterAdminController {
   }
 
   private respondWithError(res: Response, error: unknown): void {
-    const response = resolveFinOpsError(error, 'An unexpected error occurred processing master administration');
-    res.status(response.status).json({ success: false, error: response.error, ...(response.code === undefined ? {} : { code: response.code }) });
+    respondWithFinOpsError(
+      res,
+      error,
+      'An unexpected error occurred processing master administration',
+      'master_admin_operation_failed',
+    );
   }
 }

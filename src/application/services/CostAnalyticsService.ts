@@ -3,14 +3,18 @@ import type {
   AnalyticsGroupBy,
   CostAnomaly,
   CostForecast,
+  CostForecastScenario,
   CostTrend,
   ICostAnalyticsRepository,
   MonthlyUsagePoint,
   UsageInsight,
 } from '../../domain/interfaces/ICostAnalyticsRepository.js';
+import type { IRecommendationRepository } from '../../domain/interfaces/IRecommendationRepository.js';
+import type { IValueRealizationRepository } from '../../domain/interfaces/IValueRealizationRepository.js';
 import type { AnomalyThresholds } from './analytics/anomalyDetector.js';
 import { detectAnomalies } from './analytics/anomalyDetector.js';
 import { generateForecasts } from './analytics/costForecaster.js';
+import { buildForecastScenarios, type ForecastScenarioSavings } from './analytics/forecastScenarioBuilder.js';
 import { buildTrends } from './analytics/costTrendBuilder.js';
 import { buildUsageInsights } from './analytics/usageInsightBuilder.js';
 
@@ -43,6 +47,9 @@ export interface AnalyticsQuery {
  * tendencias e insights de consumo.
  */
 export interface AnalyticsRecomputeResult {
+  /** Canonical user-facing name for cost signals. */
+  readonly opportunities: readonly CostAnomaly[];
+  /** @deprecated Kept for clients that still consume the historical field. */
   readonly anomalies: readonly CostAnomaly[];
   readonly forecasts: readonly CostForecast[];
   readonly trends: readonly CostTrend[];
@@ -51,15 +58,16 @@ export interface AnalyticsRecomputeResult {
   readonly insufficientData: boolean;
 }
 
-/**
- * Umbrales de detección de anomalías, resueltos desde el entorno.
- *
- * El delta absoluto mínimo es configurable vía `ANOMALY_MIN_DELTA_USD`
- * (evita ruido por variaciones triviales); los umbrales porcentuales de
- * severidad son constantes del dominio.
- */
-const anomalyThresholds: AnomalyThresholds = {
-  minAbsoluteDelta: Number.parseFloat(process.env['ANOMALY_MIN_DELTA_USD'] ?? '10'),
+export interface CostAnalyticsOptions {
+  readonly anomalyThresholds?: Partial<AnomalyThresholds>;
+  readonly forecastScenarioDependencies?: {
+    readonly recommendationRepository: IRecommendationRepository;
+    readonly valueRealizationRepository: IValueRealizationRepository;
+  };
+}
+
+const DEFAULT_ANOMALY_THRESHOLDS: AnomalyThresholds = {
+  minAbsoluteDelta: 1,
   mediumDeltaPercent: 25,
   highDeltaPercent: 50,
   criticalDeltaPercent: 100,
@@ -85,11 +93,19 @@ export class CostAnalyticsService {
    * concurrentes que se pisen entre sí (ver {@link recompute}).
    */
   private readonly recomputeQueues = new Map<string, Promise<AnalyticsRecomputeResult>>();
+  private readonly anomalyThresholds: AnomalyThresholds;
+  private readonly forecastScenarioDependencies?: CostAnalyticsOptions['forecastScenarioDependencies'];
 
   /**
    * @param analyticsRepository - Repositorio de analítica de costos.
    */
-  constructor(private readonly analyticsRepository: ICostAnalyticsRepository) {}
+  constructor(
+    private readonly analyticsRepository: ICostAnalyticsRepository,
+    options: CostAnalyticsOptions = {},
+  ) {
+    this.anomalyThresholds = { ...DEFAULT_ANOMALY_THRESHOLDS, ...options.anomalyThresholds };
+    this.forecastScenarioDependencies = options.forecastScenarioDependencies;
+  }
 
   /**
    * Obtiene las anomalías de costo persistidas para una consulta.
@@ -109,6 +125,17 @@ export class CostAnalyticsService {
    */
   public async getForecast(query: AnalyticsQuery): Promise<readonly CostForecast[]> {
     return this.analyticsRepository.findForecasts(query.tenantId, this.toFilters(query));
+  }
+
+  /**
+   * Compara el forecast actual con ahorro aprobado, ejecutado y verificado.
+   * Las reducciones se aplican únicamente cuando su fuente es compatible con
+   * el alcance solicitado; nunca se presenta un ahorro estimado como verificado.
+   */
+  public async getForecastScenarios(query: AnalyticsQuery): Promise<readonly CostForecastScenario[]> {
+    const forecasts = await this.getForecast(query);
+    const savings = await this.loadForecastScenarioSavings(query);
+    return buildForecastScenarios(forecasts, savings);
   }
 
   /**
@@ -207,9 +234,9 @@ export class CostAnalyticsService {
       ...filters,
       groupBy,
     });
-    const anomalies = await this.analyticsRepository.replaceAnomalies(
+    const opportunities = await this.analyticsRepository.replaceAnomalies(
       query.tenantId,
-      detectAnomalies(query.tenantId, series, anomalyThresholds),
+      detectAnomalies(query.tenantId, series, this.anomalyThresholds),
     );
     const forecasts = await this.analyticsRepository.replaceForecasts(
       query.tenantId,
@@ -217,7 +244,8 @@ export class CostAnalyticsService {
     );
 
     return {
-      anomalies,
+      opportunities,
+      anomalies: opportunities,
       forecasts,
       trends: buildTrends(series),
       usageInsights: await this.getEfficiencyInsights(query),
@@ -237,6 +265,52 @@ export class CostAnalyticsService {
       ...(query.cloudAccountId !== undefined ? { cloudAccountId: query.cloudAccountId } : {}),
       ...(query.serviceName !== undefined ? { serviceName: query.serviceName } : {}),
       ...(query.groupBy !== undefined ? { groupBy: query.groupBy } : {}),
+    };
+  }
+
+  private async loadForecastScenarioSavings(query: AnalyticsQuery): Promise<ForecastScenarioSavings> {
+    const dependencies = this.forecastScenarioDependencies;
+    if (dependencies === undefined) {
+      return { approved: new Map(), executed: new Map(), verified: new Map(), scope: 'NOT_AVAILABLE' };
+    }
+
+    const filteredByProvider = query.provider !== undefined;
+    const [recommendations, realization] = await Promise.all([
+      filteredByProvider || query.serviceName !== undefined
+        ? Promise.resolve([])
+        : dependencies.recommendationRepository.findByTenant({
+          tenantId: query.tenantId,
+          status: 'APPROVED',
+          ...(query.cloudAccountId !== undefined ? { cloudAccountId: query.cloudAccountId } : {}),
+        }),
+      dependencies.valueRealizationRepository.getSummary({
+        tenantId: query.tenantId,
+        ...(query.provider !== undefined ? { provider: query.provider } : {}),
+        ...(query.cloudAccountId !== undefined ? { cloudAccountId: query.cloudAccountId } : {}),
+        ...(query.serviceName !== undefined ? { serviceName: query.serviceName } : {}),
+      }),
+    ]);
+
+    const approved = new Map<string, number>();
+    for (const recommendation of recommendations) {
+      const amount = recommendation.estimatedMonthlySavings ?? 0;
+      if (amount > 0) approved.set(recommendation.currency, (approved.get(recommendation.currency) ?? 0) + amount);
+    }
+
+    const executed = new Map<string, number>();
+    const verified = new Map<string, number>();
+    for (const currency of realization.currencies) {
+      executed.set(currency.currency, currency.projectedMonthlySavings);
+      verified.set(currency.currency, currency.verifiedMonthlySavings);
+    }
+
+    return {
+      approved,
+      executed,
+      verified,
+      scope: query.provider === undefined && query.cloudAccountId === undefined && query.serviceName === undefined
+        ? 'TENANT'
+        : 'FILTERED_SCOPE',
     };
   }
 }

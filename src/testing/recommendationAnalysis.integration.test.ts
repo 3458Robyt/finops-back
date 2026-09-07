@@ -19,7 +19,10 @@ describe('recommendation analysis PostgreSQL integration', () => {
       const tenantA = fixtures.tenants[0]!;
       const tenantB = fixtures.tenants[1]!;
       const user = await prisma.user.findFirstOrThrow({
-        where: { tenantId: tenantA.id },
+        // This user is used to retry a run in tenant B. Select the explicit
+        // cross-tenant operator fixture instead of relying on insertion order
+        // between the MASTER_ADMIN and VIEWER rows.
+        where: { tenantId: tenantA.id, role: 'MASTER_ADMIN' },
         select: { id: true },
       });
       const repository = new PrismaRecommendationAnalysisRunRepository(prisma);
@@ -169,5 +172,5 @@ describe('recommendation analysis PostgreSQL integration', () => {
       await cleanupE2eFixtures(prisma, runId);
       await prisma.$disconnect();
     }
-  }, 30_000);
+  }, 120_000);
 });

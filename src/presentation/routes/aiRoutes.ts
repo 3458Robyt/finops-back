@@ -14,10 +14,12 @@ import { RecommendationAnalysisController } from '../controllers/RecommendationA
  * |--------|-----------------------------|-------------|--------------------------------------|
  * | GET    | /learning/summary           | requireAuth | aiController.getLearningSummary      |
  * | POST   | /chat                       | requireAuth | aiController.chat                    |
- * | POST   | /recommendations/generate   | requireAuth | aiController.generateRecommendations |
+ * | POST   | /recommendations/generate   | requireAuth + recommendation manager | aiController.generateRecommendations |
  *
  * @param aiController Controlador con los handlers de IA.
  * @param requireAuth Middleware que valida el Bearer token y rellena `req.auth`.
+ * @param requireAnalysisManager Middleware que restringe generación/análisis a
+ * roles con permiso `RECOMMENDATION_GENERATE`.
  * @returns Router de Express con las rutas de IA.
  */
 export function createAiRoutes(
@@ -35,8 +37,9 @@ export function createAiRoutes(
   router.post('/analysis-runs/:id/cancel', requireAuth, requireAnalysisManager, recommendationAnalysisController.cancel);
   router.post('/analysis-runs/:id/retry', requireAuth, requireAnalysisManager, recommendationAnalysisController.retry);
   router.get('/learning/summary', requireAuth, aiController.getLearningSummary);
+  router.patch('/learning/memories/:memoryId/deactivate', requireAuth, aiController.deactivateLearningMemory);
   router.post('/chat', requireAuth, aiController.chat);
-  router.post('/recommendations/generate', requireAuth, aiController.generateRecommendations);
+  router.post('/recommendations/generate', requireAuth, requireAnalysisManager, aiController.generateRecommendations);
 
   return router;
 }

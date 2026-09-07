@@ -16,6 +16,7 @@ import {
   buildSnapshotQueryText,
   withBuiltContext,
 } from './finOpsAiPrompts.js';
+import type { AiChatOutputFormat } from './finOpsAiTypes.js';
 import type { TechnicalRecommendationEvidenceProvider } from './TechnicalRecommendationEvidenceService.js';
 import {
   formatRecommendationEvidenceSnapshot,
@@ -93,6 +94,7 @@ private readonly technicalEvidenceProvider?: TechnicalRecommendationEvidenceProv
     readonly userId?: string;
     readonly message: string;
     readonly snapshot: CostAnalyticsSnapshot;
+    readonly outputFormat?: AiChatOutputFormat;
   }): Promise<AssembledChatContext> {
     const builtContext = await this.buildOptionalContext({
       tenantId: input.tenantId,
@@ -105,7 +107,10 @@ private readonly technicalEvidenceProvider?: TechnicalRecommendationEvidenceProv
 
     return {
       builtContext,
-      systemPrompt: withBuiltContext(buildChatSystemPrompt(input.snapshot), builtContext),
+      systemPrompt: withBuiltContext(
+        buildChatSystemPrompt(input.snapshot, input.outputFormat ?? 'MARKDOWN'),
+        builtContext,
+      ),
     };
   }
 
@@ -122,15 +127,17 @@ private readonly technicalEvidenceProvider?: TechnicalRecommendationEvidenceProv
     readonly snapshot: CostAnalyticsSnapshot;
     /** Recurso exacto para un análisis aislado; no mezcla contexto de otros recursos. */
     readonly externalResourceId?: string;
+    readonly cloudResourceId?: string;
     readonly technicalEvidenceSnapshot?: RecommendationEvidenceSnapshot;
 }): Promise<AssembledRecommendationContext> {
-    const scoped = input.externalResourceId !== undefined;
+    const scoped = input.externalResourceId !== undefined || input.cloudResourceId !== undefined;
     const learningContext = await this.getRecommendationLearningContext(input.tenantId, input.snapshot);
     const technicalEvidenceSnapshot = input.technicalEvidenceSnapshot
       ?? await this.getRecommendationTechnicalEvidenceSnapshot(
         input.tenantId,
         input.snapshot,
         input.externalResourceId,
+        input.cloudResourceId,
       );
     const technicalEvidence = technicalEvidenceSnapshot === undefined
       ? undefined
@@ -159,6 +166,7 @@ return {
           technicalEvidence,
           formatRecommendationReadinessForPrompt(readinessReport),
           input.externalResourceId,
+          input.cloudResourceId,
         ),
         builtContext,
       ),
@@ -251,11 +259,13 @@ public async prepareRecommendationEvidence(input: {
   readonly tenantId: string;
   readonly snapshot: CostAnalyticsSnapshot;
   readonly externalResourceId?: string;
+  readonly cloudResourceId?: string;
 }): Promise<PreparedRecommendationEvidence> {
   const technicalEvidenceSnapshot = await this.getRecommendationTechnicalEvidenceSnapshot(
     input.tenantId,
     input.snapshot,
     input.externalResourceId,
+    input.cloudResourceId,
   );
   const readinessReport = buildRecommendationReadinessReport({
     snapshot: input.snapshot,
@@ -272,6 +282,7 @@ private async getRecommendationTechnicalEvidenceSnapshot(
 tenantId: string,
 snapshot: CostAnalyticsSnapshot,
 externalResourceId?: string,
+cloudResourceId?: string,
 ): Promise<RecommendationEvidenceSnapshot | undefined> {
 if (this.technicalEvidenceProvider === undefined) {
 return undefined;
@@ -281,6 +292,7 @@ return this.technicalEvidenceProvider.buildRecommendationEvidenceSnapshot({
   tenantId,
   snapshot,
   ...(externalResourceId !== undefined ? { externalResourceId } : {}),
+  ...(cloudResourceId !== undefined ? { cloudResourceId } : {}),
 });
 }
 }

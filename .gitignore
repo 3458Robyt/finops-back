@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 .env.*
+!.env.example
 downloads/
 src/generated/prisma/
 docs/erd/
@@ -10,11 +11,28 @@ docs/erd/
 *.d.ts.map
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+*.bak
+.finops-local/
+local-data/
+snapshots/
 .oci/
+.idea/dataSources.xml
 .claude/
 analisis-proyecto-grado/
 .test-artifacts/
 test-results/
 playwright-report/
+# Local validation evidence may contain tenant-specific data.
+output/
+docs/resultados_a_la_fecha/
+docs/RESULTADOS_A_LA_FECHA.md
 graphify-out/
 .graphify-*/

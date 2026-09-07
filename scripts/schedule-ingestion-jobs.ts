@@ -12,34 +12,41 @@ async function main(): Promise<void> {
   const connectionId = args.values.get('connection-id');
   const options = buildOptions(args.values);
 
-  const result = await runWithDatabaseContext(
-    { workerId: 'ingestion-scheduler', role: 'MASTER_ADMIN' },
-    () => runPrismaIngestionJobScheduler(prisma, {
-      apply,
-      schedule: options,
-      ...(provider !== undefined ? { providerCode: provider } : {}),
-      ...(connectionId !== undefined ? { connectionId } : {}),
-    }),
-  );
+  try {
+    const result = await runWithDatabaseContext(
+      { workerId: 'ingestion-scheduler', role: 'MASTER_ADMIN' },
+      () => runPrismaIngestionJobScheduler(prisma, {
+        apply,
+        schedule: options,
+        ...(provider !== undefined ? { providerCode: provider } : {}),
+        ...(connectionId !== undefined ? { connectionId } : {}),
+      }),
+    );
 
-  console.log(JSON.stringify({
-    success: true,
-    mode: result.mode,
-    generatedAt: result.generatedAt.toISOString(),
-    options: {
-      metricWindowMinutes: options.metricWindowMinutes,
-      metricCooldownMinutes: options.metricCooldownMinutes,
-      billingWindowHours: options.billingWindowHours,
-      billingCooldownHours: options.billingCooldownHours,
-      maxAttempts: options.maxAttempts,
-    },
-    connectionsEvaluated: result.connectionsEvaluated,
-    plannedJobs: result.plannedJobs,
-    createdJobs: result.createdJobs,
-    skipped: result.skipped,
-  }, null, 2));
-
-  await prisma.$disconnect();
+    console.log(JSON.stringify({
+      success: true,
+      mode: result.mode,
+      generatedAt: result.generatedAt.toISOString(),
+      options: {
+        inventoryWindowHours: options.inventoryWindowHours,
+        inventoryCooldownHours: options.inventoryCooldownHours,
+        metricWindowMinutes: options.metricWindowMinutes,
+        metricCooldownMinutes: options.metricCooldownMinutes,
+        billingWindowHours: options.billingWindowHours,
+        billingCooldownHours: options.billingCooldownHours,
+        maxAttempts: options.maxAttempts,
+        metricCatchupDays: options.metricCatchupDays,
+        metricCatchupWindowMinutes: options.metricCatchupWindowMinutes,
+        maxMetricBackfillJobsPerConnection: options.maxMetricBackfillJobsPerConnection,
+      },
+      connectionsEvaluated: result.connectionsEvaluated,
+      plannedJobs: result.plannedJobs,
+      createdJobs: result.createdJobs,
+      skipped: result.skipped,
+    }, null, 2));
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 interface ParsedArgs {
@@ -74,11 +81,16 @@ function parseArgs(args: readonly string[]): ParsedArgs {
 function buildOptions(values: ReadonlyMap<string, string>): IngestionScheduleOptions {
   return {
     now: parseDate(values.get('now') ?? new Date().toISOString(), 'now'),
+    inventoryWindowHours: parsePositiveInteger(values.get('inventory-window-hours') ?? '24', 'inventory-window-hours'),
+    inventoryCooldownHours: parsePositiveInteger(values.get('inventory-cooldown-hours') ?? '24', 'inventory-cooldown-hours'),
     metricWindowMinutes: parsePositiveInteger(values.get('metric-window-minutes') ?? '30', 'metric-window-minutes'),
     metricCooldownMinutes: parsePositiveInteger(values.get('metric-cooldown-minutes') ?? '25', 'metric-cooldown-minutes'),
     billingWindowHours: parsePositiveInteger(values.get('billing-window-hours') ?? '24', 'billing-window-hours'),
     billingCooldownHours: parsePositiveInteger(values.get('billing-cooldown-hours') ?? '6', 'billing-cooldown-hours'),
-    maxAttempts: parsePositiveInteger(values.get('max-attempts') ?? '1', 'max-attempts'),
+    maxAttempts: parsePositiveInteger(values.get('max-attempts') ?? '3', 'max-attempts'),
+    metricCatchupDays: parsePositiveInteger(values.get('metric-catchup-days') ?? '90', 'metric-catchup-days'),
+    metricCatchupWindowMinutes: parsePositiveInteger(values.get('metric-catchup-window-minutes') ?? String(24 * 60), 'metric-catchup-window-minutes'),
+    maxMetricBackfillJobsPerConnection: parsePositiveInteger(values.get('max-metric-backfill-jobs-per-connection') ?? '48', 'max-metric-backfill-jobs-per-connection'),
   };
 }
 
